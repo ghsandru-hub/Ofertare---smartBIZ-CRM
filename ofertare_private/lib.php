@@ -131,6 +131,15 @@ function db(): PDO
             ip      TEXT NOT NULL,
             ua      TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS users (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            username   TEXT NOT NULL UNIQUE,
+            name       TEXT NOT NULL DEFAULT '',
+            pass_hash  TEXT NOT NULL,
+            active     INTEGER NOT NULL DEFAULT 1,
+            created_at INTEGER NOT NULL,
+            last_login INTEGER
+        );
         CREATE INDEX IF NOT EXISTS ix_links_deal ON links(deal_id);
         CREATE INDEX IF NOT EXISTS ix_log_deal ON access_log(deal_id, at);
         CREATE INDEX IF NOT EXISTS ix_otp_deal ON otps(deal_id, created_at);

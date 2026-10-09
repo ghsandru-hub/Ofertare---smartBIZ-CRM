@@ -1,7 +1,8 @@
 <?php
 // Cockpit e2e OPS Ofertare: https://ofertare.aiall.ro/admin.php
-// Secțiuni: Pipeline (indicatori, pâlnie, kanban, ofertă nouă), Șabloane email, Materiale.
-// Login separat de partea publică: sesiune proprie (cookie „ofadm”), parolă din ofertare_private/config.php.
+// Secțiuni: Pipeline (indicatori, pâlnie, kanban, ofertă nouă), Raportare, Șabloane email, Materiale, Utilizatori.
+// Login separat de partea publică: sesiune proprie (cookie „ofadm”). Utilizatorii stau în tabela `users`;
+// contul din ofertare_private/config.php este contul inițial și calea de recuperare (vezi autentificarea).
 
 declare(strict_types=1);
 require dirname(__DIR__) . '/ofertare_private/lib.php';
@@ -49,11 +50,53 @@ function flash(string $html): void
 }
 
 // ---------------------------------------------------------------------------
+// Utilizatori (tabela users; contul din config.php rămâne cale de intrare cât nu există în tabelă)
+// ---------------------------------------------------------------------------
+function find_user(string $username): ?array
+{
+    $q = db()->prepare('SELECT * FROM users WHERE username = ?');
+    $q->execute([$username]);
+    return $q->fetch() ?: null;
+}
+
+function current_user(): ?array
+{
+    if (empty($_SESSION['uid'])) {
+        return null;
+    }
+    $q = db()->prepare('SELECT * FROM users WHERE id = ?');
+    $q->execute([(int)$_SESSION['uid']]);
+    return $q->fetch() ?: null;
+}
+
+function password_problem(string $pass, ?string $confirm = null): string
+{
+    if (strlen($pass) < 10) {
+        return 'Parola trebuie să aibă cel puțin 10 caractere.';
+    }
+    if ($confirm !== null && $pass !== $confirm) {
+        return 'Parolele nu coincid.';
+    }
+    return '';
+}
+
+// Parolă generată pentru un utilizator nou: 14 caractere, fără cele ușor de confundat (0/O, 1/l/I).
+function new_password(): string
+{
+    $chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    $out   = '';
+    for ($i = 0; $i < 14; $i++) {
+        $out .= $chars[random_int(0, strlen($chars) - 1)];
+    }
+    return $out;
+}
+
+// ---------------------------------------------------------------------------
 // Autentificare
 // ---------------------------------------------------------------------------
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $action = (string)($_POST['action'] ?? '');
-$view   = in_array($_GET['v'] ?? '', ['pipeline', 'sabloane', 'materiale', 'raportare'], true) ? $_GET['v'] : 'pipeline';
+$view   = in_array($_GET['v'] ?? '', ['pipeline', 'sabloane', 'materiale', 'raportare', 'utilizatori'], true) ? $_GET['v'] : 'pipeline';
 
 if ($action === 'logout' && csrf_ok()) {
     $_SESSION = [];
@@ -61,20 +104,36 @@ if ($action === 'logout' && csrf_ok()) {
     redirect('admin.php');
 }
 
-if (empty($_SESSION['admin'])) {
+if (empty($_SESSION['admin']) || empty($_SESSION['uid'])) {
     $err = '';
     if ($method === 'POST' && $action === 'login') {
-        $okUser = hash_equals((string)cfg('admin_user'), (string)($_POST['user'] ?? ''));
-        $okPass = cfg('admin_pass_hash') && password_verify((string)($_POST['pass'] ?? ''), (string)cfg('admin_pass_hash'));
-        if ($okUser && $okPass && csrf_ok()) {
+        $user = trim((string)($_POST['user'] ?? ''));
+        $pass = (string)($_POST['pass'] ?? '');
+        $row  = find_user($user);
+        $ok   = false;
+        if ($row) {
+            // utilizator din tabela users (creat în cockpit sau copiat din config.php)
+            $ok = (int)$row['active'] === 1 && password_verify($pass, (string)$row['pass_hash']);
+        } elseif (cfg('admin_pass_hash') && hash_equals((string)cfg('admin_user'), $user)
+            && password_verify($pass, (string)cfg('admin_pass_hash'))) {
+            // Contul din config.php: valabil doar cât nu există în tabelă un utilizator cu același nume.
+            // La prima autentificare îl copiem în tabelă, ca parola să se poată schimba din cockpit.
+            db()->prepare('INSERT INTO users (username, name, pass_hash, created_at) VALUES (?, ?, ?, ?)')
+                ->execute([$user, 'Administrator', (string)cfg('admin_pass_hash'), time()]);
+            $row = find_user($user);
+            $ok  = $row !== null;
+        }
+        if ($ok && csrf_ok()) {
             session_regenerate_id(true);
             $_SESSION['admin'] = true;
+            $_SESSION['uid']   = (int)$row['id'];
+            db()->prepare('UPDATE users SET last_login = ? WHERE id = ?')->execute([time(), (int)$row['id']]);
             redirect('admin.php');
         }
         sleep(2); // frânează încercările repetate
         $err = '<p class="err">Utilizator sau parolă greșite.</p>';
     }
-    if (!cfg('admin_pass_hash')) {
+    if (!cfg('admin_pass_hash') && (int)db()->query('SELECT COUNT(*) FROM users WHERE active = 1')->fetchColumn() === 0) {
         $err = '<p class="err">Setează admin_pass_hash în ofertare_private/config.php.</p>';
     }
     page('Autentificare · e2e OPS Ofertare', '<div class="brand">smartBIZ Copilot · e2e OPS Ofertare</div><div class="card"><h1>Autentificare</h1>' . $err
@@ -82,6 +141,14 @@ if (empty($_SESSION['admin'])) {
         . '<label for="user">Utilizator</label><input id="user" name="user" autocomplete="username" required>'
         . '<label for="pass">Parolă</label><input id="pass" name="pass" type="password" autocomplete="current-password" required>'
         . '<button type="submit">Intră</button></form></div>');
+}
+
+// Utilizator șters sau dezactivat între timp: sesiunea nu mai e valabilă.
+$me = current_user();
+if (!$me || (int)$me['active'] !== 1) {
+    $_SESSION = [];
+    session_destroy();
+    redirect('admin.php');
 }
 
 // ---------------------------------------------------------------------------
@@ -279,6 +346,71 @@ if ($method === 'POST') {
                     . ($file !== $m['file'] ? '; linkurile deja trimise deschid noua versiune' : '') . '.</div>');
             }
             redirect('admin.php?v=materiale');
+
+        // --- Utilizatori ----------------------------------------------------
+        case 'pw_change':
+            $pass = (string)($_POST['pass'] ?? '');
+            if (!password_verify((string)($_POST['current'] ?? ''), (string)$me['pass_hash'])) {
+                flash('<div class="note err">Parola actuală nu este corectă.</div>');
+            } elseif ($p = password_problem($pass, (string)($_POST['confirm'] ?? ''))) {
+                flash('<div class="note err">' . h($p) . '</div>');
+            } else {
+                db()->prepare('UPDATE users SET pass_hash = ? WHERE id = ?')->execute([password_hash($pass, PASSWORD_DEFAULT), (int)$me['id']]);
+                flash('<div class="note">Parola a fost schimbată.</div>');
+            }
+            redirect('admin.php?v=utilizatori');
+
+        case 'user_add':
+            $username = strtolower(trim((string)($_POST['username'] ?? '')));
+            $name     = trim((string)($_POST['name'] ?? ''));
+            $pass     = (string)($_POST['pass'] ?? '');
+            $shown    = '';
+            if ($pass === '') {
+                $pass  = new_password();
+                $shown = ' Parola: <code>' . h($pass) . '</code> — notează-o acum, nu se mai afișează.';
+            }
+            if (!preg_match('/^[a-z0-9._@-]{3,64}$/', $username)) {
+                flash('<div class="note err">Numele de utilizator poate conține doar litere mici, cifre și . _ @ - (3–64 de caractere).</div>');
+            } elseif ($p = password_problem($pass)) {
+                flash('<div class="note err">' . h($p) . '</div>');
+            } elseif (find_user($username)) {
+                flash('<div class="note err">Există deja un utilizator „' . h($username) . '”.</div>');
+            } else {
+                db()->prepare('INSERT INTO users (username, name, pass_hash, created_at) VALUES (?, ?, ?, ?)')
+                    ->execute([$username, $name, password_hash($pass, PASSWORD_DEFAULT), time()]);
+                flash('<div class="note">Utilizatorul „' . h($username) . '” a fost creat.' . $shown . '</div>');
+            }
+            redirect('admin.php?v=utilizatori');
+
+        case 'user_update':
+            $id   = (int)($_POST['id'] ?? 0);
+            $self = $id === (int)$me['id'];
+            $name = trim((string)($_POST['name'] ?? ''));
+            $act  = ($self || !empty($_POST['active'])) ? 1 : 0; // propriul cont rămâne activ
+            $pass = (string)($_POST['pass'] ?? '');
+            $uq   = db()->prepare('SELECT * FROM users WHERE id = ?');
+            $uq->execute([$id]);
+            if ($u = $uq->fetch()) {
+                if ($pass !== '' && ($p = password_problem($pass))) {
+                    flash('<div class="note err">' . h($p) . '</div>');
+                    redirect('admin.php?v=utilizatori');
+                }
+                db()->prepare('UPDATE users SET name = ?, active = ?, pass_hash = ? WHERE id = ?')
+                    ->execute([$name, $act, $pass !== '' ? password_hash($pass, PASSWORD_DEFAULT) : $u['pass_hash'], $id]);
+                flash('<div class="note">Utilizatorul „' . h($u['username']) . '” a fost actualizat'
+                    . ($pass !== '' ? '; parola a fost schimbată' : '') . '.</div>');
+            }
+            redirect('admin.php?v=utilizatori');
+
+        case 'user_delete':
+            $id = (int)($_POST['id'] ?? 0);
+            if ($id === (int)$me['id']) {
+                flash('<div class="note err">Nu îți poți șterge propriul cont.</div>');
+            } else {
+                db()->prepare('DELETE FROM users WHERE id = ?')->execute([$id]);
+                flash('<div class="note">Utilizatorul a fost șters.</div>');
+            }
+            redirect('admin.php?v=utilizatori');
     }
 }
 
@@ -587,6 +719,48 @@ function view_materials(): string
 }
 
 // ===========================================================================
+// SECȚIUNEA UTILIZATORI (parola mea, utilizator nou, lista cu nume / activ / resetare parolă / ștergere)
+// ===========================================================================
+function view_users(array $me): string
+{
+    $rows = db()->query('SELECT * FROM users ORDER BY active DESC, username')->fetchAll();
+    $list = '';
+    foreach ($rows as $u) {
+        $id   = (int)$u['id'];
+        $self = $id === (int)$me['id'];
+        $list .= '<form method="post" class="usr' . ($u['active'] ? '' : ' off') . '">' . csrf_field()
+            . '<input type="hidden" name="id" value="' . $id . '">'
+            . '<div class="mt"><b class="un">' . h($u['username']) . ($self ? ' <span class="tag">eu</span>' : '') . '</b>'
+            . '<small>creat ' . h(fmt_time((int)$u['created_at'])) . ' · ultima autentificare '
+            . h(fmt_time($u['last_login'] !== null ? (int)$u['last_login'] : null)) . '</small></div>'
+            . '<input name="name" value="' . h($u['name']) . '" aria-label="Nume" placeholder="Nume">'
+            . '<input name="pass" type="password" autocomplete="new-password" minlength="10" aria-label="Parolă nouă" placeholder="Parolă nouă (opțional)">'
+            . '<label class="act"><input type="checkbox" name="active" value="1"' . ($u['active'] ? ' checked' : '') . ($self ? ' disabled' : '') . '> Activ</label>'
+            . '<button type="submit" class="sm" name="action" value="user_update">Salvează</button>'
+            . ($self ? '<span></span>' : '<button type="submit" class="sm bad" name="action" value="user_delete">Șterge</button>')
+            . '</form>';
+    }
+
+    return '<div class="row2">'
+        . '<section class="panel"><h2>Parola mea</h2>'
+        . '<form method="post" class="pwf">' . csrf_field() . '<input type="hidden" name="action" value="pw_change">'
+        . '<div><label for="pw0">Parola actuală</label><input id="pw0" name="current" type="password" autocomplete="current-password" required></div>'
+        . '<div><label for="pw1">Parola nouă (min. 10 caractere)</label><input id="pw1" name="pass" type="password" autocomplete="new-password" minlength="10" required></div>'
+        . '<div><label for="pw2">Repetă parola nouă</label><input id="pw2" name="confirm" type="password" autocomplete="new-password" minlength="10" required></div>'
+        . '<button type="submit" class="pri">Schimbă parola</button></form></section>'
+        . '<section class="panel"><h2>Utilizator nou</h2>'
+        . '<form method="post" class="pwf">' . csrf_field() . '<input type="hidden" name="action" value="user_add">'
+        . '<div><label for="nu">Utilizator (litere mici, cifre, . _ @ -)</label><input id="nu" name="username" pattern="[a-z0-9._@-]{3,64}" autocomplete="off" required></div>'
+        . '<div><label for="nn">Nume</label><input id="nn" name="name" placeholder="ex. Ana Pop"></div>'
+        . '<div><label for="np">Parolă (gol = generată automat, afișată o singură dată)</label><input id="np" name="pass" type="password" autocomplete="new-password" minlength="10"></div>'
+        . '<button type="submit" class="pri">Adaugă utilizatorul</button></form></section></div>'
+        . '<section class="panel"><h2>Utilizatori</h2>'
+        . '<p class="muted" style="margin:-6px 0 12px">Un utilizator dezactivat nu se mai poate autentifica. Parola nouă se aplică doar dacă completezi câmpul.'
+        . ' Nu îți poți dezactiva sau șterge propriul cont. Contul din <code>config.php</code> rămâne cale de recuperare: intră doar dacă nu există în listă un utilizator cu același nume.</p>'
+        . '<div class="matlist">' . $list . '</div></section>';
+}
+
+// ===========================================================================
 // SECȚIUNEA RAPORTARE (tabel smartBIZ: căutare, filtre, sortare, grupare, totaluri, export CSV)
 // ===========================================================================
 function view_report(): string
@@ -864,6 +1038,7 @@ $views   = [
     'raportare' => ['Raportare',      fn() => view_report()],
     'sabloane'  => ['Șabloane email', fn() => view_templates()],
     'materiale' => ['Materiale',      fn() => view_materials()],
+    'utilizatori' => ['Utilizatori',  fn() => view_users($me)],
 ];
 $content = $views[$view][1]();
 $tabs    = array_map(fn($v) => $v[0], $views);
@@ -897,11 +1072,19 @@ header('Content-Type: text/html; charset=utf-8');
   --navy:#7fa6e6;--navy2:#6f9ad8;--navy3:#5fb0d4;--teal:#5cc0c3;--amber:#f0a94a;--green:#4ade80;--red:#f87171;color-scheme:dark}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 var(--sans)}
-.top{background:#1F4788;color:#fff}
+.top{background:linear-gradient(115deg,#1F4788 0%,#24608f 55%,#2D8B8E 100%);color:#fff;box-shadow:0 4px 24px rgba(13,21,32,.22)}
 .top .in{max-width:1440px;margin:0 auto;padding:10px 20px 0;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.top .logo{font:600 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;opacity:.85}
-.top h1{font-size:17px;margin:0;font-weight:600}
+.top .logo{display:flex;align-items:center;gap:11px}
+.top .mark{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:linear-gradient(135deg,#2D8B8E,#1F4788);border:1px solid rgba(255,255,255,.28);font:700 13px var(--mono);color:#fff;letter-spacing:-.02em}
+.top .ttl{line-height:1.15}
+.sbc-title{font-weight:700;font-size:16px;letter-spacing:-.3px}
+.sbc-smart{color:#F2F6FA;font-weight:600}.sbc-biz{color:#3aacb0;font-weight:700}.sbc-copilot{color:#f0a94a;font-weight:600}
+.top h1{font:500 12px var(--sans);margin:1px 0 0;opacity:.85}
 .top .sp{flex:1}
+.top .me{font:500 12px var(--mono);opacity:.85;overflow-wrap:anywhere}
+.foot{border-top:1px solid var(--line);margin-top:8px}
+.foot .in{max-width:1440px;margin:0 auto;padding:14px 20px;display:flex;justify-content:space-between;gap:6px 18px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.foot .sbc-title{font-size:13px}.foot .sbc-smart{color:var(--ink)}.foot .sbc-biz{color:var(--teal)}.foot .sbc-copilot{color:var(--amber)}
 .top button{background:transparent;border:1px solid rgba(255,255,255,.5);color:#fff;border-radius:4px;padding:4px 12px;font:500 13px var(--sans);cursor:pointer}
 .top nav{flex-basis:100%;display:flex;gap:4px;margin-top:8px;overflow-x:auto}
 .top nav a{color:#fff;opacity:.75;text-decoration:none;padding:8px 14px;border-radius:4px 4px 0 0;font-weight:500;white-space:nowrap}
@@ -925,6 +1108,13 @@ main{max-width:1440px;margin:0 auto;padding:20px;display:grid;gap:18px}
 label{display:block;font-size:12px;color:var(--muted);margin:0 0 3px}
 input,select,textarea{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink);font:inherit}
 textarea{font:13px/1.55 var(--mono);resize:vertical}
+/* Controale native în stil smartBIZ: select cu săgeată proprie, file cu buton teal, bife teal */
+select{appearance:none;-webkit-appearance:none;padding-right:28px;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' fill='none' stroke='%238a96a3' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");background-repeat:no-repeat;background-position:right 9px center;background-size:12px}
+input[type=file]{padding:4px 6px;cursor:pointer;font-size:12px;color:var(--muted)}
+input[type=file]::file-selector-button{font:600 12px var(--sans);color:var(--teal);background:var(--surface);border:1px solid var(--teal);border-radius:4px;padding:5px 10px;margin-right:10px;cursor:pointer}
+input[type=file]::file-selector-button:hover{background:color-mix(in srgb,var(--teal) 10%,var(--surface))}
+input[type=checkbox],input[type=radio]{accent-color:var(--teal)}
+input[type=search]::-webkit-search-cancel-button{cursor:pointer}
 code{font:12px var(--mono);background:var(--soft);padding:0 4px;border-radius:3px}
 .g{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
 .g2{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-bottom:10px}
@@ -1001,6 +1191,12 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .stats{font-size:12px;color:var(--muted)}.stats b{color:var(--ink)}
 .rep{font-size:12px;margin:0}.rep input{margin-top:3px;font-size:12px;padding:4px}
 .act{display:flex;gap:6px;align-items:center;margin:0;font-size:13px;color:var(--ink)}
+/* Utilizatori */
+.pwf{display:grid;gap:10px}.pwf .pri{margin:0;justify-self:start}
+.usr{display:grid;grid-template-columns:minmax(200px,2fr) minmax(160px,2fr) minmax(170px,2fr) auto auto minmax(64px,auto);gap:10px;align-items:center;border:1px solid var(--line);border-radius:5px;padding:10px 12px}
+.usr.off{opacity:.6}
+@media (max-width:1100px){.usr{grid-template-columns:1fr 1fr}}
+.un{font:600 13px var(--mono);overflow-wrap:anywhere}.un .tag{font-size:10px;vertical-align:middle}
 /* Raportare */
 .rep .ph{align-items:center}.sm2{margin:0;padding:6px 12px}
 .rtools{display:grid;grid-template-columns:minmax(220px,2fr) repeat(6,minmax(120px,1fr)) auto;gap:10px;align-items:end;margin-bottom:10px}
@@ -1029,9 +1225,12 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 </head>
 <body>
 <header class="top"><div class="in">
-  <span class="logo">smartBIZ Copilot</span>
-  <h1>Cockpit e2e OPS Ofertare</h1>
+  <div class="logo">
+    <span class="mark" aria-hidden="true">sB</span>
+    <div class="ttl"><b class="sbc-title"><span class="sbc-smart">smart</span><span class="sbc-biz">BIZ</span> <span class="sbc-copilot">Copilot</span></b><h1>Cockpit e2e OPS Ofertare</h1></div>
+  </div>
   <span class="sp"></span>
+  <span class="me" title="<?= h($me['username']) ?>"><?= h($me['name'] !== '' ? $me['name'] : $me['username']) ?></span>
   <form method="post"><?= csrf_field() ?><input type="hidden" name="action" value="logout"><button type="submit">Ieșire</button></form>
   <nav aria-label="Secțiuni"><?= $nav ?></nav>
 </div></header>
@@ -1039,6 +1238,10 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 <?= $flashMsg ?>
 <?= $content ?>
 </main>
+<footer class="foot"><div class="in">
+  <span><b class="sbc-title"><span class="sbc-smart">smart</span><span class="sbc-biz">BIZ</span> <span class="sbc-copilot">Copilot</span></b> · e2e OPS Ofertare</span>
+  <span>AiALL S.R.L. · ofertare.aiall.ro · <?= date('Y') ?></span>
+</div></footer>
 <script>
 (function () {
   var csrf = <?= json_encode($csrf) ?>;

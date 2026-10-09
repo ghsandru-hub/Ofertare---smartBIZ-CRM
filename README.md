@@ -10,7 +10,7 @@ Fișierele stau în `ofertare_private`, în afara folderului public al subdomeni
 iar folderul nu poate fi răsfoit.
 
 Administrarea are login separat, la `https://ofertare.aiall.ro/admin.php`, și este un cockpit e2e OPS Ofertare
-cu patru secțiuni: Pipeline (indicatori, pâlnie, kanban, ofertă nouă), Raportare, Șabloane email și Materiale.
+cu cinci secțiuni: Pipeline (indicatori, pâlnie, kanban, ofertă nouă), Raportare, Șabloane email, Materiale și Utilizatori.
 
 ## Structura pe server (cPanel)
 
@@ -42,7 +42,8 @@ Cele două foldere trebuie să fie frați în directorul contului.
    `config.php`, `data/` sau `fisiere/`.
 4. **Configurare.** În `ofertare_private/`, copiezi `config.sample.php` ca `config.php` și completezi:
    - `secret`: `php -r "echo bin2hex(random_bytes(32)), PHP_EOL;"`
-   - `admin_pass_hash`: `php -r "echo password_hash('parola-ta', PASSWORD_DEFAULT), PHP_EOL;"`
+   - `admin_pass_hash`: `php -r "echo password_hash('parola-ta', PASSWORD_DEFAULT), PHP_EOL;"` — contul inițial;
+     la prima autentificare este copiat în tabela `users`, iar de atunci parola se schimbă din cockpit → Utilizatori
    - `mail_from`: o căsuță existentă pe aiall.ro (ex. `oferte@aiall.ro`), ca emailurile să treacă de SPF/DKIM
    - `notify_email`: adresa ta, pentru notificarea la prima deschidere
 5. **Drepturi.** `chmod 700 ofertare_private ofertare_private/data` și `chmod 600 ofertare_private/config.php`.
@@ -60,9 +61,9 @@ Repo-ul este public, așa că nu conține:
   sau se urcă direct pe server. Dacă folderul este gol la prima rulare, șablonul implicit se creează fără materiale
   și le asociezi după încărcare.
 
-## Cockpit: Pipeline, Raportare, Șabloane email, Materiale
+## Cockpit: Pipeline, Raportare, Șabloane email, Materiale, Utilizatori
 
-Cockpitul (`admin.php`) are patru secțiuni.
+Cockpitul (`admin.php`) are cinci secțiuni.
 
 ### 1. Pipeline
 
@@ -112,6 +113,18 @@ licență, economie client, stare link și notă.
 
 Un singur cod de acces, trimis pe emailul destinatarului, deschide toate materialele din același email,
 timp de 12 ore. Un link redirecționat ajunge la pagina de cod, iar codul pleacă tot la destinatarul inițial.
+
+
+### 5. Utilizatori
+
+- Fiecare utilizator are nume de utilizator, nume afișat, parolă (bcrypt) și stare activ/inactiv; tabela `users` din `ofertare.db`.
+- „Parola mea”: schimbarea propriei parole (parola actuală + parola nouă de minimum 10 caractere, repetată).
+- „Utilizator nou”: nume de utilizator (litere mici, cifre, `. _ @ -`), nume și parolă; lăsată goală, parola se
+  generează automat și se afișează o singură dată.
+- Lista: redenumire, activare/dezactivare, parolă nouă (opțional) și ștergere; propriul cont nu poate fi dezactivat sau șters.
+- Contul din `config.php` (`admin_user` / `admin_pass_hash`) intră doar dacă nu există în tabelă un utilizator cu același
+  nume; la prima autentificare este copiat în tabelă. Recuperare dacă nimeni nu mai poate intra: pui în `config.php`
+  un `admin_user` nou (ex. `recuperare`) cu hash-ul lui, te autentifici cu el și resetezi parolele din listă.
 
 ## Ce protejează
 
