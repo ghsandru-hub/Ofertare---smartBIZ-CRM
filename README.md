@@ -37,7 +37,9 @@ Cele două foldere trebuie să fie frați în directorul contului.
    (calea completă `/home/CONT/ofertare.aiall.ro`, nu în `public_html`).
 2. **SSL.** cPanel → SSL/TLS Status → Run AutoSSL, ca subdomeniul să aibă certificat.
 3. **Fișierele.** Urci conținutul folderului `ofertare.aiall.ro/` în Document Root-ul subdomeniului,
-   iar `ofertare_private/` în `/home/CONT/`, lângă el.
+   iar `ofertare_private/` în `/home/CONT/`, lângă el. Alternativ, din cPanel → Git Version Control, clonezi
+   repo-ul și apeși „Deploy HEAD Commit”: `.cpanel.yml` copiază codul în cele două foldere, fără să atingă
+   `config.php`, `data/` sau `fisiere/`.
 4. **Configurare.** În `ofertare_private/`, copiezi `config.sample.php` ca `config.php` și completezi:
    - `secret`: `php -r "echo bin2hex(random_bytes(32)), PHP_EOL;"`
    - `admin_pass_hash`: `php -r "echo password_hash('parola-ta', PASSWORD_DEFAULT), PHP_EOL;"`

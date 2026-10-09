@@ -1,0 +1,14 @@
+---
+# Deploy din cPanel → Git Version Control → „Deploy HEAD Commit”.
+# Update only: copiază doar codul aplicației peste structura existentă.
+# Nu atinge config.php, data/ (baza de date) sau fisiere/ (materialele clienților).
+# Folderele țintă sunt frați în directorul contului ($HOME), ca în README.
+deployment:
+  tasks:
+    - |
+      set -e
+      test -d "$HOME/ofertare.aiall.ro"
+      /bin/mkdir -p "$HOME/ofertare_private/data" "$HOME/ofertare_private/fisiere"
+      /bin/cp ofertare.aiall.ro/.htaccess ofertare.aiall.ro/index.php ofertare.aiall.ro/admin.php ofertare.aiall.ro/robots.txt "$HOME/ofertare.aiall.ro/"
+      /bin/cp ofertare_private/.htaccess ofertare_private/lib.php ofertare_private/config.sample.php "$HOME/ofertare_private/"
+      /bin/cp ofertare_private/data/.htaccess "$HOME/ofertare_private/data/.htaccess"
