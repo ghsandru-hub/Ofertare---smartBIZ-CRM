@@ -151,6 +151,13 @@ if (!$me || (int)$me['active'] !== 1) {
     redirect('admin.php');
 }
 
+// Datele firmei de la ANAF pentru formularul „Ofertă nouă” (JSON, doar după autentificare).
+if (($_GET['a'] ?? '') === 'anaf') {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    exit(json_encode(anaf_lookup((string)($_GET['cui'] ?? '')), JSON_UNESCAPED_UNICODE));
+}
+
 // ---------------------------------------------------------------------------
 // Acțiuni
 // ---------------------------------------------------------------------------
@@ -178,6 +185,16 @@ if ($method === 'POST') {
             $otp       = !empty($_POST['require_otp']) ? 1 : 0;
             $sendNow   = !empty($_POST['send']);
             $matSel    = array_map('intval', (array)($_POST['materials'] ?? []));
+            $firma     = [ // completate din ANAF (sau manual) în formular
+                'cui'     => anaf_cui((string)($_POST['cui'] ?? '')),
+                'reg_com' => mb_substr(trim((string)($_POST['reg_com'] ?? '')), 0, 40),
+                'adresa'  => mb_substr(trim((string)($_POST['adresa'] ?? '')), 0, 300),
+                'judet'   => mb_substr(trim((string)($_POST['judet'] ?? '')), 0, 60),
+                'caen'    => mb_substr(trim((string)($_POST['caen'] ?? '')), 0, 10),
+                'telefon' => mb_substr(trim((string)($_POST['telefon'] ?? '')), 0, 40),
+                'tva'     => !empty($_POST['tva']) ? 1 : 0,
+                'inactiv' => !empty($_POST['inactiv']) ? 1 : 0,
+            ];
 
             $tq = db()->prepare('SELECT * FROM templates WHERE id = ?');
             $tq->execute([$tid]);
@@ -205,9 +222,11 @@ if ($method === 'POST') {
                 flash('<div class="note err">Alege cel puțin un material.</div>');
             } else {
                 $now = time();
-                db()->prepare('INSERT INTO deals (company, recipient, email, angajati, template_id, subject, require_otp, stage, reached, stage_at, created_at, expires_at)
-                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-                    ->execute([$company, $recipient, $email, $angajati, $tid, '', $otp, 'trimisa', 1, $now, $now, $now + 86400 * $days]);
+                db()->prepare('INSERT INTO deals (company, recipient, email, angajati, template_id, subject, require_otp, stage, reached, stage_at, created_at, expires_at,
+                                                  cui, reg_com, adresa, judet, caen, telefon, tva, inactiv)
+                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+                    ->execute([$company, $recipient, $email, $angajati, $tid, '', $otp, 'trimisa', 1, $now, $now, $now + 86400 * $days,
+                               $firma['cui'], $firma['reg_com'], $firma['adresa'], $firma['judet'], $firma['caen'], $firma['telefon'], $firma['tva'], $firma['inactiv']]);
                 $dealId = (int)db()->lastInsertId();
                 $dq     = db()->prepare('SELECT * FROM deals WHERE id = ?');
                 $dq->execute([$dealId]);
@@ -477,6 +496,14 @@ function deal_card(array $d, array $stages, array $links, string $csrf): string
     } elseif ($expired) {
         $flags .= '<span class="tag">linkuri expirate</span>';
     }
+    if ((int)$d['inactiv']) {
+        $flags .= '<span class="tag bad">inactiv ANAF</span>';
+    }
+    $cui   = (string)$d['cui'];
+    $firma = '';
+    if ($cui !== '') {
+        $firma = '<div class="who">CUI ' . h($cui) . ((string)$d['reg_com'] !== '' ? ' · ' . h($d['reg_com']) : '') . '</div>';
+    }
     $opts = '';
     foreach ($stages as $k => $s) {
         $opts .= '<option value="' . $k . '"' . ($k === $d['stage'] ? ' selected' : '') . '>' . $s['label'] . '</option>';
@@ -502,13 +529,16 @@ function deal_card(array $d, array $stages, array $links, string $csrf): string
 
     return '<article class="card" draggable="true" data-id="' . $id . '" id="c' . $id . '">'
         . '<header><strong>' . h($d['company'] ?: $d['email']) . '</strong><small>' . h(ago($d['stage_at'] ? (int)$d['stage_at'] : (int)$d['created_at'])) . '</small></header>'
-        . '<div class="who">' . h($d['recipient'] ?: '—') . ' · ' . h($d['email']) . '</div>'
+        . '<div class="who">' . h($d['recipient'] ?: '—') . ' · ' . h($d['email']) . '</div>' . $firma
         . '<ul class="mats">' . $mats . '</ul>'
         . $val
         . ($flags ? '<div class="flags">' . $flags . '</div>' : '')
         . ($d['nota'] !== '' ? '<p class="nota">' . h($d['nota']) . '</p>' : '')
         . '<details><summary>Detalii</summary>'
         . '<p class="meta">Subiect: ' . h($d['subject']) . '</p>'
+        . ($cui !== '' ? '<p class="meta">Firmă (ANAF): ' . h($d['adresa'] ?: '—') // adresa conține deja județul
+            . ((string)$d['caen'] !== '' ? ' · CAEN ' . h($d['caen']) : '')
+            . ((string)$d['telefon'] !== '' ? ' · tel. ' . h($d['telefon']) : '') . ' · ' . ((int)$d['tva'] ? 'plătitor TVA' : 'neplătitor TVA') . '</p>' : '')
         . '<form method="post" class="mv">' . $hid . '<input type="hidden" name="action" value="stage">'
         . '<label for="st' . $id . '">Etapă</label><select id="st' . $id . '" name="stage">' . $opts . '</select>'
         . '<button type="submit" class="sm">Mută</button></form>'
@@ -576,12 +606,17 @@ function view_pipeline(string $csrf): string
     }
     $form = $templates
         ? '<form method="post" class="newf" id="newDeal">' . csrf_field() . '<input type="hidden" name="action" value="create_deal">'
-          . '<div class="g"><div><label for="company">Companie</label><input id="company" name="company" required></div>'
+          . '<div class="g"><div><label for="cui">CUI</label><div class="cuirow"><input id="cui" name="cui" inputmode="numeric" autocomplete="off" placeholder="ex. 1590082">'
+          . '<button type="button" class="sm" id="cuiBtn" title="Preia datele firmei de la ANAF">ANAF</button></div></div>'
+          . '<div><label for="company">Companie</label><input id="company" name="company" required></div>'
           . '<div><label for="recipient">Persoană de contact</label><input id="recipient" name="recipient"></div>'
           . '<div><label for="email">Email</label><input id="email" name="email" type="email" required></div>'
           . '<div><label for="angajati">Salariați mobili (estimat)</label><input id="angajati" name="angajati" type="number" min="0" value="0"></div>'
-          . '<div><label for="template_id">Șablon email</label><select id="template_id" name="template_id">' . $tplOpts . '</select></div>'
-          . '<div><label for="days">Linkuri valabile (zile)</label><input id="days" name="days" type="number" min="1" max="365" value="' . (int)cfg('default_days') . '"></div></div>'
+          . '<div><label for="days">Linkuri valabile (zile)</label><input id="days" name="days" type="number" min="1" max="365" value="' . (int)cfg('default_days') . '"></div>'
+          . '<div class="wide"><label for="template_id">Șablon email</label><select id="template_id" name="template_id">' . $tplOpts . '</select></div></div>'
+          . '<p class="anaf" id="anafInfo" aria-live="polite"></p>'
+          . '<input type="hidden" name="reg_com" id="f_reg_com"><input type="hidden" name="adresa" id="f_adresa"><input type="hidden" name="judet" id="f_judet">'
+          . '<input type="hidden" name="caen" id="f_caen"><input type="hidden" name="telefon" id="f_telefon"><input type="hidden" name="tva" id="f_tva" value="0"><input type="hidden" name="inactiv" id="f_inactiv" value="0">'
           . '<fieldset class="mats-pick"><legend>Materiale trimise</legend>' . ($matChecks ?: '<p class="muted">Nu există materiale active.</p>') . '</fieldset>'
           . '<div class="chks"><label><input type="checkbox" name="require_otp" value="1" checked> Cod de acces pe email</label>'
           . '<label><input type="checkbox" name="send" value="1" checked> Trimite acum emailul</label></div>'
@@ -782,6 +817,13 @@ function view_report(): string
         $data[] = [
             'id'        => (int)$r['id'],
             'companie'  => (string)$r['company'],
+            'cui'       => (string)$r['cui'],
+            'reg_com'   => (string)$r['reg_com'],
+            'adresa'    => (string)$r['adresa'],
+            'judet'     => (string)$r['judet'],
+            'caen'      => (string)$r['caen'],
+            'tva'       => (string)$r['cui'] !== '' ? ((int)$r['tva'] ? 'da' : 'nu') : '',
+            'inactiv'   => (int)$r['inactiv'] ? 'da' : '',
             'persoana'  => (string)$r['recipient'],
             'email'     => (string)$r['email'],
             'sablon'    => (string)($r['template_name'] ?? '—'),
@@ -822,13 +864,13 @@ function view_report(): string
         . '<button type="button" class="sm" id="rReset">Resetează vederea</button>'
         . '<button type="button" class="pri sm2" id="rCsv">Export CSV (Excel)</button></div></div>'
         . '<div class="rtools">'
-        . '<div class="rsearch"><label for="rQ">Caută</label><input id="rQ" type="search" placeholder="companie, persoană, email, notă…"></div>'
+        . '<div class="rsearch"><label for="rQ">Caută</label><input id="rQ" type="search" placeholder="companie, CUI, persoană, email, notă…"></div>'
         . '<div><label for="rStage">Etapă</label><select id="rStage"><option value="">Toate</option>' . $stageOpts . '</select></div>'
         . '<div><label for="rTpl">Șablon</label><select id="rTpl"><option value="">Toate</option>' . $tplOpts . '</select></div>'
         . '<div><label for="rLink">Link</label><select id="rLink"><option value="">Toate</option><option>activ</option><option>expirat</option><option>revocat</option></select></div>'
         . '<div><label for="rFrom">Creată de la</label><input id="rFrom" type="date"></div>'
         . '<div><label for="rTo">până la</label><input id="rTo" type="date"></div>'
-        . '<div><label for="rGroup">Grupare</label><select id="rGroup"><option value="">Fără</option><option value="etapa">Etapă</option>'
+        . '<div><label for="rGroup">Grupare</label><select id="rGroup"><option value="">Fără</option><option value="etapa">Etapă</option><option value="judet">Județ</option>'
         . '<option value="sablon">Șablon</option><option value="luna">Luna creării</option><option value="link">Stare link</option></select></div>'
         . '<details class="rcols"><summary>Coloane</summary><div id="rCols"></div></details>'
         . '</div>'
@@ -849,6 +891,13 @@ function report_js(): string
   var COLS = [
     { k: 'id',         t: 'Nr.',               n: true },
     { k: 'companie',   t: 'Companie' },
+    { k: 'cui',        t: 'CUI' },
+    { k: 'reg_com',    t: 'Nr. Reg. Com.',      off: true },
+    { k: 'adresa',     t: 'Adresă',             off: true },
+    { k: 'judet',      t: 'Județ',              off: true },
+    { k: 'caen',       t: 'CAEN',               off: true },
+    { k: 'tva',        t: 'Plătitor TVA',       off: true },
+    { k: 'inactiv',    t: 'Inactiv ANAF',       off: true },
     { k: 'persoana',   t: 'Persoană' },
     { k: 'email',      t: 'Email',             off: true },
     { k: 'sablon',     t: 'Șablon' },
@@ -869,7 +918,7 @@ function report_js(): string
     { k: 'expira',     t: 'Expiră',            off: true },
     { k: 'nota',       t: 'Notă',              off: true }
   ];
-  var KEY = 'ofertare_raport_v1';
+  var KEY = 'ofertare_raport_v2'; // v2: coloanele firmei (ANAF)
   var def = { q: '', stage: '', tpl: '', link: '', from: '', to: '', group: '', sort: 'id', dir: -1,
               hidden: COLS.filter(function (c) { return c.off; }).map(function (c) { return c.k; }) };
   var st = Object.assign({}, def);
@@ -895,7 +944,7 @@ function report_js(): string
       if (st.link && r.link !== st.link) { return false; }
       if (st.from && r.creata < st.from) { return false; }
       if (st.to && r.creata > st.to) { return false; }
-      if (q && [r.companie, r.persoana, r.email, r.nota, r.sablon, r.materiale].join(' ').toLowerCase().indexOf(q) === -1) { return false; }
+      if (q && [r.companie, r.cui, r.reg_com, r.adresa, r.judet, r.persoana, r.email, r.nota, r.sablon, r.materiale].join(' ').toLowerCase().indexOf(q) === -1) { return false; }
       return true;
     });
     var col = COLS.filter(function (c) { return c.k === st.sort; })[0] || COLS[0];
@@ -960,7 +1009,7 @@ function report_js(): string
         groups[g].push(r);
       });
       order.forEach(function (g) {
-        body += totalRow(groups[g], g, 'grp');
+        body += totalRow(groups[g], g || '—', 'grp');
         body += groups[g].map(rowHtml).join('');
       });
     } else {
@@ -1118,6 +1167,9 @@ input[type=search]::-webkit-search-cancel-button{cursor:pointer}
 code{font:12px var(--mono);background:var(--soft);padding:0 4px;border-radius:3px}
 .g{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
 .g2{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-bottom:10px}
+.cuirow{display:grid;grid-template-columns:1fr auto;gap:6px}.cuirow .sm{padding:6px 10px;white-space:nowrap}
+.g .wide{grid-column:1/-1;min-width:280px}.g .wide select{min-width:280px;font-size:14px;padding:9px 32px 9px 10px}
+.anaf{font-size:12px;color:var(--muted);margin:8px 0 0;min-height:1em;overflow-wrap:anywhere}.anaf b{color:var(--ink)}.anaf .tag{margin-left:4px}
 .chks{display:flex;gap:18px;flex-wrap:wrap;margin-top:10px}
 .chks label,.mats-pick label{display:flex;gap:6px;align-items:center;color:var(--ink);font-size:13px;margin:0}
 .chks input,.mats-pick input[type=checkbox],.act input{width:auto}
@@ -1277,6 +1329,46 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
     };
     sel.addEventListener('change', sync);
     sync();
+  }
+
+  // Ofertă nouă: datele firmei de la ANAF după CUI (buton, Enter sau la părăsirea câmpului)
+  var cuiIn = document.getElementById('cui'), cuiBtn = document.getElementById('cuiBtn'), info = document.getElementById('anafInfo');
+  if (cuiIn && cuiBtn && info) {
+    var last = '';
+    var txt = function (s) { return document.createTextNode(s); };
+    var tag = function (s, bad) { var e = document.createElement('span'); e.className = 'tag' + (bad ? ' bad' : ''); e.textContent = s; return e; };
+    var setInfo = function (cls, parts) {
+      info.className = 'anaf' + (cls ? ' ' + cls : '');
+      info.textContent = '';
+      parts.forEach(function (p) { info.appendChild(p); });
+    };
+    var lookup = function () {
+      var cui = cuiIn.value.replace(/\D/g, '');
+      if (!cui) { setInfo('', []); last = ''; return; }
+      if (cui === last) { return; }
+      last = cui;
+      setInfo('', [txt('Se interoghează ANAF…')]);
+      fetch('admin.php?a=anaf&cui=' + encodeURIComponent(cui), { headers: { 'X-Requested-With': 'fetch' }, credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (!j.ok) { last = ''; setInfo('err', [txt(j.error)]); return; }
+          var f = j.firma;
+          cuiIn.value = f.cui;
+          document.getElementById('company').value = f.denumire;
+          ['reg_com', 'adresa', 'judet', 'caen', 'telefon', 'tva', 'inactiv'].forEach(function (k) { document.getElementById('f_' + k).value = f[k]; });
+          var b = document.createElement('b'); b.textContent = f.denumire;
+          var parts = [b, txt(' · ' + (f.reg_com || 'fără nr. Reg. Com.') + ' · ' + f.adresa
+            + (f.caen ? ' · CAEN ' + f.caen : '') + (f.telefon ? ' · tel. ' + f.telefon : '') + ' '),
+            tag(f.tva ? 'plătitor TVA' : 'neplătitor TVA', false)];
+          if (f.inactiv) { parts.push(tag('inactiv', true)); }
+          if (f.stare) { parts.push(txt(' · ' + f.stare)); }
+          setInfo('', parts);
+        })
+        .catch(function () { last = ''; setInfo('err', [txt('ANAF nu răspunde. Completează datele manual.')]); });
+    };
+    cuiBtn.addEventListener('click', lookup);
+    cuiIn.addEventListener('change', lookup);
+    cuiIn.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); lookup(); } });
   }
 })();
 </script>

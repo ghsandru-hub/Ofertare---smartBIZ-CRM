@@ -73,8 +73,12 @@ Cockpitul (`admin.php`) are cinci secțiuni.
 | Deschisă | Automat, la prima deschidere a unui material de către client |
 | În negociere / Acceptată / Pierdută | Manual: tragi cardul în coloană sau alegi etapa din „Detalii” |
 
-- Ofertă nouă: companie, persoană de contact, email, salariați mobili estimați, șablon de email și materialele trimise
+- Ofertă nouă: CUI, companie, persoană de contact, email, salariați mobili estimați, șablon de email și materialele trimise
   (bifate automat după șablon, modificabile). La trimitere, fiecare material primește linkul lui personal.
+- CUI → ANAF: butonul „ANAF” (sau Enter / părăsirea câmpului) interoghează API-ul public ANAF v9 (`PlatitorTvaRest/v9/tva`)
+  și completează denumirea, nr. Reg. Com., adresa (domiciliul fiscal), județul, CAEN, telefonul, starea de plătitor TVA
+  și inactivitatea. Datele se salvează pe ofertă, apar pe card (Detalii) și în Raportare (coloane, căutare, grupare după județ).
+  Serverul are nevoie de acces HTTPS către `webservicesp.anaf.ro` (curl sau `allow_url_fopen`).
 - Fiecare card arată materialele trimise și de câte ori a fost deschis fiecare, valoarea, nota internă și jurnalul.
 - Pâlnia numără etapa maximă atinsă; o ofertă pierdută rămâne numărată la etapa la care a ajuns.
 - Valorile în RON pornesc de la „Salariați mobili”: onorariu an 1 = 1.649 RON/salariat (implementare 1.037 + licență 612),

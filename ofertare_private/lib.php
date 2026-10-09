@@ -6,7 +6,7 @@
 //   materials           materialele (oferta + materiale suport), fișierele stau în ofertare_private/fisiere
 //   templates           șabloanele de email (subiect + corp cu variabile)
 //   template_materials  ce materiale trimite fiecare șablon, în ce ordine
-//   deals               ofertele trimise (cardurile din pipeline): destinatar, etapă, valoare
+//   deals               ofertele trimise (cardurile din pipeline): destinatar, etapă, valoare, datele firmei din ANAF
 //   links               câte un link personal per material, per ofertă
 //   otps / sessions     codul de acces și sesiunea, la nivel de ofertă (un cod deschide toate materialele)
 //   access_log          jurnalul evenimentelor
@@ -98,7 +98,15 @@ function db(): PDO
             expires_at   INTEGER NOT NULL,
             first_open   INTEGER,
             last_open    INTEGER,
-            opens        INTEGER NOT NULL DEFAULT 0
+            opens        INTEGER NOT NULL DEFAULT 0,
+            cui          TEXT NOT NULL DEFAULT '',
+            reg_com      TEXT NOT NULL DEFAULT '',
+            adresa       TEXT NOT NULL DEFAULT '',
+            judet        TEXT NOT NULL DEFAULT '',
+            caen         TEXT NOT NULL DEFAULT '',
+            telefon      TEXT NOT NULL DEFAULT '',
+            tva          INTEGER NOT NULL DEFAULT 0,
+            inactiv      INTEGER NOT NULL DEFAULT 0
         );
         CREATE TABLE IF NOT EXISTS links (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -144,8 +152,30 @@ function db(): PDO
         CREATE INDEX IF NOT EXISTS ix_log_deal ON access_log(deal_id, at);
         CREATE INDEX IF NOT EXISTS ix_otp_deal ON otps(deal_id, created_at);
     ");
+    migrate_deals($pdo);
     seed_defaults($pdo);
     return $pdo;
+}
+
+// Coloanele cu datele firmei (ANAF) au apărut după prima versiune: bazele existente le primesc prin ALTER TABLE.
+function migrate_deals(PDO $pdo): void
+{
+    $have = array_column($pdo->query('PRAGMA table_info(deals)')->fetchAll(), 'name');
+    $cols = [
+        'cui'     => "TEXT NOT NULL DEFAULT ''",
+        'reg_com' => "TEXT NOT NULL DEFAULT ''",
+        'adresa'  => "TEXT NOT NULL DEFAULT ''",
+        'judet'   => "TEXT NOT NULL DEFAULT ''",
+        'caen'    => "TEXT NOT NULL DEFAULT ''",
+        'telefon' => "TEXT NOT NULL DEFAULT ''",
+        'tva'     => 'INTEGER NOT NULL DEFAULT 0',
+        'inactiv' => 'INTEGER NOT NULL DEFAULT 0',
+    ];
+    foreach ($cols as $c => $def) {
+        if (!in_array($c, $have, true)) {
+            $pdo->exec("ALTER TABLE deals ADD COLUMN $c $def");
+        }
+    }
 }
 
 // La prima rulare: materialele din ofertare_private/fisiere și șablonul ofertei e2e OPS Salarizare.
@@ -441,6 +471,104 @@ function template_materials(int $templateId): array
                         WHERE tm.template_id = ? AND m.active = 1 ORDER BY tm.ord, m.id');
     $q->execute([$templateId]);
     return $q->fetchAll();
+}
+
+// ---------------------------------------------------------------------------
+// ANAF: datele firmei după CUI (API public PlatitorTvaRest v9, fără autentificare, max. 1 cerere/secundă)
+// ---------------------------------------------------------------------------
+const ANAF_URL = 'https://webservicesp.anaf.ro/api/PlatitorTvaRest/v9/tva';
+
+// „RO 1590082” → „1590082”; gol dacă nu arată a CUI.
+function anaf_cui(string $raw): string
+{
+    $d = ltrim((string)preg_replace('/\D+/', '', $raw), '0');
+    return ($d !== '' && strlen($d) <= 10) ? $d : '';
+}
+
+// ANAF scrie ș/ț cu sedilă (ş/ţ); le aducem la forma corectă, cu virgulă.
+function ro_diacritice(string $s): string
+{
+    return strtr($s, ['ş' => 'ș', 'ţ' => 'ț', 'Ş' => 'Ș', 'Ţ' => 'Ț']);
+}
+
+function http_post_json(string $url, string $body, int $timeout = 12): ?string
+{
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $body,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => $timeout,
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json', 'Accept: application/json'],
+        ]);
+        $res = curl_exec($ch);
+        curl_close($ch);
+        return is_string($res) ? $res : null;
+    }
+    $ctx = stream_context_create(['http' => [
+        'method'        => 'POST',
+        'header'        => "Content-Type: application/json\r\nAccept: application/json\r\n",
+        'content'       => $body,
+        'timeout'       => $timeout,
+        'ignore_errors' => true,
+    ]]);
+    $res = @file_get_contents($url, false, $ctx);
+    return is_string($res) ? $res : null;
+}
+
+// Adresa compusă din domiciliul fiscal (prefix „d”) sau sediul social (prefix „s”): stradă nr., detalii, localitate, județ.
+function anaf_adresa(array $a, string $p): string
+{
+    $parts  = [];
+    $strada = trim((string)($a[$p . 'denumire_Strada'] ?? ''));
+    $nr     = trim((string)($a[$p . 'numar_Strada'] ?? ''));
+    if ($strada !== '') {
+        $parts[] = $strada . ($nr !== '' ? ' ' . $nr : '');
+    }
+    foreach ([$p . 'detalii_Adresa', $p . 'denumire_Localitate', $p . 'denumire_Judet'] as $k) {
+        $v = trim((string)($a[$k] ?? ''));
+        if ($v !== '') {
+            $parts[] = $v;
+        }
+    }
+    return ro_diacritice(implode(', ', $parts));
+}
+
+// ['ok' => true, 'firma' => [...]] sau ['ok' => false, 'error' => '...'] (mesaj pentru utilizator).
+function anaf_lookup(string $raw): array
+{
+    $cui = anaf_cui($raw);
+    if ($cui === '') {
+        return ['ok' => false, 'error' => 'CUI invalid: introdu doar cifrele, cu sau fără RO.'];
+    }
+    $res = http_post_json(ANAF_URL, (string)json_encode([['cui' => (int)$cui, 'data' => date('Y-m-d')]]));
+    $j   = $res !== null ? json_decode($res, true) : null;
+    if (!is_array($j)) {
+        return ['ok' => false, 'error' => 'ANAF nu răspunde acum. Completează datele manual sau încearcă din nou.'];
+    }
+    $f = $j['found'][0] ?? null;
+    if (!$f || empty($f['date_generale'])) {
+        return ['ok' => false, 'error' => !empty($j['notFound'])
+            ? 'CUI-ul ' . $cui . ' nu există în evidența ANAF.'
+            : 'Răspuns neașteptat de la ANAF (cod ' . (string)($j['cod'] ?? '?') . '). Încearcă din nou.'];
+    }
+    $g   = $f['date_generale'];
+    $dom = $f['adresa_domiciliu_fiscal'] ?? [];
+    $sed = $f['adresa_sediu_social'] ?? [];
+    $adr = anaf_adresa($dom, 'd') ?: (anaf_adresa($sed, 's') ?: ro_diacritice(trim((string)($g['adresa'] ?? ''))));
+    return ['ok' => true, 'firma' => [
+        'cui'      => (string)$g['cui'],
+        'denumire' => ro_diacritice(trim((string)($g['denumire'] ?? ''))),
+        'reg_com'  => trim((string)($g['nrRegCom'] ?? '')),
+        'adresa'   => $adr,
+        'judet'    => ro_diacritice(trim((string)($dom['ddenumire_Judet'] ?? ($sed['sdenumire_Judet'] ?? '')))),
+        'caen'     => trim((string)($g['cod_CAEN'] ?? '')),
+        'telefon'  => trim((string)($g['telefon'] ?? '')),
+        'tva'      => !empty($f['inregistrare_scop_Tva']['scpTVA']) ? 1 : 0,
+        'inactiv'  => !empty($f['stare_inactiv']['statusInactivi']) ? 1 : 0,
+        'stare'    => ro_diacritice(trim((string)($g['stare_inregistrare'] ?? ''))),
+    ]];
 }
 
 // ---------------------------------------------------------------------------
