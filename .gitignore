@@ -1,0 +1,15 @@
+# Configurare cu secrete (se creează pe server din config.sample.php)
+ofertare_private/config.php
+
+# Baza de date și jurnalele
+ofertare_private/data/*
+!ofertare_private/data/.htaccess
+
+# Materialele trimise clienților nu intră în repo (repo-ul este public)
+ofertare_private/fisiere/*
+!ofertare_private/fisiere/.gitkeep
+
+# Diverse
+.DS_Store
+Thumbs.db
+*.zip

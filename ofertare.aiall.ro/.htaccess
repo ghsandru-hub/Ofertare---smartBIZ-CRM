@@ -1,0 +1,25 @@
+# ofertare.aiall.ro — gatekeeper documente AiALL
+Options -Indexes
+DirectoryIndex disabled
+
+<IfModule mod_headers.c>
+  Header always set X-Robots-Tag "noindex, nofollow, noarchive"
+  Header always set Referrer-Policy "no-referrer"
+  Header always set Strict-Transport-Security "max-age=31536000"
+</IfModule>
+
+RewriteEngine On
+
+# Doar HTTPS
+RewriteCond %{HTTPS} !=on
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+
+# Administrare (login separat) și robots.txt rămân accesibile direct
+RewriteRule ^(admin\.php|robots\.txt)$ - [L]
+
+# https://ofertare.aiall.ro/<token> -> index.php?t=<token>
+RewriteRule ^([A-Za-z0-9_-]{40,64})/?$ index.php?t=$1 [L,QSA]
+
+# Orice altceva (inclusiv rădăcina și index.php apelat direct) -> 404
+RewriteCond %{ENV:REDIRECT_STATUS} ^$
+RewriteRule ^ - [R=404,L]
