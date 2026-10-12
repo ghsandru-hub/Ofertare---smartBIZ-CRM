@@ -10,7 +10,7 @@ Fișierele stau în `ofertare_private`, în afara folderului public al subdomeni
 iar folderul nu poate fi răsfoit.
 
 Administrarea are login separat, la `https://ofertare.aiall.ro/admin.php`, și este un cockpit e2e OPS Ofertare
-cu șase secțiuni: Pipeline (indicatori, pâlnie, kanban, ofertă nouă), Raportare, Catalog, Șabloane email, Materiale și Utilizatori.
+cu șapte secțiuni: Pipeline (indicatori, pâlnie, kanban, ofertă nouă), Raportare, Catalog, Șabloane email, Materiale, Utilizatori și Ajutor.
 
 ## Structura pe server (cPanel)
 
@@ -61,9 +61,9 @@ Repo-ul este public, așa că nu conține:
   sau se urcă direct pe server. Dacă folderul este gol la prima rulare, șablonul implicit se creează fără materiale
   și le asociezi după încărcare.
 
-## Cockpit: Pipeline, Raportare, Catalog, Șabloane email, Materiale, Utilizatori
+## Cockpit: Pipeline, Raportare, Catalog, Șabloane email, Materiale, Utilizatori, Ajutor
 
-Cockpitul (`admin.php`) are șase secțiuni.
+Cockpitul (`admin.php`) are șapte secțiuni.
 
 ### 1. Pipeline
 
@@ -135,6 +135,11 @@ Gestiunea catalogului de produse și servicii, tabela `catalog` din `ofertare.db
 - Variabile: `{{salut}}`, `{{nume}}`, `{{companie}}`, `{{email}}`, `{{salariati}}`, `{{economie_an}}`, `{{expira}}`;
   `{{materiale}}` pe rând separat inserează butoanele cu linkurile personale.
 - Fiecare șablon are lista lui de materiale, cu ordine. Șabloanele se pot copia și șterge; ofertele deja trimise nu sunt afectate.
+- Cum ajung materialele în email: materialul este încărcat și activ în „Materiale”; este bifat în șablon, cu ordinea lui
+  (ordinea cea mai mică = butonul principal, colorat; următoarele = butoane cu contur); iar textul șablonului conține
+  `{{materiale}}` singur pe rând, cu rând gol înainte și după. Fără acest rând emailul pleacă fără linkuri, iar scris în
+  interiorul unui paragraf rămâne text. La „Ofertă nouă”, materialele șablonului se bifează automat și pot fi ajustate
+  doar pentru oferta respectivă; fiecare material bifat primește linkul lui personal. Pasul cu pasul: cockpit → Ajutor.
 - La prima rulare se creează automat șablonul „Ofertă e2e OPS Salarizare”, cu materialele din `ofertare_private/fisiere`.
 
 ### 5. Materiale
@@ -161,6 +166,13 @@ timp de 12 ore. Un link redirecționat ajunge la pagina de cod, iar codul pleac�
 - Contul din `config.php` (`admin_user` / `admin_pass_hash`) intră doar dacă nu există în tabelă un utilizator cu același
   nume; la prima autentificare este copiat în tabelă. Recuperare dacă nimeni nu mai poate intra: pui în `config.php`
   un `admin_user` nou (ex. `recuperare`) cu hash-ul lui, te autentifici cu el și resetezi parolele din listă.
+
+### 7. Ajutor
+
+Ghid de utilizare în cockpit: fluxul pe scurt, cum ajung materialele suport în email pas cu pas (încărcare, bifare în șablon
+cu ordine, rândul `{{materiale}}`, oferta nouă, ce vede clientul, ce vezi tu, întreținere), câte o secțiune pentru fiecare tab
+și o listă de probleme frecvente. Valorile (limita de încărcare, valabilitatea codului, numărul de coduri și de încercări,
+durata sesiunii) se citesc din `config.php`.
 
 ## Ce protejează
 
