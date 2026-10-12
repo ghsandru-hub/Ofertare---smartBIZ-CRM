@@ -920,7 +920,10 @@ function view_pipeline(string $csrf): string
         . '<p class="fnote">Etapa maximă atinsă de fiecare ofertă; ofertele pierdute rămân numărate la etapa la care au ajuns. Pierdute: ' . count($byStage['pierduta']) . '.</p></section>'
         . '<section class="panel"><h2>Ofertă nouă</h2>' . $form . '</section></div>'
         . '<section class="panel" id="pipePanel"><div class="ph"><h2>Pipeline</h2><div class="acts seg" role="group" aria-label="Mod de afișare">'
-        . '<button type="button" class="sm" data-mode="kanban" aria-pressed="true">Kanban</button><button type="button" class="sm" data-mode="table" aria-pressed="false">Tabel</button></div></div>'
+        . '<button type="button" class="sm ico" data-mode="kanban" aria-pressed="true" aria-label="Kanban" title="Kanban: carduri pe etape">'
+        . '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><rect x="2" y="3" width="4.5" height="14" rx="1"/><rect x="7.75" y="3" width="4.5" height="9" rx="1"/><rect x="13.5" y="3" width="4.5" height="11" rx="1"/></svg></button>'
+        . '<button type="button" class="sm ico" data-mode="table" aria-pressed="false" aria-label="Tabel" title="Tabel: o ofertă pe rând">'
+        . '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><rect x="2" y="3" width="16" height="3" rx="1"/><rect x="2" y="8.5" width="16" height="3" rx="1"/><rect x="2" y="14" width="16" height="3" rx="1"/></svg></button></div></div>'
         . '<p class="muted pm-kanban" style="margin:-6px 0 10px">Trage cardurile între coloane. „Deschisă” se setează automat la prima deschidere a unui material.</p>'
         . '<p class="muted pm-table" style="margin:-6px 0 10px">O ofertă pe rând, cu etapa, materialele citite și acțiunile. Clic pe companie deschide cardul în kanban.</p>'
         . '<div class="boardwrap pm-kanban"><div class="board">' . $board . '</div></div>'
@@ -2094,6 +2097,7 @@ button{font:600 13px var(--sans);cursor:pointer}
 .pdf{display:flex;gap:10px;align-items:center;padding:10px 18px;border-top:1px solid var(--line)}.pdf .sp{flex:1}.pdf .pri{margin:0}
 /* Pipeline: kanban sau tabel */
 .seg{gap:0}.seg .sm{border-radius:0;margin:0}.seg .sm:first-child{border-radius:4px 0 0 4px}.seg .sm:last-child{border-radius:0 4px 4px 0;border-left:0}
+.seg .sm.ico{padding:5px 9px;display:inline-flex;align-items:center;line-height:0}.seg .sm.ico svg{fill:currentColor}
 .seg .sm[aria-pressed="true"]{background:var(--teal);color:var(--surface)}
 #pipePanel.mode-table .pm-kanban,#pipePanel:not(.mode-table) .pm-table{display:none}
 .dtw{max-height:none}.dt td{white-space:normal;vertical-align:middle}.dt td.wrap{min-width:160px}
