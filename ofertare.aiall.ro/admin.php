@@ -91,6 +91,30 @@ function new_password(): string
     return $out;
 }
 
+// Pictograme pentru butoanele de acțiune (regula de UI: acțiunile sunt doar pictograme, cu title + aria-label).
+function ui_icon(string $name): string
+{
+    $d = [
+        'save'  => '<path d="M3 2h8l2.5 2.5V14H3z"/><path d="M5 2v4h5V2M5 14V9h6v5"/>',
+        'copy'  => '<rect x="5.5" y="5.5" width="8" height="8" rx="1.2"/><path d="M10.5 5.5V3.5a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2"/>',
+        'trash' => '<path d="M3 4h10M6 4V2.5h4V4M4.5 4l.7 9.5h5.6l.7-9.5M6.7 7v4M9.3 7v4"/>',
+        'x'     => '<path d="M4 4l8 8M12 4l-8 8"/>',
+        'plus'  => '<path d="M8 3v10M3 8h10"/>',
+        'eye'   => '<path d="M1.5 8s2.5-4.5 6.5-4.5S14.5 8 14.5 8s-2.5 4.5-6.5 4.5S1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/>',
+        'send'  => '<path d="M14 2L2 7l5 2 2 5 5-12z"/><path d="M7 9l7-7"/>',
+        'ban'   => '<circle cx="8" cy="8" r="6"/><path d="M3.8 3.8l8.4 8.4"/>',
+        'check' => '<path d="M3 8.5l3 3 7-7"/>',
+        'anaf'  => '<circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/><path d="M5.5 7h3M7 5.5v3"/>',
+    ];
+    return '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . ($d[$name] ?? '') . '</svg>';
+}
+
+// Buton de acțiune doar cu pictogramă: $kind = '' (neutru), 'main' (acțiune principală, teal), 'bad' (distructiv, roșu).
+function ui_btn(string $icon, string $label, string $kind = '', string $attrs = ''): string
+{
+    return '<button type="submit" class="ico' . ($kind !== '' ? ' ' . $kind : '') . '" title="' . h($label) . '" aria-label="' . h($label) . '"' . ($attrs !== '' ? ' ' . $attrs : '') . '>' . ui_icon($icon) . '</button>';
+}
+
 // Inițialele pentru avatarul din antet: primele litere din primele două cuvinte ale numelui (sau ale utilizatorului).
 function user_initials(array $u): string
 {
@@ -851,13 +875,13 @@ function deal_card(array $d, array $stages, array $links, string $csrf): string
     }
     $hid    = '<input type="hidden" name="csrf" value="' . h($csrf) . '"><input type="hidden" name="id" value="' . $id . '">';
     $revoke = $d['revoked'] ? '' : '<form method="post">' . $hid . '<input type="hidden" name="action" value="revoke">'
-        . '<button class="lnk bad" type="submit">Revocă toate linkurile ofertei</button></form>';
+        . ui_btn('ban', 'Revocă toate linkurile ofertei', 'bad') . '</form>';
     $acts = '<div class="cardacts">'
         . '<form method="post">' . $hid . '<input type="hidden" name="action" value="deal_resend">'
-        . '<button class="lnk" type="submit" title="Generează linkuri noi și retrimite emailul la ' . h($d['email']) . '">Retrimite emailul (linkuri noi)</button></form>'
+        . ui_btn('send', 'Retrimite emailul cu linkuri noi la ' . $d['email'], 'main') . '</form>'
         . $revoke
         . '<form method="post" onsubmit="return confirm(\'Ștergi definitiv oferta pentru ' . h(addslashes($d['company'] ?: $d['email'])) . '? Linkurile trimise nu vor mai funcționa.\')">'
-        . $hid . '<input type="hidden" name="action" value="deal_delete"><button class="lnk bad" type="submit">Șterge oferta</button></form></div>';
+        . $hid . '<input type="hidden" name="action" value="deal_delete">' . ui_btn('trash', 'Șterge oferta', 'bad') . '</form></div>';
 
     return '<article class="card" draggable="true" data-id="' . $id . '" id="c' . $id . '">'
         . '<header><strong>' . h($d['company'] ?: $d['email']) . '</strong><small>' . h(ago($d['stage_at'] ? (int)$d['stage_at'] : (int)$d['created_at'])) . '</small></header>'
@@ -873,10 +897,10 @@ function deal_card(array $d, array $stages, array $links, string $csrf): string
             . ((string)$d['telefon'] !== '' ? ' · tel. ' . h($d['telefon']) : '') . ' · ' . ((int)$d['tva'] ? 'plătitor TVA' : 'neplătitor TVA') . '</p>' : '')
         . '<form method="post" class="mv">' . $hid . '<input type="hidden" name="action" value="stage">'
         . '<label for="st' . $id . '">Etapă</label><select id="st' . $id . '" name="stage">' . $opts . '</select>'
-        . '<button type="submit" class="sm">Mută</button></form>'
+        . ui_btn('check', 'Mută în etapa aleasă', 'main') . '</form>'
         . '<form method="post" class="mv">' . $hid . '<input type="hidden" name="action" value="nota">'
         . '<label for="n' . $id . '">Notă internă</label><input id="n' . $id . '" name="nota" value="' . h($d['nota']) . '" maxlength="500">'
-        . '<button type="submit" class="sm">Salvează</button></form>'
+        . ui_btn('save', 'Salvează nota', 'main') . '</form>'
         . deal_items_editor($id, $items, $hid)
         . '<p class="meta">Creată ' . h(fmt_time((int)$d['created_at'])) . ' · expiră ' . h(fmt_time((int)$d['expires_at']))
         . ' · ' . ($d['require_otp'] ? 'cu cod de acces' : 'fără cod') . '</p>'
@@ -891,7 +915,7 @@ function deal_items_editor(int $id, array $items, string $hid): string
     foreach ($items as $it) {
         $rows .= '<li><span>' . h(fmt_qty((float)$it['qty']) . ' ' . $it['um'] . ' × ' . $it['name']) . '</span>'
             . '<form method="post" class="inline">' . $hid . '<input type="hidden" name="action" value="deal_item_del"><input type="hidden" name="item_id" value="' . (int)$it['id'] . '">'
-            . '<button type="submit" class="lnk bad" title="Scoate de pe ofertă">×</button></form></li>';
+            . ui_btn('x', 'Scoate de pe ofertă', 'bad xs') . '</form></li>';
     }
     return '<div class="ditems"><p class="meta">Livrabile ofertate</p><ul class="items edit">' . ($rows ?: '<li class="muted">Niciun livrabil.</li>') . '</ul>'
         . '<form method="post" class="mv iadd">' . $hid . '<input type="hidden" name="action" value="deal_item_add">'
@@ -983,7 +1007,7 @@ function view_pipeline(string $csrf): string
     $form = $templates
         ? '<form method="post" class="newf" id="newDeal">' . csrf_field() . '<input type="hidden" name="action" value="create_deal">'
           . '<div class="g"><div><label for="cui">CUI</label><div class="cuirow"><input id="cui" name="cui" inputmode="numeric" autocomplete="off" placeholder="ex. 1590082">'
-          . '<button type="button" class="sm" id="cuiBtn" title="Preia datele firmei de la ANAF">ANAF</button></div></div>'
+          . '<button type="button" class="ico main" id="cuiBtn" title="Preia datele firmei de la ANAF după CUI" aria-label="Preia datele firmei de la ANAF">' . ui_icon('anaf') . '</button></div></div>'
           . '<div><label for="company">Companie</label><input id="company" name="company" required></div>'
           . '<div><label for="recipient">Persoană de contact</label><input id="recipient" name="recipient"></div>'
           . '<div><label for="email">Email</label><input id="email" name="email" type="email" required></div>'
@@ -1004,7 +1028,7 @@ function view_pipeline(string $csrf): string
           . '<div class="chks"><label><input type="checkbox" name="require_otp" value="1" checked> Cod de acces pe email</label>'
           . '<label><input type="checkbox" name="send" value="1" checked> Trimite acum emailul</label></div>'
           . '<div class="fbtns"><button type="submit">Creează și trimite oferta</button>'
-          . '<button type="button" class="sm" id="prevBtn" title="Vezi emailul exact așa cum îl primește clientul, înainte de trimitere">Previzualizează emailul</button></div>'
+          . '<button type="button" class="ico main" id="prevBtn" title="Previzualizează emailul exact așa cum îl primește clientul" aria-label="Previzualizează emailul">' . ui_icon('eye') . '</button></div>'
           . '<script type="application/json" id="tplMap">' . json_encode($tplMap) . '</script></form>'
           . '<dialog id="prevDlg" class="pdlg" aria-labelledby="prevTtl"><div class="pdh"><h2 id="prevTtl">Previzualizare email</h2>'
           . '<p class="muted" id="prevMeta"></p></div><iframe id="prevFrame" title="Emailul care va fi trimis" sandbox></iframe>'
@@ -1041,10 +1065,10 @@ function view_pipeline(string $csrf): string
             . '<td>' . ($d['first_open'] ? h(date('d.m.Y', (int)$d['first_open'])) : '—') . '</td>'
             . '<td><span class="lk l-' . $st . '">' . $st . '</span><br><small class="muted">până la ' . h(date('d.m.Y', (int)$d['expires_at'])) . '</small></td>'
             . '<td class="wrap">' . h($d['nota']) . '</td>'
-            . '<td class="tacts"><form method="post">' . $hid . '<input type="hidden" name="action" value="deal_resend"><button class="lnk" type="submit" title="Linkuri noi + email la ' . h($d['email']) . '">Retrimite</button></form>'
-            . ($d['revoked'] ? '' : '<form method="post">' . $hid . '<input type="hidden" name="action" value="revoke"><button class="lnk bad" type="submit">Revocă</button></form>')
+            . '<td class="tacts"><form method="post">' . $hid . '<input type="hidden" name="action" value="deal_resend">' . ui_btn('send', 'Retrimite emailul cu linkuri noi la ' . $d['email'], 'main') . '</form>'
+            . ($d['revoked'] ? '' : '<form method="post">' . $hid . '<input type="hidden" name="action" value="revoke">' . ui_btn('ban', 'Revocă toate linkurile ofertei', 'bad') . '</form>')
             . '<form method="post" onsubmit="return confirm(\'Ștergi definitiv oferta pentru ' . h(addslashes($d['company'] ?: $d['email'])) . '? Linkurile trimise nu vor mai funcționa.\')">'
-            . $hid . '<input type="hidden" name="action" value="deal_delete"><button class="lnk bad" type="submit">Șterge</button></form></td></tr>';
+            . $hid . '<input type="hidden" name="action" value="deal_delete">' . ui_btn('trash', 'Șterge oferta', 'bad') . '</form></td></tr>';
     }
     $table = '<div class="rtw dtw"><table class="rt dt"><thead><tr><th>Companie</th><th>Persoană / email</th><th>Etapă</th><th class="n">Citite</th><th class="n">Salariați</th><th class="n">Onorariu an 1</th><th class="n">Livrabile · valoare</th>'
         . '<th>Creată</th><th>Deschisă</th><th>Linkuri</th><th>Notă</th><th>Acțiuni</th></tr></thead><tbody>'
@@ -1133,9 +1157,10 @@ function view_templates(): string
         . '<b>Către:</b> Ion Popescu &lt;ion.popescu@exemplu.ro&gt;<br><b>Subiect:</b> ' . h($pSubj) . '</div>' . $pHtml . '</body>';
 
     $hid  = csrf_field() . '<input type="hidden" name="id" value="' . (int)$tpl['id'] . '">';
-    $side = $tpl['id']
-        ? '<form method="post" class="inline">' . $hid . '<input type="hidden" name="action" value="tpl_copy"><button class="sm" type="submit">Copiază</button></form>'
-          . '<form method="post" class="inline">' . $hid . '<input type="hidden" name="action" value="tpl_delete"><button class="sm bad" type="submit">Șterge</button></form>'
+    $side = '<button type="button" class="ico main" id="tplPrevBtn" title="Previzualizează emailul cu date de exemplu, după ultima salvare" aria-label="Previzualizare email">' . ui_icon('eye') . '</button>';
+    $side .= $tpl['id']
+        ? '<form method="post" class="inline">' . $hid . '<input type="hidden" name="action" value="tpl_copy">' . ui_btn('copy', 'Copiază șablonul') . '</form>'
+          . '<form method="post" class="inline">' . $hid . '<input type="hidden" name="action" value="tpl_delete">' . ui_btn('trash', 'Șterge șablonul', 'bad') . '</form>'
         : '';
 
     return '<div class="tplgrid"><aside class="panel tlist"><h2>Șabloane email</h2>' . $list . '</aside>'
@@ -1149,11 +1174,15 @@ function view_templates(): string
         . '<code>{{materiale}}</code> pe rând separat = butoanele cu linkurile personale · <code>{{livrabile}}</code> pe rând separat = tabelul livrabilelor ofertate, cu total.</div>'
         . '<fieldset class="mats-pick"><legend>Materiale trimise cu acest șablon (bifă + ordine)</legend>' . ($matRows ?: '<p class="muted">Încarcă materiale în secțiunea „Materiale”.</p>') . '</fieldset>'
         . '<button type="submit" class="pri">Salvează șablonul</button></form></section>'
-        . '<section class="panel prev"><h2>Previzualizare</h2><p class="muted">Cu date de exemplu, după ultima salvare.</p>'
+        . '</div>'
+        . '<dialog id="tplDlg" class="pdlg" aria-labelledby="tplDlgTtl"><div class="pdh"><h2 id="tplDlgTtl">Previzualizare email</h2>'
+        . '<p class="muted">Cu date de exemplu, după ultima salvare' . ($tpl['id'] ? '' : ' (șablon nou: textul implicit)') . '.</p></div>'
+        . '<iframe title="Previzualizare email" sandbox srcdoc="' . h($preview) . '"></iframe>'
+        . '<div class="pdf"><button type="button" class="sm" id="tplDlgClose">Închide</button><span class="sp"></span>'
         . ($tpl['id'] ? '<form method="post" class="testf">' . $hid . '<input type="hidden" name="action" value="tpl_test">'
-            . '<label for="testTo">Email de test (șablonul cu date de exemplu, prin ' . h(mail_transport()) . ')</label>'
-            . '<div class="cuirow"><input id="testTo" name="to" type="email" placeholder="adresa ta" required><button type="submit" class="sm">Trimite testul</button></div></form>' : '')
-        . '<iframe title="Previzualizare email" sandbox srcdoc="' . h($preview) . '"></iframe></section></div>';
+            . '<input id="testTo" name="to" type="email" placeholder="adresa ta pentru un email de test" aria-label="Adresa pentru emailul de test" required>'
+            . '<button type="submit" class="pri" title="Trimite șablonul cu date de exemplu, prin ' . h(mail_transport()) . '">Trimite testul</button></form>' : '')
+        . '</div></dialog>';
 }
 
 // ===========================================================================
@@ -1183,7 +1212,7 @@ function view_materials(): string
             . '<div class="stats"><b>' . (int)$m['in_tpl'] . '</b> șabloane<br><b>' . (int)$m['sent'] . '</b> trimiteri · <b>' . (int)$m['opened'] . '</b> deschideri</div>'
             . '<label class="fl"><input type="file" name="file" aria-label="Înlocuiește fișierul"><small>Înlocuiește fișierul; linkurile trimise deschid noua versiune</small></label>'
             . '<label class="act"><input type="checkbox" name="active" value="1"' . ($m['active'] ? ' checked' : '') . '> Activ</label>'
-            . '<button type="submit" class="sm">Salvează</button></form>';
+            . ui_btn('save', 'Salvează materialul', 'main') . '</form>';
     }
 
     return '<section class="panel"><h2>Încarcă material</h2>'
@@ -1231,8 +1260,8 @@ function catalog_composition(array $pk, array $comps, array $all, string $today)
             . ' · ' . h(fmt_amount((float)$c['price'], (string)$c['currency'])) . '/' . h($c['um']) . ' → ' . h(fmt_amount((float)$c['qty'] * (float)$c['price'], (string)$c['currency'])) . '</small></div>'
             . '<input name="qty" type="number" step="0.01" min="0.01" value="' . h(fmt_qty((float)$c['qty'])) . '" aria-label="Cantitate">'
             . '<span class="um">' . h($c['um']) . '</span>'
-            . '<button type="submit" class="sm" name="action" value="cat_item_qty">Salvează</button>'
-            . '<button type="submit" class="sm bad" name="action" value="cat_item_del">Scoate</button></form>';
+            . ui_btn('save', 'Salvează cantitatea', 'main', 'name="action" value="cat_item_qty"')
+            . ui_btn('x', 'Scoate din pachet', 'bad', 'name="action" value="cat_item_del"') . '</form>';
     }
 
     $opts = '';
@@ -1253,7 +1282,7 @@ function catalog_composition(array $pk, array $comps, array $all, string $today)
         ? '<form method="post" class="ci add">' . $hid . '<input type="hidden" name="action" value="cat_item_add">'
           . '<select name="item_id" aria-label="Componentă"><option value="">Alege din catalog: ' . h($allowed) . '…</option>' . $opts . '</select>'
           . '<input name="qty" type="number" step="0.01" min="0.01" value="1" aria-label="Cantitate">'
-          . '<button type="submit" class="sm" title="Adaugă componenta">+ Adaugă</button></form>'
+          . '<button type="submit" class="icb" title="Adaugă componenta în pachet" aria-label="Adaugă componenta">' . ui_icon('plus') . '</button></form>'
         : '<p class="muted">Nu mai există în catalog articole de tip ' . h($allowed) . ' care să poată fi adăugate.</p>';
 
     return '<details class="comp" id="comp' . $pid . '"><summary>Compoziție: <b>' . count($comps) . '</b> ' . (count($comps) === 1 ? 'componentă' : 'componente')
@@ -1344,9 +1373,9 @@ function view_catalog(): string
             . price_fields($c['price'] > 0 ? fmt_qty((float)$c['price']) : '', (string)$c['currency'],
                 $isPk && (float)$c['price'] <= 0 ? fmt_qty(catalog_price($c)) : '0',
                 $isPk && (float)$c['price'] <= 0 ? 'Preț calculat din compoziție; scrie un preț ca să îl înlocuiești' . (catalog_price_note($c) !== '' ? ' (' . catalog_price_note($c) . ')' : '') : '')
-            . '<button type="submit" class="sm" name="action" value="cat_save">Salvează</button>'
-            . '<button type="submit" class="sm" name="action" value="cat_copy" title="Creează o copie">Copiază</button>'
-            . '<button type="submit" class="sm bad" name="action" value="cat_delete">Șterge</button>'
+            . ui_btn('save', 'Salvează articolul', 'main', 'name="action" value="cat_save"')
+            . ui_btn('copy', 'Copiază articolul', '', 'name="action" value="cat_copy"')
+            . ui_btn('trash', 'Șterge articolul', 'bad', 'name="action" value="cat_delete"')
             . '</form>'
             . ($isPk ? catalog_composition($c, $comps[$id] ?? [], $all, $today) : '')
             . '</div>';
@@ -1366,7 +1395,7 @@ function view_catalog(): string
         . '<div><label for="cfrom">Valid de la</label><input id="cfrom" name="valid_from" type="date" value="' . $today . '"></div>'
         . '<div><label for="cto">Valid până la</label><input id="cto" name="valid_to" type="date"></div>'
         . '<div><label for="cprice">Preț unitar (fără TVA) și valută</label>' . price_fields('', 'RON', '0', '', 'cprice') . '</div>'
-        . '<button type="submit" class="pri">Adaugă în catalog</button></form>'
+        . '<button type="submit" class="icb" title="Adaugă în catalog" aria-label="Adaugă în catalog">' . ui_icon('plus') . '</button></form>'
         . '<p class="muted">Tipuri: serviciu, licență, serviciu digital, produs, pachet servicii, pachet produse. Lasă „Valid până la” gol pentru valabilitate nelimitată.'
         . ' Pachetele se compun din articole existente în catalog: pachetul de servicii din servicii, servicii digitale și licențe; pachetul de produse din produse și licențe.</p></section>'
         . '<section class="panel"><div class="ph"><h2>Catalog produse și servicii</h2>'
@@ -1378,7 +1407,7 @@ function view_catalog(): string
         . '<div><label for="kSt">Valabilitate</label><select id="kSt"><option value="">Toate</option><option value="valid">Valide azi</option>'
         . '<option value="viitor">Din viitor</option><option value="expirat">Expirate</option></select></div></div>'
         . '<div class="cathead" aria-hidden="true"><span>Tip</span><span>Denumire</span><span>UM</span><span>Valid de la</span><span>Valid până la</span><span>Preț · valută</span>'
-        . '<span class="ghost"><button type="button" class="sm" tabindex="-1">Salvează</button></span><span class="ghost"><button type="button" class="sm" tabindex="-1">Copiază</button></span><span class="ghost"><button type="button" class="sm bad" tabindex="-1">Șterge</button></span></div>'
+        . '<span class="ghost"><button type="button" class="ico" tabindex="-1"></button></span><span class="ghost"><button type="button" class="ico" tabindex="-1"></button></span><span class="ghost"><button type="button" class="ico" tabindex="-1"></button></span></div>'
         . '<div class="matlist" id="kList">' . ($list ?: '<p class="muted">Catalogul este gol. Adaugă primul articol din formularul de mai sus.</p>') . '</div>'
         . '<p class="muted catempty" id="kEmpty" hidden>Niciun articol pentru filtrele alese.</p>'
         . '<p class="muted">Un articol expirat rămâne în catalog pentru istoric; ștergerea este definitivă. „Copiază” creează un articol nou cu aceleași date (la pachete, cu tot cu compoziție), util pentru o nouă perioadă de valabilitate.'
@@ -1404,8 +1433,8 @@ function view_users(array $me): string
             . '<input name="name" value="' . h($u['name']) . '" aria-label="Nume" placeholder="Nume">'
             . '<input name="pass" type="password" autocomplete="new-password" minlength="10" aria-label="Parolă nouă" placeholder="Parolă nouă (opțional)">'
             . '<label class="act"><input type="checkbox" name="active" value="1"' . ($u['active'] ? ' checked' : '') . ($self ? ' disabled' : '') . '> Activ</label>'
-            . '<button type="submit" class="sm" name="action" value="user_update">Salvează</button>'
-            . ($self ? '<span></span>' : '<button type="submit" class="sm bad" name="action" value="user_delete">Șterge</button>')
+            . ui_btn('save', 'Salvează utilizatorul', 'main', 'name="action" value="user_update"')
+            . ($self ? '<span></span>' : ui_btn('trash', 'Șterge utilizatorul', 'bad', 'name="action" value="user_delete"'))
             . '</form>';
     }
 
@@ -2109,7 +2138,7 @@ function view_help(): string
         . "<pre>Oferta completă este disponibilă la linkurile personale de mai jos:\n\n{{materiale}}\n\nPentru întrebări, răspundeți direct la acest email.</pre>"
         . '<ul><li>Dacă <code>{{materiale}}</code> lipsește, <b>emailul pleacă fără niciun link</b>, chiar dacă materialele sunt bifate. Dacă îl scrii în interiorul unui paragraf, rămâne ca text și butoanele nu apar.</li>'
         . '<li>Sub butoane se adaugă automat textul „Linkurile sunt personale. La deschidere primiți un cod de acces pe această adresă de email.”</li>'
-        . '<li>Panoul „Previzualizare” arată emailul cu date de exemplu și cu butoanele materialelor bifate, după ultima salvare.</li></ul></li>'
+        . '<li>Butonul „Previzualizare” deschide emailul cu date de exemplu și cu butoanele materialelor bifate, după ultima salvare; de acolo trimiți și un email de test.</li></ul></li>'
         . '<li><b>Trimite oferta</b> din <a href="admin.php?v=pipeline">Pipeline → Ofertă nouă</a>.'
         . '<ul><li>Alegi șablonul: materialele lui se <b>bifează automat</b> în „Materiale trimise”. Poți debifa un material sau bifa altele <b>doar pentru oferta aceasta</b>, fără să modifici șablonul.</li>'
         . '<li>Ordinea în email: întâi materialele șablonului, în ordinea lor, apoi cele bifate suplimentar.</li>'
@@ -2133,7 +2162,7 @@ function view_help(): string
         . '<li><b>mail()</b> (dacă nimic nu este configurat) predă mesajul serverului local al hostingului și raportează „trimis” când acesta l-a <b>pus în coadă</b>, nu când a fost livrat. '
         . 'Cu emailul domeniului în M365, SPF-ul domeniului nu autorizează serverul web, deci destinatarii resping sau marchează ca spam mesajele, deși cockpitul a afișat „trimis”.</li>'
         . '<li><code>mail_reply_to</code> (unde ajung răspunsurile clienților) și <code>mail_bcc</code> (copie ascunsă a fiecărui email trimis) sunt opționale și merg cu toate cele trei moduri.</li>'
-        . '<li><b>Verifică livrarea</b> cu „Email de test” din <a href="admin.php?v=sabloane">Șabloane email</a> (panoul Previzualizare): trimite șablonul cu date de exemplu la adresa ta și arată rezultatul real.</li>'
+        . '<li><b>Verifică livrarea</b> cu „Email de test” din <a href="admin.php?v=sabloane">Șabloane email</a> (butonul „Previzualizare”, în modal): trimite șablonul cu date de exemplu la adresa ta și arată rezultatul real.</li>'
         . '<li>Jurnalul fiecărei oferte (card → Detalii) reține „email trimis prin …” sau „email eșuat: motivul”.</li></ul>'
 
         . '</section><section class="hsec" id="h-pipeline"><h3>Pipeline</h3>'
@@ -2311,7 +2340,7 @@ input[type=search]::-webkit-search-cancel-button{cursor:pointer}
 code{font:12px var(--mono);background:var(--soft);padding:0 4px;border-radius:3px}
 .g{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
 .g2{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-bottom:10px}
-.cuirow{display:grid;grid-template-columns:1fr auto;gap:6px}.cuirow .sm{padding:6px 10px;white-space:nowrap}
+.cuirow{display:grid;grid-template-columns:1fr auto;gap:6px}.cuirow .ico{align-self:end}
 .g .wide{grid-column:1/-1;min-width:280px}.g .wide select{min-width:280px;font-size:14px;padding:9px 32px 9px 10px}
 .anaf{font-size:12px;color:var(--muted);margin:8px 0 0;min-height:1em;overflow-wrap:anywhere}.anaf b{color:var(--ink)}.anaf .tag{margin-left:4px}
 .chks{display:flex;gap:18px;flex-wrap:wrap;margin-top:10px}
@@ -2323,12 +2352,12 @@ fieldset legend{font-size:12px;color:var(--muted);padding:0 4px}
 .k-oferta{color:var(--teal)}.k-suport{color:var(--navy3)}
 button{font:600 13px var(--sans);cursor:pointer}
 .newf .fbtns>button:first-child,.pri{margin-top:12px;background:var(--teal);color:var(--surface);border:0;border-radius:4px;padding:8px 16px}
-.fbtns{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.fbtns .sm{margin-top:12px;padding:8px 14px}
+.fbtns{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.fbtns .ico{margin-top:12px}
 /* Previzualizarea emailului înainte de trimitere */
 .pdlg{width:min(760px,96vw);border:1px solid var(--line);border-radius:8px;padding:0;background:var(--surface);color:var(--ink);box-shadow:0 20px 60px rgba(0,0,0,.3)}
 .pdlg::backdrop{background:rgba(13,21,32,.55)}
 .pdh{padding:14px 18px 10px;border-bottom:1px solid var(--line)}.pdh h2{margin:0 0 4px;font-size:15px;color:var(--navy)}.pdh p{margin:0;overflow-wrap:anywhere}
-.pdlg iframe{display:block;width:100%;height:min(62vh,760px);border:0;background:#fff}
+.pdlg iframe{display:block;width:100%;height:min(70vh,900px);border:0;background:#fff}
 .pdf{display:flex;gap:10px;align-items:center;padding:10px 18px;border-top:1px solid var(--line)}.pdf .sp{flex:1}.pdf .pri{margin:0}
 /* Pipeline: kanban sau tabel */
 .seg{gap:0}.seg .sm{border-radius:0;margin:0}.seg .sm:first-child{border-radius:4px 0 0 4px}.seg .sm:last-child{border-radius:0 4px 4px 0;border-left:0}
@@ -2337,7 +2366,7 @@ button{font:600 13px var(--sans);cursor:pointer}
 #pipePanel.mode-table .pm-kanban,#pipePanel:not(.mode-table) .pm-table{display:none}
 .dtw{max-height:none}.dt td{white-space:normal;vertical-align:middle}.dt td.wrap{min-width:160px}
 .dt .trow select{padding:4px 26px 4px 8px;font-size:12px;min-width:130px}
-.dt .tacts{white-space:nowrap}.dt .tacts form{display:inline-block;margin-right:10px}.dt .tacts .lnk{margin:0}
+.dt .tacts{white-space:nowrap}.dt .tacts form{display:inline-block;margin-right:4px;vertical-align:middle}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var(--navy);outline-offset:2px}
 .note{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--teal);border-radius:4px;padding:12px 14px}
 .note.err{border-left-color:var(--red)}.note p{margin:6px 0 0}
@@ -2366,7 +2395,7 @@ ul.mats li em{font:11px var(--mono);font-style:normal}ul.mats li.seen{color:var(
 /* Livrabilele ofertei: pe card, în Detalii și în formularul de ofertă nouă */
 ul.items{list-style:none;padding:0;margin:6px 0 0;display:grid;gap:2px;border-top:1px dashed var(--line);padding-top:6px}
 ul.items li{display:flex;justify-content:space-between;gap:6px;font-size:12px;color:var(--ink)}ul.items li em{font:11px var(--mono);font-style:normal;white-space:nowrap}
-ul.items.edit{border-top:0;padding-top:0;margin-top:2px}ul.items.edit .lnk{margin:0;font-size:14px;line-height:1}
+ul.items.edit{border-top:0;padding-top:0;margin-top:2px}ul.items.edit li{align-items:center}ul.items.edit form{margin:0}
 .ditems{margin-top:8px}.ditems .meta{margin:0 0 2px}
 .iadd{display:grid;grid-template-columns:minmax(0,1fr) 72px 36px;gap:6px;align-items:center;margin-top:6px}
 .iadd select,.iadd input{height:36px;box-sizing:border-box;font-size:13px}.iadd select{padding:0 26px 0 8px;min-width:0}
@@ -2384,16 +2413,16 @@ ul.items.edit{border-top:0;padding-top:0;margin-top:2px}ul.items.edit .lnk{margi
 .tag.bad{color:var(--red);border-color:currentColor}
 .nota{font-size:12px;margin:6px 0 0;padding:5px 7px;background:var(--bg);border-radius:3px}
 details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
-.mv{display:grid;grid-template-columns:1fr auto;gap:4px 6px;align-items:end;margin-top:8px}.mv label{grid-column:1/-1;margin:0}
+.mv{display:grid;grid-template-columns:1fr auto;gap:4px 6px;align-items:end;margin-top:8px}.mv label{grid-column:1/-1;margin:0}.mv input,.mv select{height:36px;box-sizing:border-box}
 .sm{background:transparent;border:1px solid var(--teal);color:var(--teal);border-radius:4px;padding:6px 10px}
 .sm.bad{border-color:var(--red);color:var(--red)}
 .meta{font-size:11px;color:var(--muted);margin:8px 0 4px;overflow-wrap:anywhere}
 .log{list-style:none;padding:0;margin:0;font-size:11px;color:var(--muted)}.log span{font-family:var(--mono)}
 .lnk{background:none;border:0;padding:0;margin-top:6px;font-size:12px;color:var(--teal)}.lnk.bad{color:var(--red)}
-.cardacts{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:4px;padding-top:6px;border-top:1px dashed var(--line)}
+.cardacts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)}.cardacts form{margin:0}
 .testf{margin:0 0 10px}.testf label{margin-bottom:3px}
 /* Șabloane */
-.tplgrid{display:grid;grid-template-columns:260px minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+.tplgrid{display:grid;grid-template-columns:260px minmax(0,1fr);gap:18px;align-items:start}
 @media (max-width:1200px){.tplgrid{grid-template-columns:1fr}}
 .tlist{display:grid;gap:6px}
 .tli{display:grid;gap:2px;text-decoration:none;color:var(--ink);border:1px solid var(--line);border-radius:5px;padding:8px 10px}
@@ -2405,7 +2434,8 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .help{font-size:12px;color:var(--muted);margin:6px 0 0;line-height:1.7}
 .mrow{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .mrow .ord{width:64px}
-.prev iframe{width:100%;height:1240px;border:1px solid var(--line);border-radius:4px;background:#fff}
+.pdf .testf{display:flex;gap:8px;margin:0;align-items:center}.pdf .testf input{width:260px;height:36px;box-sizing:border-box}.pdf .testf .pri{height:36px;padding:0 14px}
+@media (max-width:700px){.pdf{flex-wrap:wrap}.pdf .testf{width:100%}.pdf .testf input{flex:1;width:auto}}
 /* Materiale */
 .up{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;align-items:end}
 .up .pri{margin:0}
@@ -2446,7 +2476,6 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .umw{display:grid;gap:4px}.umw input[hidden]{display:none}
 .cat>.sm,.ci>.sm{height:36px;display:inline-flex;align-items:center;box-sizing:border-box}
 .cathead{font-size:12px;color:var(--navy);font-weight:600;padding:0 12px 4px;align-items:end}
-.cathead .ghost button{visibility:hidden;height:1px;padding-top:0;padding-bottom:0;border-top:0;border-bottom:0;display:block} /* aceeași lățime ca butoanele din rânduri, fără înălțime */
 .catrow{border:1px solid var(--line);border-radius:5px}
 .cat{padding:10px 12px}
 .catrow.st-expirat{opacity:.65}.catrow.st-viitor{border-left:3px solid var(--amber)}.catrow.st-valid{border-left:3px solid var(--green)}
@@ -2480,7 +2509,12 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 /* Bara Raportare: o singură linie de controale, toate de 36px (regula de UI nr. 1 și 2) */
 .rep .ph{align-items:center;gap:10px;margin-bottom:12px}.rep .ph h2{display:flex;align-items:center;gap:8px;margin:0;height:36px}
 .ico{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:4px;width:36px;height:36px;display:inline-grid;place-items:center;padding:0;cursor:pointer;flex:none;box-sizing:border-box}
+/* Butoane de acțiune doar cu pictogramă: neutru / main (teal) / bad (roșu); xs = 28px în liste dense */
 .ico:hover,.ico.on{color:var(--teal);border-color:var(--teal)}.ico:disabled{opacity:.4;cursor:default}.ico svg{width:16px;height:16px}
+.ico.main{color:var(--teal);border-color:var(--teal)}.ico.main:hover{background:color-mix(in srgb,var(--teal) 10%,transparent)}
+.ico.bad{color:var(--red)}.ico.bad:hover{border-color:var(--red);background:color-mix(in srgb,var(--red) 8%,transparent)}
+.ico.xs{width:28px;height:28px}.ico.xs svg{width:14px;height:14px}
+.cathead .ghost .ico{visibility:hidden;height:1px;border-top:0;border-bottom:0;display:block}
 .rsearch input,.rep .acts select{height:36px;box-sizing:border-box}.rsearch input{margin-top:0}
 .rmenu{display:inline-flex;align-items:center;height:36px;line-height:0;margin:0}.rmenu summary.ico{display:inline-grid}
 .rsearch{position:relative;flex:1;min-width:200px;max-width:380px}.rsearch svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--muted);pointer-events:none}
@@ -2747,6 +2781,13 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
     else { try { want = localStorage.getItem(HKEY) || ''; } catch (e) {} }
     if (!showSec(want, false)) { showSec(first, false); }
     window.addEventListener('hashchange', function () { if (/^#h-[a-z]+$/.test(location.hash)) { showSec(location.hash.slice(1), false); } });
+  }
+
+  // Șabloane email: previzualizarea într-un modal, la buton
+  var tplDlg = document.getElementById('tplDlg'), tplPrevBtn = document.getElementById('tplPrevBtn');
+  if (tplDlg && tplPrevBtn && typeof tplDlg.showModal === 'function') {
+    tplPrevBtn.addEventListener('click', function () { tplDlg.showModal(); });
+    document.getElementById('tplDlgClose').addEventListener('click', function () { tplDlg.close(); });
   }
 
   // Pipeline: kanban sau tabel, cu alegerea păstrată în browser
