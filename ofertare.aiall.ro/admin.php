@@ -2527,7 +2527,7 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .rcfg>div{min-width:260px}.rcfg label{margin:0}.rcfg .sm{justify-self:start}
 .rwrap{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}.rwrap.open{grid-template-columns:250px minmax(0,1fr)}
 @media (max-width:900px){.rwrap.open{grid-template-columns:1fr}}
-.rfilt{border:1px solid var(--line);border-radius:5px;padding:4px 12px 8px;max-height:78vh;overflow:auto;background:var(--surface)}
+.rfilt{border:1px solid var(--line);border-radius:5px;padding:4px 12px 8px;max-height:78vh;overflow-y:auto;overflow-x:hidden;background:var(--surface);min-width:0}
 .rfh{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}.rft{font-weight:600;font-size:13px;display:inline-flex;align-items:center;gap:8px}
 .badge{min-width:26px;height:18px;border-radius:999px;background:color-mix(in srgb,var(--teal) 14%,transparent);color:var(--teal);display:inline-flex;align-items:center;justify-content:center;font:600 11px var(--mono);padding:0 6px}
 .facet{border-bottom:1px solid var(--line);padding:8px 0}.facet:last-child{border-bottom:0}
@@ -2539,7 +2539,8 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .fdot{width:8px;height:8px;border-radius:999px}.fdot.s-trimisa{background:var(--navy3)}.fdot.s-deschisa{background:var(--navy2)}.fdot.s-negociere{background:var(--amber)}.fdot.s-acceptata{background:var(--green)}.fdot.s-pierduta{background:var(--red)}
 .fdot.l-activ{background:var(--green)}.fdot.l-expirat{background:var(--muted)}.fdot.l-revocat{background:var(--red)}
 .fl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fc{font:12px var(--mono);color:var(--muted)}.fempty{font-size:12px;color:var(--muted)}
-.fper{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.fper input{font-size:12px;padding:5px 8px}
+/* perioada: în panoul îngust (250px) două câmpuri de dată nu încap pe un rând, deci stau unul sub altul */
+.fper{display:grid;grid-template-columns:1fr;gap:6px;margin-top:8px}.fper input{font-size:12px;padding:0 8px;height:32px;box-sizing:border-box;min-width:0;width:100%}
 .rmain{display:grid;gap:12px;min-width:0}
 /* Rândul de grupare: compact (28px), toate elementele pe aceeași linie */
 .rgroup{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;min-height:28px}.rgroup>.muted{line-height:28px}
