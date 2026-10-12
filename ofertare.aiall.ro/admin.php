@@ -1,6 +1,6 @@
 <?php
 // Cockpit e2e OPS Ofertare: https://ofertare.aiall.ro/admin.php
-// Secțiuni: Pipeline (indicatori, pâlnie, kanban, ofertă nouă), Raportare, Catalog (produse și servicii), Șabloane email, Materiale, Utilizatori.
+// Secțiuni: Pipeline (indicatori, pâlnie, kanban, ofertă nouă), Raportare, Catalog (produse și servicii), Șabloane email, Materiale, Utilizatori, Ajutor.
 // Login separat de partea publică: sesiune proprie (cookie „ofadm”). Utilizatorii stau în tabela `users`;
 // contul din ofertare_private/config.php este contul inițial și calea de recuperare (vezi autentificarea).
 
@@ -96,7 +96,7 @@ function new_password(): string
 // ---------------------------------------------------------------------------
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $action = (string)($_POST['action'] ?? '');
-$view   = in_array($_GET['v'] ?? '', ['pipeline', 'sabloane', 'materiale', 'raportare', 'catalog', 'utilizatori'], true) ? $_GET['v'] : 'pipeline';
+$view   = in_array($_GET['v'] ?? '', ['pipeline', 'sabloane', 'materiale', 'raportare', 'catalog', 'utilizatori', 'ajutor'], true) ? $_GET['v'] : 'pipeline';
 
 if ($action === 'logout' && csrf_ok()) {
     $_SESSION = [];
@@ -1351,6 +1351,112 @@ JS;
 }
 
 // ===========================================================================
+// SECȚIUNEA AJUTOR (ghid de utilizare; pasul cu pasul: cum ajung materialele în email)
+// ===========================================================================
+function view_help(): string
+{
+    $maxMb   = (int)(cfg('max_upload_mb') ?: 25);
+    $otpMin  = (int)cfg('otp_minutes');
+    $otpTry  = (int)cfg('otp_max_tries');
+    $otpSend = (int)cfg('otp_max_sends');
+    $sessH   = (int)cfg('session_hours');
+    $days    = (int)cfg('default_days');
+    $notify  = (string)cfg('notify_email');
+    $base    = h(base_url());
+    $notifyTxt = $notify !== '' ? 'Prima deschidere a unei oferte trimite o notificare la <b>' . h($notify) . '</b>.'
+                                : 'Notificarea la prima deschidere este oprită (<code>notify_email</code> gol în <code>config.php</code>).';
+
+    $toc = '<nav class="hnav" aria-label="Cuprins">'
+        . '<a href="#h-flux">Fluxul pe scurt</a><a href="#h-materiale">Materialele în email</a><a href="#h-pipeline">Pipeline</a>'
+        . '<a href="#h-raportare">Raportare</a><a href="#h-catalog">Catalog</a><a href="#h-sabloane">Șabloane email</a>'
+        . '<a href="#h-mat">Materiale</a><a href="#h-utilizatori">Utilizatori</a><a href="#h-probleme">Probleme frecvente</a></nav>';
+
+    return '<section class="panel hp"><div class="ph"><h2>Ajutor</h2></div>' . $toc
+
+        . '<h3 id="h-flux">Fluxul pe scurt</h3>'
+        . '<ol class="steps">'
+        . '<li><b>Materiale</b>: încarci oferta și materialele suport (PDF, HTML, DOCX, XLSX, PPTX, PNG, JPG, MP4).</li>'
+        . '<li><b>Șabloane email</b>: scrii textul emailului, pui <code>{{materiale}}</code> pe un rând separat și bifezi materialele trimise cu șablonul, în ordine.</li>'
+        . '<li><b>Pipeline → Ofertă nouă</b>: CUI (date de la ANAF), persoana, emailul, salariații mobili, șablonul; materialele se bifează automat după șablon.</li>'
+        . '<li>La trimitere, fiecare material primește un <b>link personal</b> care apare în email ca buton. Clientul deschide linkul cu un <b>cod de 6 cifre</b> primit pe emailul lui.</li>'
+        . '<li>Cardul trece automat în <b>Deschisă</b> la prima deschidere; negocierea, acceptarea sau pierderea le setezi tu, din kanban sau din „Detalii”.</li>'
+        . '</ol>'
+
+        . '<h3 id="h-materiale">Cum ajung materialele suport în email, pas cu pas</h3>'
+        . '<p>Un material ajunge în email numai dacă trece prin toate cele trei locuri: este <b>încărcat și activ</b> în Materiale, este <b>bifat în șablon</b> (sau bifat manual la oferta nouă) și șablonul conține <b>rândul <code>{{materiale}}</code></b>, care spune unde se pun butoanele.</p>'
+        . '<ol class="steps">'
+        . '<li><b>Încarcă materialul</b> în secțiunea <a href="admin.php?v=materiale">Materiale</a> → „Încarcă material”.'
+        . '<ul><li><b>Titlu afișat în email</b>: exact textul butonului pe care îl vede clientul (ex. „Studiu de caz construcții”). Dacă îl lași gol, se folosește numele fișierului.</li>'
+        . '<li><b>Tip</b>: „Ofertă” pentru documentul principal, „Material suport” pentru restul. Tipul este o etichetă de organizare (apare lângă nume în liste); în email, toate materialele arată la fel, iar ceea ce contează este <b>ordinea</b> (pasul 2).</li>'
+        . '<li><b>Fișier</b>: maximum ' . $maxMb . ' MB. HTML-ul se deschide direct în browser, PDF-ul la fel; DOCX/XLSX/PPTX se descarcă.</li></ul></li>'
+        . '<li><b>Adaugă-l în șablon</b>, în <a href="admin.php?v=sabloane">Șabloane email</a>, la „Materiale trimise cu acest șablon (bifă + ordine)”.'
+        . '<ul><li>Bifezi materialul și completezi <b>ordinea</b>: 1, 2, 3… <b>Materialul cu ordinea cea mai mică devine butonul principal</b>, colorat (de regulă oferta); următoarele apar ca butoane cu contur, în ordinea dată.</li>'
+        . '<li>Apasă „Salvează șablonul”. Lista arată doar materialele <b>active</b>; un material dezactivat dispare din șabloane.</li></ul></li>'
+        . '<li><b>Pune <code>{{materiale}}</code> în textul șablonului</b>, acolo unde vrei butoanele.'
+        . '<ul><li>Trebuie să fie <b>singur pe rând, cu un rând gol înainte și unul după</b> (adică un paragraf de sine stătător). Exemplu:</li></ul>'
+        . "<pre>Oferta completă este disponibilă la linkurile personale de mai jos:\n\n{{materiale}}\n\nPentru întrebări, răspundeți direct la acest email.</pre>"
+        . '<ul><li>Dacă <code>{{materiale}}</code> lipsește, <b>emailul pleacă fără niciun link</b>, chiar dacă materialele sunt bifate. Dacă îl scrii în interiorul unui paragraf, rămâne ca text și butoanele nu apar.</li>'
+        . '<li>Sub butoane se adaugă automat textul „Linkurile sunt personale. La deschidere primiți un cod de acces pe această adresă de email.”</li>'
+        . '<li>Panoul „Previzualizare” arată emailul cu date de exemplu și cu butoanele materialelor bifate, după ultima salvare.</li></ul></li>'
+        . '<li><b>Trimite oferta</b> din <a href="admin.php?v=pipeline">Pipeline → Ofertă nouă</a>.'
+        . '<ul><li>Alegi șablonul: materialele lui se <b>bifează automat</b> în „Materiale trimise”. Poți debifa un material sau bifa altele <b>doar pentru oferta aceasta</b>, fără să modifici șablonul.</li>'
+        . '<li>Ordinea în email: întâi materialele șablonului, în ordinea lor, apoi cele bifate suplimentar.</li>'
+        . '<li>„Trimite acum emailul” bifat trimite imediat; debifat, oferta se creează și primești linkurile ca să le trimiți tu.</li>'
+        . '<li>La creare, <b>fiecare material bifat primește un link personal</b> de forma <code>' . $base . 'abc…</code>. Linkurile se afișează <b>o singură dată</b> în mesajul de confirmare; în baza de date se păstrează doar amprentele lor.</li></ul></li>'
+        . '<li><b>Ce vede clientul.</b> În email, butoanele cu titlurile materialelor (în varianta text, „Titlu: link”). La primul click primește pe <b>adresa lui</b> un cod de 6 cifre, valabil ' . $otpMin . ' minute (maximum ' . $otpTry . ' încercări per cod și ' . $otpSend . ' coduri pe oră). '
+        . 'Un singur cod deschide <b>toate materialele din același email</b> timp de ' . $sessH . ' ore. Linkurile expiră după numărul de zile ales la ofertă (implicit ' . $days . '). '
+        . 'Un link redirecționat altcuiva ajunge tot la pagina de cod, iar codul pleacă tot la destinatarul inițial. Dacă debifezi „Cod de acces pe email”, linkurile se deschid direct.</li>'
+        . '<li><b>Ce vezi tu după trimitere.</b> Pe card, fiecare material cu numărul de deschideri („necitit” / „2×”); cardul trece automat în „Deschisă”. ' . $notifyTxt
+        . ' În Materiale vezi, per material, în câte șabloane apare, de câte ori a fost trimis și deschis.</li>'
+        . '<li><b>Întreținere.</b> „Înlocuiește fișierul” <b>păstrează linkurile deja trimise</b>: clienții deschid noua versiune. Debifarea „Activ” oprește deschiderea materialului și îl scoate din șabloane. '
+        . '„Revocă toate linkurile ofertei” (din Detalii, pe card) oprește imediat accesul la o ofertă anume.</li>'
+        . '</ol>'
+
+        . '<h3 id="h-pipeline">Pipeline</h3>'
+        . '<ul><li><b>Indicatorii</b> de sus: oferte în lucru, rată de deschidere, conversie, pipeline și câștigat (onorariu an 1), economie generată clienților. Valorile pornesc de la „Salariați mobili”: ' . ron(ONORARIU_AN1_PER_SALARIAT) . ' RON onorariu an 1, ' . ron(LICENTA_AN_PER_SALARIAT) . ' RON licență din anul 2, ' . ron(ECONOMIE_AN_PER_SALARIAT) . ' RON economie client, per salariat.</li>'
+        . '<li><b>Pâlnia</b> numără etapa maximă atinsă; o ofertă pierdută rămâne numărată la etapa la care a ajuns.</li>'
+        . '<li><b>Ofertă nouă</b>: scrii CUI-ul și apeși „ANAF” (sau Enter): se completează denumirea, Reg. Com., adresa, județul, CAEN, telefonul, TVA și inactivitatea. Datele apar pe card și în Raportare.</li>'
+        . '<li><b>Kanban</b>: tragi cardul între coloane sau alegi etapa din „Detalii”. „Trimisă” și „Deschisă” se setează automat. În „Detalii” ai și nota internă, jurnalul evenimentelor și revocarea linkurilor.</li></ul>'
+
+        . '<h3 id="h-raportare">Raportare</h3>'
+        . '<ul><li>Tabel cu toate ofertele: căutare liberă, filtre pe etapă, șablon, stare link și perioada creării; sortare pe orice coloană (clic pe antet); grupare cu subtotaluri; alegerea coloanelor.</li>'
+        . '<li>Vederea (filtre, sortare, grupare, coloane) se păstrează în browser; „Resetează vederea” o aduce la implicit.</li>'
+        . '<li>„Export CSV (Excel)” exportă rândurile filtrate, în ordinea și cu coloanele afișate (UTF-8, separator „;”).</li></ul>'
+
+        . '<h3 id="h-catalog">Catalog</h3>'
+        . '<ul><li>Articole cu tip (serviciu, licență, serviciu digital, produs, pachet servicii, pachet produse), denumire, UM și perioadă de valabilitate; „Valid până la” gol = nelimitat.</li>'
+        . '<li>Starea față de azi: valid, din viitor, expirat. Căutare și filtre pe tip și valabilitate.</li>'
+        . '<li><b>Pachetele</b> se compun din articole existente: pachetul de servicii din servicii, servicii digitale și licențe; pachetul de produse din produse și licențe. În secțiunea „Compoziție” a pachetului adaugi componente cu cantitate.</li>'
+        . '<li>Un articol folosit într-un pachet nu poate fi șters și nu își poate schimba tipul într-unul neacceptat; mesajul de eroare spune ce trebuie scos mai întâi. „Copiază” pe un pachet copiază și compoziția.</li></ul>'
+
+        . '<h3 id="h-sabloane">Șabloane email</h3>'
+        . '<ul><li><b>Format text</b>: rând gol = paragraf nou; rânduri consecutive = listă compactă; <code>✓ </code> la începutul rândului = bifă colorată; <code>**text**</code> = bold.</li>'
+        . '<li><b>Variabile</b>: <code>{{salut}}</code> („Bună ziua, Nume,”), <code>{{nume}}</code>, <code>{{companie}}</code>, <code>{{email}}</code>, <code>{{salariati}}</code>, <code>{{economie_an}}</code> (salariați × ' . ron(ECONOMIE_AN_PER_SALARIAT) . ' RON), <code>{{expira}}</code> (data expirării linkurilor); <code>{{materiale}}</code> pe rând separat = butoanele cu linkurile personale. Variabilele merg și în subiect.</li>'
+        . '<li>Șabloanele se pot copia și șterge; ofertele deja trimise păstrează emailul și linkurile lor.</li></ul>'
+
+        . '<h3 id="h-mat">Materiale</h3>'
+        . '<ul><li>Încărcare: PDF, HTML, DOCX, XLSX, PPTX, PNG, JPG, MP4, maximum ' . $maxMb . ' MB. Fișierele stau în <code>ofertare_private/fisiere</code>, în afara folderului public, și se servesc doar prin linkurile personale.</li>'
+        . '<li>Pentru fiecare material: titlu, tip, statistici (șabloane, trimiteri, deschideri), „Înlocuiește fișierul”, „Activ”. Un fișier lipsă de pe server este marcat cu roșu.</li></ul>'
+
+        . '<h3 id="h-utilizatori">Utilizatori</h3>'
+        . '<ul><li>„Parola mea”: parola actuală + parola nouă (minimum 10 caractere), repetată.</li>'
+        . '<li>„Utilizator nou”: nume de utilizator (litere mici, cifre, . _ @ -), nume afișat, parolă; lăsată goală, parola se generează și se afișează o singură dată.</li>'
+        . '<li>Un utilizator dezactivat nu se mai poate autentifica. Propriul cont nu poate fi dezactivat sau șters. Contul din <code>config.php</code> rămâne cale de recuperare cât timp nu există în listă un utilizator cu același nume.</li></ul>'
+
+        . '<h3 id="h-probleme">Probleme frecvente</h3>'
+        . '<ul>'
+        . '<li><b>Emailul a plecat fără butoane.</b> Șablonul nu are <code>{{materiale}}</code> singur pe rând, sau niciun material nu era bifat la trimitere. Verifică în Previzualizare și pe card (lista materialelor).</li>'
+        . '<li><b>Un material nu apare în șablon sau la „Ofertă nouă”.</b> Este dezactivat. Bifează „Activ” în Materiale și salvează.</li>'
+        . '<li><b>Clientul spune că linkul nu merge.</b> Linkurile sunt expirate (data de expirare de pe card), revocate, sau materialul a fost dezactivat. Trimite o ofertă nouă sau reactivează materialul.</li>'
+        . '<li><b>Clientul nu primește codul.</b> Codul pleacă doar la adresa din ofertă; verifică folderul de spam, limita de ' . $otpSend . ' coduri pe oră și ca expeditorul (<code>mail_from</code>) să fie o căsuță reală pe domeniu, ca să treacă de SPF/DKIM.</li>'
+        . '<li><b>Vreau să schimb documentul fără să retrimit emailul.</b> „Înlocuiește fișierul” la material: linkurile deja trimise deschid noua versiune.</li>'
+        . '<li><b>Vreau să opresc accesul la o ofertă.</b> Pe card, Detalii → „Revocă toate linkurile ofertei”.</li>'
+        . '</ul>'
+        . '<p class="muted">Documentația completă, inclusiv instalarea și structura pe server, este în README-ul proiectului.</p>'
+        . '</section>';
+}
+
+// ===========================================================================
 // Randare pagină
 // ===========================================================================
 $views   = [
@@ -1360,6 +1466,7 @@ $views   = [
     'sabloane'  => ['Șabloane email', fn() => view_templates()],
     'materiale' => ['Materiale',      fn() => view_materials()],
     'utilizatori' => ['Utilizatori',  fn() => view_users($me)],
+    'ajutor'    => ['Ajutor',         fn() => view_help()],
 ];
 $content = $views[$view][1]();
 $tabs    = array_map(fn($v) => $v[0], $views);
@@ -1542,6 +1649,19 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .ci input,.ci select{padding:5px 8px;font-size:13px}.ci select{padding-right:28px}
 .kt-serviciu,.kt-serviciu_digital{color:var(--teal)}.kt-licenta{color:var(--amber)}.kt-produs{color:var(--navy3)}
 @media (max-width:1100px){.cathead{display:none}.cat{grid-template-columns:1fr 1fr}.cat .mt{grid-column:1/-1}.ci{grid-template-columns:1fr 1fr}.ci .mt{grid-column:1/-1}.ci.add{grid-template-columns:1fr}}
+/* Ajutor */
+.hp{max-width:980px;line-height:1.6}
+.hnav{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 14px}
+.hnav a{font-size:12px;font-weight:600;color:var(--teal);text-decoration:none;border:1px solid var(--line);border-radius:12px;padding:3px 10px;background:var(--bg)}
+.hnav a:hover{border-color:var(--teal)}
+.hp h3{font-size:14px;color:var(--navy);margin:22px 0 8px;padding-top:12px;border-top:1px solid var(--line);scroll-margin-top:12px}
+.hp h3:first-of-type{border-top:0;padding-top:0;margin-top:4px}
+.hp p{margin:0 0 10px}
+.hp ul,.hp ol{margin:0 0 10px;padding-left:22px}.hp li{margin:0 0 6px}.hp li ul{margin:4px 0 0}.hp li ul li{margin:0 0 3px;color:var(--muted)}
+.hp li ul li b,.hp li ul li code{color:var(--ink)}
+.steps>li::marker{color:var(--teal);font-weight:700}
+.hp pre{font:12px/1.6 var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:8px 12px;margin:6px 0 8px;white-space:pre-wrap}
+.hp a{color:var(--teal)}
 /* Raportare */
 .rep .ph{align-items:center}.sm2{margin:0;padding:6px 12px}
 .rtools{display:grid;grid-template-columns:minmax(220px,2fr) repeat(6,minmax(120px,1fr)) auto;gap:10px;align-items:end;margin-bottom:10px}
