@@ -75,8 +75,10 @@ Cockpitul (`admin.php`) are șapte secțiuni.
 | Deschisă | Automat, la prima deschidere a unui material de către client |
 | În negociere / Acceptată / Pierdută | Manual: tragi cardul în coloană sau alegi etapa din „Detalii” |
 
-- Ofertă nouă: CUI, companie, persoană de contact, email, salariați mobili estimați, șablon de email și materialele trimise
-  (bifate automat după șablon, modificabile). La trimitere, fiecare material primește linkul lui personal.
+- Ofertă nouă: CUI, companie, persoană de contact, email, salariați mobili estimați, șablon de email, **livrabilele din catalog**
+  (articole sau pachete valide azi, cu cantitate; denumirea, UM și prețul se copiază pe ofertă în tabela `deal_items`, iar
+  valoarea totală fără TVA se păstrează pe ofertă) și materialele trimise (bifate automat după șablon, modificabile).
+  La trimitere, fiecare material primește linkul lui personal. Livrabilele se pot scoate sau adăuga și după trimitere, din card.
 - CUI → ANAF: butonul „ANAF” (sau Enter / părăsirea câmpului) interoghează API-ul public ANAF v9 (`PlatitorTvaRest/v9/tva`)
   și completează denumirea, nr. Reg. Com., adresa (domiciliul fiscal), județul, CAEN, telefonul, starea de plătitor TVA
   și inactivitatea. Datele se salvează pe ofertă, apar pe card (Detalii) și în Raportare (coloane, căutare, grupare după județ).
@@ -95,7 +97,7 @@ Cockpitul (`admin.php`) are șapte secțiuni.
 
 Tabel smartBIZ cu toate ofertele: o ofertă pe rând, cu companie, persoană, șablon, materiale citite, etapă și etapă maximă,
 date (creare, prima și ultima deschidere, expirare), zile până la deschidere, deschideri, salariați mobili, onorariu an 1,
-licență, economie client, stare link și notă.
+licență, economie client, livrabile ofertate, valoare ofertată, stare link și notă.
 
 Tabelul reia comportamentul tabelului smartBIZ din Time-Mobility-Tracker (`ConfigurableDataTableScreen`); lista
 funcționalităților preluate și a diferențelor este în [`docs/tabel-smartbiz.md`](docs/tabel-smartbiz.md), iar modul de
@@ -120,6 +122,7 @@ Gestiunea catalogului de produse și servicii, tabela `catalog` din `ofertare.db
 | Denumire | numele articolului (max. 200 de caractere) |
 | UM | unitatea de măsură, din listă (buc, oră, zi, lună, an, salariat, salariat/lună, utilizator, pachet) sau „Altă unitate…”, cu text liber |
 | Valid de la / Valid până la | perioada de valabilitate; „până la” gol = nelimitat |
+| Preț unitar | RON fără TVA, pe UM; un pachet fără preț propriu are prețul calculat din compoziție (cantitate × preț pe componentă), iar un preț scris pe pachet are prioritate |
 
 - „Articol nou în catalog” adaugă un articol; lista de dedesubt editează fiecare articol pe loc (tip, denumire, UM, perioadă),
   cu „Salvează”, „Copiază” (articol nou cu aceleași date, util pentru o nouă perioadă de valabilitate) și „Șterge” (definitiv).
@@ -146,8 +149,9 @@ Gestiunea catalogului de produse și servicii, tabela `catalog` din `ofertare.db
 
 - Nume intern, subiect și textul emailului, cu previzualizare pe date de exemplu.
 - Format text: rând gol = paragraf nou; rânduri consecutive = listă compactă; `✓ ` la început = bifă colorată; `**text**` = bold.
-- Variabile: `{{salut}}`, `{{nume}}`, `{{companie}}`, `{{email}}`, `{{salariati}}`, `{{economie_an}}`, `{{expira}}`;
-  `{{materiale}}` pe rând separat inserează butoanele cu linkurile personale.
+- Variabile: `{{salut}}`, `{{nume}}`, `{{companie}}`, `{{email}}`, `{{salariati}}`, `{{economie_an}}`, `{{expira}}`,
+  `{{valoare}}` (totalul livrabilelor); `{{materiale}}` pe rând separat inserează butoanele cu linkurile personale;
+  `{{livrabile}}` pe rând separat inserează tabelul livrabilelor ofertate (denumire, cantitate, UM, preț unitar, valoare, total).
 - Fiecare șablon are lista lui de materiale, cu ordine. Șabloanele se pot copia și șterge; ofertele deja trimise nu sunt afectate.
 - „Email de test” (panoul Previzualizare): trimite șablonul cu date de exemplu și linkuri fictive la adresa ta și arată
   rezultatul real al trimiterii; este cel mai simplu mod de a verifica livrarea pe server.

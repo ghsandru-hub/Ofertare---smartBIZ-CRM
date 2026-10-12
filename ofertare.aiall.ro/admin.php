@@ -170,6 +170,33 @@ if (($_GET['a'] ?? '') === 'anaf') {
     exit(json_encode(anaf_lookup((string)($_GET['cui'] ?? '')), JSON_UNESCAPED_UNICODE));
 }
 
+// Livrabilele din formularul „Ofertă nouă” (items_id[] + items_qty[]): [['item' => rând catalog, 'qty' => float], …].
+function deal_items_from_post(): array
+{
+    $ids = array_map('intval', (array)($_POST['items_id'] ?? []));
+    $qs  = (array)($_POST['items_qty'] ?? []);
+    $out = [];
+    if (!$ids) {
+        return $out;
+    }
+    $cq = db()->prepare('SELECT * FROM catalog WHERE id = ?');
+    foreach ($ids as $i => $cid) {
+        $qty = catalog_qty((string)($qs[$i] ?? '1'));
+        $cq->execute([$cid]);
+        if (($it = $cq->fetch()) && $qty > 0) {
+            $out[] = ['item' => $it, 'qty' => $qty];
+        }
+    }
+    return $out;
+}
+
+// Aceleași livrabile ca linii de ofertă nepersistate (pentru previzualizare).
+function deal_items_preview(array $sel): array
+{
+    return array_map(fn($s) => ['name' => $s['item']['name'], 'um' => $s['item']['um'], 'qty' => $s['qty'],
+                                'price' => catalog_price($s['item']), 'details' => catalog_details($s['item'])], $sel);
+}
+
 // Rezultatul unei trimiteri de email, pentru mesajul din cockpit: cu eroarea reală a serverului dacă a eșuat.
 function mail_result_html(bool $ok, string $to): string
 {
@@ -223,9 +250,11 @@ if ($method === 'POST' && $isAjax && $action === 'preview') {
     $days = max(1, min(365, (int)($_POST['days'] ?? cfg('default_days'))));
     $deal = ['company' => trim((string)($_POST['company'] ?? '')), 'recipient' => trim((string)($_POST['recipient'] ?? '')),
              'email' => trim((string)($_POST['email'] ?? '')), 'angajati' => max(0, (int)($_POST['angajati'] ?? 0)), 'expires_at' => time() + 86400 * $days];
-    [$subject, $html] = render_email((string)$tpl['subject'], (string)$tpl['body'], $deal, $mats);
+    $items = deal_items_preview(deal_items_from_post());
+    [$subject, $html] = render_email((string)$tpl['subject'], (string)$tpl['body'], $deal, $mats, $items);
     exit(json_encode(['ok' => true, 'to' => ($deal['recipient'] !== '' ? $deal['recipient'] . ' <' . $deal['email'] . '>' : $deal['email']),
-        'subject' => $subject, 'html' => $html, 'materials' => count($mats), 'transport' => mail_transport()], JSON_UNESCAPED_UNICODE));
+        'subject' => $subject, 'html' => $html, 'materials' => count($mats), 'items' => count($items), 'value' => fmt_money(deal_items_total($items)),
+        'transport' => mail_transport()], JSON_UNESCAPED_UNICODE));
 }
 
 if ($method === 'POST') {
@@ -241,6 +270,7 @@ if ($method === 'POST') {
             $otp       = !empty($_POST['require_otp']) ? 1 : 0;
             $sendNow   = !empty($_POST['send']);
             $matSel    = array_map('intval', (array)($_POST['materials'] ?? []));
+            $itemSel   = deal_items_from_post(); // livrabilele alese din catalog, cu cantitate
             $firma     = [ // completate din ANAF (sau manual) în formular
                 'cui'     => anaf_cui((string)($_POST['cui'] ?? '')),
                 'reg_com' => mb_substr(trim((string)($_POST['reg_com'] ?? '')), 0, 40),
@@ -284,6 +314,9 @@ if ($method === 'POST') {
                     ->execute([$company, $recipient, $email, $angajati, $tid, '', $otp, 'trimisa', 1, $now, $now, $now + 86400 * $days,
                                $firma['cui'], $firma['reg_com'], $firma['adresa'], $firma['judet'], $firma['caen'], $firma['telefon'], $firma['tva'], $firma['inactiv']]);
                 $dealId = (int)db()->lastInsertId();
+                foreach ($itemSel as $sel) {
+                    deal_item_add($dealId, $sel['item'], $sel['qty']);
+                }
                 $dq     = db()->prepare('SELECT * FROM deals WHERE id = ?');
                 $dq->execute([$dealId]);
                 $deal   = $dq->fetch();
@@ -294,9 +327,9 @@ if ($method === 'POST') {
                     $linkQ->execute([$dealId, (int)$m['id'], khash($tok)]);
                     $mlinks[] = ['title' => $m['title'], 'url' => base_url() . $tok];
                 }
-                [$subject, $html, $text] = render_email((string)$tpl['subject'], (string)$tpl['body'], $deal, $mlinks);
+                [$subject, $html, $text] = render_email((string)$tpl['subject'], (string)$tpl['body'], $deal, $mlinks, deal_items($dealId));
                 db()->prepare('UPDATE deals SET subject = ? WHERE id = ?')->execute([$subject, $dealId]);
-                log_event($dealId, 'creată din șablonul „' . $tpl['name'] . '”');
+                log_event($dealId, 'creată din șablonul „' . $tpl['name'] . '”' . ($itemSel ? ' cu ' . count($itemSel) . ' livrabile, ' . fmt_money((float)$deal['value']) . ' RON' : ''));
                 $sent = '';
                 if ($sendNow) {
                     $ok = send_mail($email, $subject, $html, $text);
@@ -344,6 +377,35 @@ if ($method === 'POST') {
             }
             redirect('admin.php?v=pipeline');
 
+        // Livrabilele ofertei: adăugare din catalog (cu cantitate) sau scoatere, și după trimitere.
+        case 'deal_item_add':
+            $id  = (int)($_POST['id'] ?? 0);
+            $cq  = db()->prepare('SELECT * FROM catalog WHERE id = ?');
+            $cq->execute([(int)($_POST['catalog_id'] ?? 0)]);
+            $qty = catalog_qty((string)($_POST['qty'] ?? '1'));
+            if (!($it = $cq->fetch())) {
+                flash('<div class="note err">Alege un livrabil din catalog.</div>');
+            } elseif ($qty <= 0) {
+                flash('<div class="note err">Cantitatea trebuie să fie un număr pozitiv.</div>');
+            } else {
+                deal_item_add($id, $it, $qty);
+                log_event($id, 'livrabil adăugat: ' . fmt_qty($qty) . ' ' . $it['um'] . ' × ' . $it['name']);
+                flash('<div class="note">„' . h($it['name']) . '” a fost adăugat pe ofertă. Emailul deja trimis nu se schimbă; folosește „Retrimite emailul” dacă vrei să plece lista nouă.</div>');
+            }
+            redirect('admin.php?v=pipeline#c' . $id);
+
+        case 'deal_item_del':
+            $id = (int)($_POST['id'] ?? 0);
+            $iq = db()->prepare('SELECT name FROM deal_items WHERE id = ? AND deal_id = ?');
+            $iq->execute([(int)($_POST['item_id'] ?? 0), $id]);
+            if ($n = $iq->fetchColumn()) {
+                db()->prepare('DELETE FROM deal_items WHERE id = ? AND deal_id = ?')->execute([(int)($_POST['item_id'] ?? 0), $id]);
+                deal_value_refresh($id);
+                log_event($id, 'livrabil scos: ' . $n);
+                flash('<div class="note">„' . h($n) . '” a fost scos de pe ofertă.</div>');
+            }
+            redirect('admin.php?v=pipeline#c' . $id);
+
         // Retrimite emailul ofertei cu linkuri noi (tokenurile nu se păstrează, deci cele vechi nu pot fi reconstituite).
         case 'deal_resend':
             $id = (int)($_POST['id'] ?? 0);
@@ -376,7 +438,7 @@ if ($method === 'POST') {
                     $mlinks[] = ['title' => $l['title'], 'url' => base_url() . $tok];
                 }
                 $deal['expires_at'] = $exp;
-                [$subject, $html, $text] = render_email((string)$tpl['subject'], (string)$tpl['body'], $deal, $mlinks);
+                [$subject, $html, $text] = render_email((string)$tpl['subject'], (string)$tpl['body'], $deal, $mlinks, deal_items($id));
                 db()->prepare('UPDATE deals SET subject = ? WHERE id = ?')->execute([$subject, $id]);
                 $ok = send_mail((string)$deal['email'], $subject, $html, $text);
                 log_event($id, $ok ? 'email retrimis cu linkuri noi prin ' . mail_transport() : 'retrimitere eșuată: ' . mail_error());
@@ -451,7 +513,7 @@ if ($method === 'POST') {
             }
             $mats = array_map(fn($m) => ['title' => $m['title'], 'url' => base_url() . 'test-' . str_repeat('x', 38)], template_materials($id));
             $sample = ['company' => 'EXEMPLU CONSTRUCT SRL', 'recipient' => 'Ion Popescu', 'email' => $to, 'angajati' => 10, 'expires_at' => time() + 30 * 86400];
-            [$subject, $html, $text] = render_email('[TEST] ' . $tpl['subject'], (string)$tpl['body'], $sample, $mats);
+            [$subject, $html, $text] = render_email('[TEST] ' . $tpl['subject'], (string)$tpl['body'], $sample, $mats, sample_items());
             $ok = send_mail($to, $subject, $html, $text);
             flash('<div class="note' . ($ok ? '' : ' err') . '"><strong>Email de test</strong>' . mail_result_html($ok, $to)
                 . ($ok ? '<p class="muted">Linkurile din emailul de test sunt fictive. Dacă emailul nu ajunge în câteva minute, verifică spam-ul și setările din config.php (vezi Ajutor).</p>' : '') . '</div>');
@@ -509,6 +571,7 @@ if ($method === 'POST') {
             $um    = mb_substr(trim((string)(($_POST['um'] ?? '') === '__alt' ? ($_POST['um_alt'] ?? '') : ($_POST['um'] ?? ''))), 0, 20);
             $from  = catalog_date((string)($_POST['valid_from'] ?? ''));
             $to    = catalog_date((string)($_POST['valid_to'] ?? ''));
+            $price = catalog_money((string)($_POST['price'] ?? ''));
             $back  = 'admin.php?v=catalog' . ($id ? '#k' . $id : '');
             if (!isset($types[$type])) {
                 flash('<div class="note err">Alege tipul articolului.</div>');
@@ -543,12 +606,12 @@ if ($method === 'POST') {
                     flash('<div class="note err">' . $bad . '</div>');
                     redirect($back);
                 }
-                db()->prepare('UPDATE catalog SET type = ?, name = ?, um = ?, valid_from = ?, valid_to = ?, updated_at = ? WHERE id = ?')
-                    ->execute([$type, $name, $um, $from, $to, time(), $id]);
+                db()->prepare('UPDATE catalog SET type = ?, name = ?, um = ?, valid_from = ?, valid_to = ?, price = ?, updated_at = ? WHERE id = ?')
+                    ->execute([$type, $name, $um, $from, $to, $price, time(), $id]);
                 flash('<div class="note">Articolul „' . h($name) . '” a fost actualizat.</div>');
             } else {
-                db()->prepare('INSERT INTO catalog (type, name, um, valid_from, valid_to, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-                    ->execute([$type, $name, $um, $from, $to, time(), time()]);
+                db()->prepare('INSERT INTO catalog (type, name, um, valid_from, valid_to, price, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+                    ->execute([$type, $name, $um, $from, $to, $price, time(), time()]);
                 $back = 'admin.php?v=catalog#k' . (int)db()->lastInsertId();
                 flash('<div class="note">Articolul „' . h($name) . '” a fost adăugat în catalog.'
                     . (catalog_is_package($type) ? ' Adaugă acum componentele din secțiunea „Compoziție” a pachetului.' : '') . '</div>');
@@ -559,8 +622,8 @@ if ($method === 'POST') {
             $src = db()->prepare('SELECT * FROM catalog WHERE id = ?');
             $src->execute([(int)($_POST['id'] ?? 0)]);
             if ($c = $src->fetch()) {
-                db()->prepare('INSERT INTO catalog (type, name, um, valid_from, valid_to, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-                    ->execute([$c['type'], $c['name'] . ' (copie)', $c['um'], $c['valid_from'], $c['valid_to'], time(), time()]);
+                db()->prepare('INSERT INTO catalog (type, name, um, valid_from, valid_to, price, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+                    ->execute([$c['type'], $c['name'] . ' (copie)', $c['um'], $c['valid_from'], $c['valid_to'], $c['price'], time(), time()]);
                 $nid = (int)db()->lastInsertId();
                 // un pachet se copiază cu tot cu compoziție
                 db()->prepare('INSERT INTO catalog_items (package_id, item_id, qty, ord) SELECT ?, item_id, qty, ord FROM catalog_items WHERE package_id = ?')
@@ -761,8 +824,17 @@ function deal_card(array $d, array $stages, array $links, string $csrf): string
     foreach ($stages as $k => $s) {
         $opts .= '<option value="' . $k . '"' . ($k === $d['stage'] ? ' selected' : '') . '>' . $s['label'] . '</option>';
     }
-    $sal = (int)$d['angajati'];
-    $val = $sal ? '<div class="val"><span>' . $sal . ' salariați mobili</span><b>' . ron($sal * ONORARIU_AN1_PER_SALARIAT) . ' RON</b></div>' : '';
+    $sal   = (int)$d['angajati'];
+    $val   = $sal ? '<div class="val"><span>' . $sal . ' salariați mobili</span><b>' . ron($sal * ONORARIU_AN1_PER_SALARIAT) . ' RON</b></div>' : '';
+    $items = deal_items($id);
+    $liv   = '';
+    if ($items) {
+        $liv = '<ul class="items">';
+        foreach ($items as $it) {
+            $liv .= '<li><span>' . h(fmt_qty((float)$it['qty']) . ' ' . $it['um'] . ' × ' . $it['name']) . '</span><em>' . h(fmt_money((float)$it['qty'] * (float)$it['price'])) . '</em></li>';
+        }
+        $liv .= '</ul><div class="val"><span>Livrabile, fără TVA</span><b>' . h(fmt_money(deal_items_total($items))) . ' RON</b></div>';
+    }
 
     $mats = '';
     foreach ($links as $l) {
@@ -790,7 +862,7 @@ function deal_card(array $d, array $stages, array $links, string $csrf): string
         . '<header><strong>' . h($d['company'] ?: $d['email']) . '</strong><small>' . h(ago($d['stage_at'] ? (int)$d['stage_at'] : (int)$d['created_at'])) . '</small></header>'
         . '<div class="who">' . h($d['recipient'] ?: '—') . ' · ' . h($d['email']) . '</div>' . $firma
         . '<ul class="mats">' . $mats . '</ul>'
-        . $val
+        . $liv . $val
         . ($flags ? '<div class="flags">' . $flags . '</div>' : '')
         . ($d['nota'] !== '' ? '<p class="nota">' . h($d['nota']) . '</p>' : '')
         . '<details><summary>Detalii</summary>'
@@ -804,10 +876,54 @@ function deal_card(array $d, array $stages, array $links, string $csrf): string
         . '<form method="post" class="mv">' . $hid . '<input type="hidden" name="action" value="nota">'
         . '<label for="n' . $id . '">Notă internă</label><input id="n' . $id . '" name="nota" value="' . h($d['nota']) . '" maxlength="500">'
         . '<button type="submit" class="sm">Salvează</button></form>'
+        . deal_items_editor($id, $items, $hid)
         . '<p class="meta">Creată ' . h(fmt_time((int)$d['created_at'])) . ' · expiră ' . h(fmt_time((int)$d['expires_at']))
         . ' · ' . ($d['require_otp'] ? 'cu cod de acces' : 'fără cod') . '</p>'
         . '<ul class="log">' . ($ev ?: '<li>Fără evenimente</li>') . '</ul>' . $acts
         . '</details></article>';
+}
+
+// Gestiunea livrabilelor pe card (Detalii): scoatere pe linie, adăugare din catalog cu cantitate.
+function deal_items_editor(int $id, array $items, string $hid): string
+{
+    $rows = '';
+    foreach ($items as $it) {
+        $rows .= '<li><span>' . h(fmt_qty((float)$it['qty']) . ' ' . $it['um'] . ' × ' . $it['name']) . '</span>'
+            . '<form method="post" class="inline">' . $hid . '<input type="hidden" name="action" value="deal_item_del"><input type="hidden" name="item_id" value="' . (int)$it['id'] . '">'
+            . '<button type="submit" class="lnk bad" title="Scoate de pe ofertă">×</button></form></li>';
+    }
+    return '<div class="ditems"><p class="meta">Livrabile ofertate</p><ul class="items edit">' . ($rows ?: '<li class="muted">Niciun livrabil.</li>') . '</ul>'
+        . '<form method="post" class="mv iadd">' . $hid . '<input type="hidden" name="action" value="deal_item_add">'
+        . '<select name="catalog_id" aria-label="Livrabil din catalog">' . catalog_offer_options() . '</select>'
+        . '<input name="qty" type="number" step="0.01" min="0.01" value="1" aria-label="Cantitate">'
+        . '<button type="submit" class="icb sm-ic" title="Adaugă livrabilul" aria-label="Adaugă livrabilul">+</button></form></div>';
+}
+
+// Opțiunile de livrabile din catalog (valide azi), grupate pe tip, cu UM și preț; folosite la „Ofertă nouă” și pe card.
+function catalog_offer_options(): string
+{
+    $types = catalog_types();
+    $today = date('Y-m-d');
+    $byT   = [];
+    foreach (db()->query('SELECT * FROM catalog ORDER BY type, name COLLATE NOCASE')->fetchAll() as $c) {
+        if (catalog_status($c, $today) === 'valid') {
+            $byT[$c['type']][] = $c;
+        }
+    }
+    $out = '<option value="">Alege din catalog…</option>';
+    foreach ($types as $k => $label) {
+        if (empty($byT[$k])) {
+            continue;
+        }
+        $out .= '<optgroup label="' . h($label) . '">';
+        foreach ($byT[$k] as $c) {
+            $price = catalog_price($c);
+            $out .= '<option value="' . (int)$c['id'] . '" data-um="' . h($c['um']) . '" data-price="' . h(fmt_qty($price)) . '" data-name="' . h($c['name']) . '">'
+                . h($c['name']) . ' · ' . h(fmt_money($price)) . ' RON/' . h($c['um']) . '</option>';
+        }
+        $out .= '</optgroup>';
+    }
+    return $out;
 }
 
 function view_pipeline(string $csrf): string
@@ -876,6 +992,13 @@ function view_pipeline(string $csrf): string
           . '<p class="anaf" id="anafInfo" aria-live="polite"></p>'
           . '<input type="hidden" name="reg_com" id="f_reg_com"><input type="hidden" name="adresa" id="f_adresa"><input type="hidden" name="judet" id="f_judet">'
           . '<input type="hidden" name="caen" id="f_caen"><input type="hidden" name="telefon" id="f_telefon"><input type="hidden" name="tva" id="f_tva" value="0"><input type="hidden" name="inactiv" id="f_inactiv" value="0">'
+          . '<fieldset class="mats-pick items-pick"><legend>Livrabile ofertate (din catalog)</legend>'
+          . '<div class="iadd top"><select id="itemPick" aria-label="Livrabil din catalog">' . catalog_offer_options() . '</select>'
+          . '<input id="itemQty" type="number" step="0.01" min="0.01" value="1" aria-label="Cantitate">'
+          . '<button type="button" class="icb sm-ic" id="itemAdd" title="Adaugă livrabilul pe ofertă" aria-label="Adaugă livrabilul">+</button></div>'
+          . '<table class="itable" id="itemTable" hidden><thead><tr><th>Livrabil</th><th class="n">Cantitate</th><th>UM</th><th class="n">Preț unitar</th><th class="n">Valoare</th><th></th></tr></thead><tbody></tbody>'
+          . '<tfoot><tr><td colspan="4">Total fără TVA</td><td class="n" id="itemTotal">0</td><td></td></tr></tfoot></table>'
+          . '<p class="muted" id="itemEmpty">Niciun livrabil ales. Lista apare în email prin <code>{{livrabile}}</code>, iar totalul prin <code>{{valoare}}</code>.</p></fieldset>'
           . '<fieldset class="mats-pick"><legend>Materiale trimise</legend>' . ($matChecks ?: '<p class="muted">Nu există materiale active.</p>') . '</fieldset>'
           . '<div class="chks"><label><input type="checkbox" name="require_otp" value="1" checked> Cod de acces pe email</label>'
           . '<label><input type="checkbox" name="send" value="1" checked> Trimite acum emailul</label></div>'
@@ -889,6 +1012,10 @@ function view_pipeline(string $csrf): string
         : '<p class="muted">Creează mai întâi un șablon de email în secțiunea „Șabloane email”.</p>';
 
     // Tabelul ofertelor: aceeași listă ca în kanban, un rând per ofertă, cu acțiunile de pe card.
+    $itemsBy = [];
+    foreach (db()->query('SELECT deal_id, name, um, qty FROM deal_items ORDER BY ord, id')->fetchAll() as $it) {
+        $itemsBy[(int)$it['deal_id']][] = $it;
+    }
     $trs = '';
     foreach ($deals as $d) {
         $id   = (int)$d['id'];
@@ -907,6 +1034,8 @@ function view_pipeline(string $csrf): string
             . '<td><form method="post" class="trow">' . $hid . '<input type="hidden" name="action" value="stage"><select name="stage" aria-label="Etapă" onchange="this.form.submit()">' . $opts . '</select></form></td>'
             . '<td class="n">' . $read . '/' . count($ls) . '</td>'
             . '<td class="n">' . $sal . '</td><td class="n">' . ($sal ? ron($sal * ONORARIU_AN1_PER_SALARIAT) : '—') . '</td>'
+            . '<td class="n" title="' . h(implode("\n", array_map(fn($it) => fmt_qty((float)$it['qty']) . ' ' . $it['um'] . ' × ' . $it['name'], $itemsBy[$id] ?? []))) . '">'
+            . (isset($itemsBy[$id]) ? count($itemsBy[$id]) . ' · ' . h(fmt_money((float)$d['value'])) : '—') . '</td>'
             . '<td>' . h(date('d.m.Y', (int)$d['created_at'])) . '</td>'
             . '<td>' . ($d['first_open'] ? h(date('d.m.Y', (int)$d['first_open'])) : '—') . '</td>'
             . '<td><span class="lk l-' . $st . '">' . $st . '</span><br><small class="muted">până la ' . h(date('d.m.Y', (int)$d['expires_at'])) . '</small></td>'
@@ -916,9 +1045,9 @@ function view_pipeline(string $csrf): string
             . '<form method="post" onsubmit="return confirm(\'Ștergi definitiv oferta pentru ' . h(addslashes($d['company'] ?: $d['email'])) . '? Linkurile trimise nu vor mai funcționa.\')">'
             . $hid . '<input type="hidden" name="action" value="deal_delete"><button class="lnk bad" type="submit">Șterge</button></form></td></tr>';
     }
-    $table = '<div class="rtw dtw"><table class="rt dt"><thead><tr><th>Companie</th><th>Persoană / email</th><th>Etapă</th><th class="n">Citite</th><th class="n">Salariați</th><th class="n">Onorariu an 1</th>'
+    $table = '<div class="rtw dtw"><table class="rt dt"><thead><tr><th>Companie</th><th>Persoană / email</th><th>Etapă</th><th class="n">Citite</th><th class="n">Salariați</th><th class="n">Onorariu an 1</th><th class="n">Livrabile · RON</th>'
         . '<th>Creată</th><th>Deschisă</th><th>Linkuri</th><th>Notă</th><th>Acțiuni</th></tr></thead><tbody>'
-        . ($trs ?: '<tr><td colspan="11" class="empty">Nicio ofertă.</td></tr>') . '</tbody></table></div>';
+        . ($trs ?: '<tr><td colspan="12" class="empty">Nicio ofertă.</td></tr>') . '</tbody></table></div>';
 
     return '<section class="kpis" aria-label="Indicatori">'
         . '<div class="kpi"><span>Oferte în lucru</span><b>' . $active . '</b><small>din ' . $total . ' trimise</small></div>'
@@ -945,6 +1074,15 @@ function view_pipeline(string $csrf): string
 // ===========================================================================
 // SECȚIUNEA ȘABLOANE EMAIL
 // ===========================================================================
+// Livrabile de exemplu pentru previzualizarea și testul șablonului (variabila {{livrabile}}).
+function sample_items(): array
+{
+    return [
+        ['name' => 'Implementare e2e OPS Salarizare', 'um' => 'salariat', 'qty' => 10.0, 'price' => 1037.0, 'details' => ''],
+        ['name' => 'Licență e2e OPS', 'um' => 'salariat/luna', 'qty' => 10.0, 'price' => 51.0, 'details' => ''],
+    ];
+}
+
 function view_templates(): string
 {
     $templates = db()->query('SELECT t.*, (SELECT COUNT(*) FROM deals d WHERE d.template_id = t.id) AS used FROM templates t ORDER BY t.name')->fetchAll();
@@ -988,7 +1126,7 @@ function view_templates(): string
     ksort($previewM);
     $sample = ['company' => 'EXEMPLU CONSTRUCT SRL', 'recipient' => 'Ion Popescu', 'email' => 'ion.popescu@exemplu.ro',
                'angajati' => 10, 'expires_at' => time() + 30 * 86400];
-    [$pSubj, $pHtml] = render_email((string)$tpl['subject'], (string)$tpl['body'], $sample, array_values($previewM));
+    [$pSubj, $pHtml] = render_email((string)$tpl['subject'], (string)$tpl['body'], $sample, array_values($previewM), sample_items());
     $preview = '<!doctype html><meta charset="utf-8"><body style="margin:0;padding:18px;background:#fff">'
         . '<div style="font:13px Arial;color:#5b6672;border-bottom:1px solid #ddd;padding-bottom:8px;margin-bottom:14px">'
         . '<b>Către:</b> Ion Popescu &lt;ion.popescu@exemplu.ro&gt;<br><b>Subiect:</b> ' . h($pSubj) . '</div>' . $pHtml . '</body>';
@@ -1006,8 +1144,8 @@ function view_templates(): string
         . '<div><label for="subject">Subiect email</label><input id="subject" name="subject" value="' . h($tpl['subject']) . '" required></div></div>'
         . '<label for="body">Textul emailului</label><textarea id="body" name="body" rows="24" spellcheck="true">' . h($tpl['body']) . '</textarea>'
         . '<div class="help"><b>Format:</b> rând gol = paragraf nou · rânduri consecutive = listă compactă · <code>✓ </code> la început = bifă colorată · <code>**text**</code> = bold.<br>'
-        . '<b>Variabile:</b> <code>{{salut}}</code> <code>{{nume}}</code> <code>{{companie}}</code> <code>{{email}}</code> <code>{{salariati}}</code> <code>{{economie_an}}</code> <code>{{expira}}</code> · '
-        . '<code>{{materiale}}</code> pe rând separat = butoanele cu linkurile personale.</div>'
+        . '<b>Variabile:</b> <code>{{salut}}</code> <code>{{nume}}</code> <code>{{companie}}</code> <code>{{email}}</code> <code>{{salariati}}</code> <code>{{economie_an}}</code> <code>{{expira}}</code> <code>{{valoare}}</code> · '
+        . '<code>{{materiale}}</code> pe rând separat = butoanele cu linkurile personale · <code>{{livrabile}}</code> pe rând separat = tabelul livrabilelor ofertate, cu total.</div>'
         . '<fieldset class="mats-pick"><legend>Materiale trimise cu acest șablon (bifă + ordine)</legend>' . ($matRows ?: '<p class="muted">Încarcă materiale în secțiunea „Materiale”.</p>') . '</fieldset>'
         . '<button type="submit" class="pri">Salvează șablonul</button></form></section>'
         . '<section class="panel prev"><h2>Previzualizare</h2><p class="muted">Cu date de exemplu, după ultima salvare.</p>'
@@ -1088,7 +1226,8 @@ function catalog_composition(array $pk, array $comps, array $all, string $today)
         $rows .= '<form method="post" class="ci">' . $hid . '<input type="hidden" name="item_id" value="' . (int)$c['id'] . '">'
             . '<span class="kind kt-' . h($c['type']) . '">' . h($types[$c['type']] ?? $c['type']) . '</span>'
             . '<div class="mt"><b>' . h($c['name']) . '</b><small><span class="lk l-' . $st . '">' . $labels[$st] . '</span>'
-            . ($c['valid_to'] !== '' ? ' · până la ' . h(date('d.m.Y', strtotime((string)$c['valid_to']))) : '') . '</small></div>'
+            . ($c['valid_to'] !== '' ? ' · până la ' . h(date('d.m.Y', strtotime((string)$c['valid_to']))) : '')
+            . ' · ' . h(fmt_money((float)$c['price'])) . ' RON/' . h($c['um']) . ' → ' . h(fmt_money((float)$c['qty'] * (float)$c['price'])) . ' RON</small></div>'
             . '<input name="qty" type="number" step="0.01" min="0.01" value="' . h(fmt_qty((float)$c['qty'])) . '" aria-label="Cantitate">'
             . '<span class="um">' . h($c['um']) . '</span>'
             . '<button type="submit" class="sm" name="action" value="cat_item_qty">Salvează</button>'
@@ -1117,7 +1256,7 @@ function catalog_composition(array $pk, array $comps, array $all, string $today)
         : '<p class="muted">Nu mai există în catalog articole de tip ' . h($allowed) . ' care să poată fi adăugate.</p>';
 
     return '<details class="comp" id="comp' . $pid . '"><summary>Compoziție: <b>' . count($comps) . '</b> ' . (count($comps) === 1 ? 'componentă' : 'componente')
-        . ' <span class="muted">(' . h($allowed) . ')</span></summary>'
+        . ' <span class="muted">(' . h($allowed) . ') · preț ' . h(fmt_money(catalog_price($pk))) . ' RON' . ((float)$pk['price'] <= 0 ? ', din compoziție' : ', propriu') . '</span></summary>'
         . '<div class="complist">' . ($rows ?: '<p class="muted">Pachetul nu are încă nicio componentă.</p>') . '</div>' . $add . '</details>';
 }
 
@@ -1184,10 +1323,13 @@ function view_catalog(): string
             . '<select name="type" aria-label="Tip">' . catalog_type_options((string)$c['type']) . '</select>'
             . '<div class="mt"><input name="name" value="' . h($c['name']) . '" aria-label="Denumire" maxlength="200" required>'
             . '<small><span class="lk l-' . $st . '">' . $labels[$st] . '</span> · ' . h($fmtD((string)$c['valid_from'])) . ' → ' . h($fmtD((string)$c['valid_to']))
-            . h($extra) . ' · actualizat ' . h(fmt_time((int)$c['updated_at'])) . '</small></div>'
+            . h($extra) . ' · ' . h(fmt_money(catalog_price($c))) . ' RON/' . h($c['um']) . ($isPk && (float)$c['price'] <= 0 ? ' (din compoziție)' : '')
+            . ' · actualizat ' . h(fmt_time((int)$c['updated_at'])) . '</small></div>'
             . um_select((string)$c['um'])
             . '<input name="valid_from" type="date" value="' . h($c['valid_from']) . '" aria-label="Valid de la">'
             . '<input name="valid_to" type="date" value="' . h($c['valid_to']) . '" aria-label="Valid până la">'
+            . '<input name="price" value="' . h($c['price'] > 0 ? fmt_qty((float)$c['price']) : '') . '" inputmode="decimal" aria-label="Preț unitar, RON fără TVA"'
+            . ($isPk && (float)$c['price'] <= 0 ? ' placeholder="' . h(fmt_qty(catalog_price($c))) . '" title="Preț calculat din compoziție; scrie un preț ca să îl înlocuiești"' : ' placeholder="0"') . '>'
             . '<button type="submit" class="sm" name="action" value="cat_save">Salvează</button>'
             . '<button type="submit" class="sm" name="action" value="cat_copy" title="Creează o copie">Copiază</button>'
             . '<button type="submit" class="sm bad" name="action" value="cat_delete">Șterge</button>'
@@ -1209,6 +1351,7 @@ function view_catalog(): string
         . '</div>'
         . '<div><label for="cfrom">Valid de la</label><input id="cfrom" name="valid_from" type="date" value="' . $today . '"></div>'
         . '<div><label for="cto">Valid până la</label><input id="cto" name="valid_to" type="date"></div>'
+        . '<div><label for="cprice">Preț unitar (RON, fără TVA)</label><input id="cprice" name="price" inputmode="decimal" placeholder="0"></div>'
         . '<button type="submit" class="pri">Adaugă în catalog</button></form>'
         . '<p class="muted">Tipuri: serviciu, licență, serviciu digital, produs, pachet servicii, pachet produse. Lasă „Valid până la” gol pentru valabilitate nelimitată.'
         . ' Pachetele se compun din articole existente în catalog: pachetul de servicii din servicii, servicii digitale și licențe; pachetul de produse din produse și licențe.</p></section>'
@@ -1220,7 +1363,7 @@ function view_catalog(): string
         . '<div><label for="kType">Tip</label><select id="kType"><option value="">Toate tipurile</option>' . $typeOpts . '</select></div>'
         . '<div><label for="kSt">Valabilitate</label><select id="kSt"><option value="">Toate</option><option value="valid">Valide azi</option>'
         . '<option value="viitor">Din viitor</option><option value="expirat">Expirate</option></select></div></div>'
-        . '<div class="cathead"><span>Tip</span><span>Denumire</span><span>UM</span><span>Valid de la</span><span>Valid până la</span><span></span><span></span><span></span></div>'
+        . '<div class="cathead"><span>Tip</span><span>Denumire</span><span>UM</span><span>Valid de la</span><span>Valid până la</span><span>Preț (RON)</span><span></span><span></span><span></span></div>'
         . '<div class="matlist" id="kList">' . ($list ?: '<p class="muted">Catalogul este gol. Adaugă primul articol din formularul de mai sus.</p>') . '</div>'
         . '<p class="muted catempty" id="kEmpty" hidden>Niciun articol pentru filtrele alese.</p>'
         . '<p class="muted">Un articol expirat rămâne în catalog pentru istoric; ștergerea este definitivă. „Copiază” creează un articol nou cu aceleași date (la pachete, cu tot cu compoziție), util pentru o nouă perioadă de valabilitate.'
@@ -1280,6 +1423,8 @@ function view_report(): string
     $stages = stages();
     $rows   = db()->query("
         SELECT d.*, t.name AS template_name,
+               (SELECT GROUP_CONCAT(di.name, ' · ') FROM deal_items di WHERE di.deal_id = d.id) AS item_names,
+               (SELECT COUNT(*) FROM deal_items di WHERE di.deal_id = d.id) AS item_count,
                (SELECT COUNT(*) FROM links l WHERE l.deal_id = d.id) AS mat_sent,
                (SELECT COUNT(*) FROM links l WHERE l.deal_id = d.id AND l.opens > 0) AS mat_opened,
                (SELECT GROUP_CONCAT(m.title, ' · ') FROM links l JOIN materials m ON m.id = l.material_id WHERE l.deal_id = d.id) AS mat_titles
@@ -1319,6 +1464,9 @@ function view_report(): string
             'onorariu'  => $sal * ONORARIU_AN1_PER_SALARIAT,
             'licenta'   => $sal * LICENTA_AN_PER_SALARIAT,
             'economie'  => $sal * ECONOMIE_AN_PER_SALARIAT,
+            'livrabile' => (string)($r['item_names'] ?? ''),
+            'nr_liv'    => (int)$r['item_count'],
+            'valoare'   => round((float)$r['value'], 2),
             'link'      => $status,
             'expira'    => date('Y-m-d', (int)$r['expires_at']),
             'nota'      => (string)$r['nota'],
@@ -1407,6 +1555,9 @@ function report_js(): string
     { k: 'onorariu',   t: 'Onorariu an 1',        n: true, sum: true },
     { k: 'licenta',    t: 'Licență / an',         n: true, sum: true, off: true },
     { k: 'economie',   t: 'Economie client / an', n: true, sum: true },
+    { k: 'livrabile',  t: 'Livrabile ofertate',   off: true },
+    { k: 'nr_liv',     t: 'Nr. livrabile',        n: true, sum: true, off: true },
+    { k: 'valoare',    t: 'Valoare ofertată',     n: true, sum: true },
     { k: 'link',       t: 'Link',                 f: true, g: true },
     { k: 'expira',     t: 'Expiră',               off: true },
     { k: 'nota',       t: 'Notă',                 off: true }
@@ -1921,7 +2072,7 @@ function view_help(): string
         . '<ol class="steps">'
         . '<li><b>Materiale</b>: încarci oferta și materialele suport (PDF, HTML, DOCX, XLSX, PPTX, PNG, JPG, MP4).</li>'
         . '<li><b>Șabloane email</b>: scrii textul emailului, pui <code>{{materiale}}</code> pe un rând separat și bifezi materialele trimise cu șablonul, în ordine.</li>'
-        . '<li><b>Pipeline → Ofertă nouă</b>: CUI (date de la ANAF), persoana, emailul, salariații mobili, șablonul; materialele se bifează automat după șablon.</li>'
+        . '<li><b>Pipeline → Ofertă nouă</b>: CUI (date de la ANAF), persoana, emailul, salariații mobili, șablonul, <b>livrabilele din catalog</b> (articole sau pachete, cu cantitate; prețurile vin din catalog); materialele se bifează automat după șablon.</li>'
         . '<li>La trimitere, fiecare material primește un <b>link personal</b> care apare în email ca buton. Clientul deschide linkul cu un <b>cod de 6 cifre</b> primit pe emailul lui.</li>'
         . '<li>Cardul trece automat în <b>Deschisă</b> la prima deschidere; negocierea, acceptarea sau pierderea le setezi tu, din kanban sau din „Detalii”.</li>'
         . '</ol>'
@@ -1972,6 +2123,7 @@ function view_help(): string
         . '<ul><li><b>Indicatorii</b> de sus: oferte în lucru, rată de deschidere, conversie, pipeline și câștigat (onorariu an 1), economie generată clienților. Valorile pornesc de la „Salariați mobili”: ' . ron(ONORARIU_AN1_PER_SALARIAT) . ' RON onorariu an 1, ' . ron(LICENTA_AN_PER_SALARIAT) . ' RON licență din anul 2, ' . ron(ECONOMIE_AN_PER_SALARIAT) . ' RON economie client, per salariat.</li>'
         . '<li><b>Pâlnia</b> numără etapa maximă atinsă; o ofertă pierdută rămâne numărată la etapa la care a ajuns.</li>'
         . '<li><b>Ofertă nouă</b>: scrii CUI-ul și apeși „ANAF” (sau Enter): se completează denumirea, Reg. Com., adresa, județul, CAEN, telefonul, TVA și inactivitatea. Datele apar pe card și în Raportare.</li>'
+        . '<li><b>Livrabile ofertate</b>: alegi din catalog (doar articolele și pachetele valide azi) și cantitatea, cu „+”; lista arată UM, prețul unitar, valoarea pe linie și totalul fără TVA. Denumirea, UM și prețul se <b>copiază pe ofertă</b> la creare, deci modificările ulterioare din catalog nu schimbă ofertele trimise. Pe card, în Detalii, poți scoate sau adăuga livrabile și după trimitere (emailul deja trimis nu se schimbă; folosești „Retrimite emailul”). Valoarea ofertei apare pe card, în tabel și în Raportare („Valoare ofertată”).</li>'
         . '<li><b>Kanban</b>: tragi cardul între coloane sau alegi etapa din „Detalii”. „Trimisă” și „Deschisă” se setează automat. În „Detalii” ai nota internă, jurnalul evenimentelor, retrimiterea emailului cu linkuri noi, revocarea linkurilor și ștergerea ofertei (cu confirmare).</li></ul>'
 
         . '</section><section class="hsec" id="h-raportare"><h3>Raportare</h3>'
@@ -1983,11 +2135,12 @@ function view_help(): string
         . '<ul><li>Articole cu tip (serviciu, licență, serviciu digital, produs, pachet servicii, pachet produse), denumire, UM și perioadă de valabilitate; „Valid până la” gol = nelimitat.</li>'
         . '<li>Starea față de azi: valid, din viitor, expirat. Căutare și filtre pe tip și valabilitate.</li>'
         . '<li><b>Pachetele</b> se compun din articole existente: pachetul de servicii din servicii, servicii digitale și licențe; pachetul de produse din produse și licențe. În secțiunea „Compoziție” a pachetului adaugi componente cu cantitate.</li>'
-        . '<li>Un articol folosit într-un pachet nu poate fi șters și nu își poate schimba tipul într-unul neacceptat; mesajul de eroare spune ce trebuie scos mai întâi. „Copiază” pe un pachet copiază și compoziția.</li></ul>'
+        . '<li>Un articol folosit într-un pachet nu poate fi șters și nu își poate schimba tipul într-unul neacceptat; mesajul de eroare spune ce trebuie scos mai întâi. „Copiază” pe un pachet copiază și compoziția.</li>'
+        . '<li><b>Preț unitar</b> (RON fără TVA, pe UM): se completează pe articol. Un pachet fără preț propriu are prețul <b>calculat din compoziție</b> (cantitate × preț pe componentă); dacă scrii un preț pe pachet, acesta are prioritate. Prețul apare în lista de livrabile la „Ofertă nouă”.</li></ul>'
 
         . '</section><section class="hsec" id="h-sabloane"><h3>Șabloane email</h3>'
         . '<ul><li><b>Format text</b>: rând gol = paragraf nou; rânduri consecutive = listă compactă; <code>✓ </code> la începutul rândului = bifă colorată; <code>**text**</code> = bold.</li>'
-        . '<li><b>Variabile</b>: <code>{{salut}}</code> („Bună ziua, Nume,”), <code>{{nume}}</code>, <code>{{companie}}</code>, <code>{{email}}</code>, <code>{{salariati}}</code>, <code>{{economie_an}}</code> (salariați × ' . ron(ECONOMIE_AN_PER_SALARIAT) . ' RON), <code>{{expira}}</code> (data expirării linkurilor); <code>{{materiale}}</code> pe rând separat = butoanele cu linkurile personale. Variabilele merg și în subiect.</li>'
+        . '<li><b>Variabile</b>: <code>{{salut}}</code> („Bună ziua, Nume,”), <code>{{nume}}</code>, <code>{{companie}}</code>, <code>{{email}}</code>, <code>{{salariati}}</code>, <code>{{economie_an}}</code> (salariați × ' . ron(ECONOMIE_AN_PER_SALARIAT) . ' RON), <code>{{expira}}</code> (data expirării linkurilor), <code>{{valoare}}</code> (totalul livrabilelor, RON fără TVA); <code>{{materiale}}</code> pe rând separat = butoanele cu linkurile personale; <code>{{livrabile}}</code> pe rând separat = tabelul livrabilelor (denumire, cantitate, UM, preț unitar, valoare, total). Fără livrabile pe ofertă, blocul nu apare. Variabilele merg și în subiect.</li>'
         . '<li>Șabloanele se pot copia și șterge; ofertele deja trimise păstrează emailul și linkurile lor.</li></ul>'
 
         . '</section><section class="hsec" id="h-mat"><h3>Materiale</h3>'
@@ -2193,6 +2346,19 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 ul.mats{list-style:none;padding:0;margin:6px 0 0;display:grid;gap:2px}
 ul.mats li{display:flex;justify-content:space-between;gap:6px;font-size:12px;color:var(--muted)}
 ul.mats li em{font:11px var(--mono);font-style:normal}ul.mats li.seen{color:var(--ink)}ul.mats li.seen em{color:var(--green)}
+/* Livrabilele ofertei: pe card, în Detalii și în formularul de ofertă nouă */
+ul.items{list-style:none;padding:0;margin:6px 0 0;display:grid;gap:2px;border-top:1px dashed var(--line);padding-top:6px}
+ul.items li{display:flex;justify-content:space-between;gap:6px;font-size:12px;color:var(--ink)}ul.items li em{font:11px var(--mono);font-style:normal;white-space:nowrap}
+ul.items.edit{border-top:0;padding-top:0;margin-top:2px}ul.items.edit .lnk{margin:0;font-size:14px;line-height:1}
+.ditems{margin-top:8px}.ditems .meta{margin:0 0 2px}
+.iadd{display:grid;grid-template-columns:minmax(0,1fr) 72px 36px;gap:6px;align-items:center;margin-top:6px}
+.iadd select,.iadd input{height:36px;box-sizing:border-box;font-size:13px}.iadd select{padding:0 26px 0 8px}
+.icb.sm-ic{font:600 18px/1 var(--sans)}
+.items-pick{display:block}.iadd.top{margin:0 0 8px}
+.itable{width:100%;border-collapse:collapse;font-size:13px}.itable th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:4px 6px;border-bottom:1px solid var(--line)}
+.itable td{padding:5px 6px;border-bottom:1px dotted var(--line);vertical-align:middle}.itable .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.itable input{height:30px;width:80px;padding:0 6px;font-size:13px;box-sizing:border-box}.itable tfoot td{font-weight:600;border-top:2px solid var(--navy);border-bottom:0}
+.itable .lnk{margin:0;font-size:16px;line-height:1}.itable[hidden]{display:none}
 .val{display:flex;justify-content:space-between;font-size:12px;margin-top:6px;padding-top:6px;border-top:1px dashed var(--line)}
 .val b{font-variant-numeric:tabular-nums}
 .flags{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
@@ -2249,12 +2415,12 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 @media (max-width:1100px){.usr{grid-template-columns:1fr 1fr}}
 .un{font:600 13px var(--mono);overflow-wrap:anywhere}.un .tag{font-size:10px;vertical-align:middle}
 /* Catalog produse și servicii */
-.catf{grid-template-columns:170px minmax(240px,3fr) 120px 160px 160px auto}
+.catf{grid-template-columns:170px minmax(240px,3fr) 120px 150px 150px 130px auto}
 @media (max-width:1100px){.catf{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}.catf .wide{grid-column:1/-1}}
 .catsum{border:0;padding:0 0 8px;margin:0}
 .cattools{grid-template-columns:minmax(220px,2fr) repeat(2,minmax(160px,1fr))}
 @media (max-width:1200px){.cattools{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}}
-.cathead,.cat{display:grid;grid-template-columns:170px minmax(220px,3fr) 110px 150px 150px auto auto auto;gap:10px;align-items:start}
+.cathead,.cat{display:grid;grid-template-columns:170px minmax(220px,3fr) 110px 150px 150px 110px auto auto auto;gap:10px;align-items:start}
 /* Rândurile din catalog și componentele pachetelor: o linie de controale la 36px, textul secundar dedesubt */
 .cat>select,.cat>input,.cat .mt input,.ci>input,.ci>select,.ci .mt input,.umw select,.umw input{height:36px;box-sizing:border-box}
 .umw{display:grid;gap:4px}.umw input[hidden]{display:none}
@@ -2438,6 +2604,39 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
     sync();
   }
 
+  // Ofertă nouă: lista livrabilelor din catalog (adăugare, cantitate, scoatere, total), trimisă ca items_id[] / items_qty[]
+  var pick = document.getElementById('itemPick'), itbl = document.getElementById('itemTable');
+  if (pick && itbl) {
+    var fmtM = new Intl.NumberFormat('ro-RO', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    var lines = [];
+    var drawItems = function () {
+      var tb = itbl.tBodies[0], total = 0;
+      tb.innerHTML = '';
+      lines.forEach(function (l, i) {
+        var v = l.qty * l.price; total += v;
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td><input type="hidden" name="items_id[]" value="' + l.id + '">' + l.name.replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }) + '</td>'
+          + '<td class="n"><input type="number" name="items_qty[]" step="0.01" min="0.01" value="' + l.qty + '" data-i="' + i + '" aria-label="Cantitate"></td>'
+          + '<td>' + l.um + '</td><td class="n">' + fmtM.format(l.price) + '</td><td class="n">' + fmtM.format(v) + '</td>'
+          + '<td><button type="button" class="lnk bad" data-del="' + i + '" title="Scoate livrabilul">×</button></td>';
+        tb.appendChild(tr);
+      });
+      document.getElementById('itemTotal').textContent = fmtM.format(total) + ' RON';
+      itbl.hidden = !lines.length; document.getElementById('itemEmpty').hidden = !!lines.length;
+    };
+    document.getElementById('itemAdd').addEventListener('click', function () {
+      var o = pick.options[pick.selectedIndex], qty = parseFloat(document.getElementById('itemQty').value);
+      if (!o || !o.value) { pick.focus(); return; }
+      if (!(qty > 0)) { qty = 1; }
+      var ex = lines.filter(function (l) { return l.id === o.value; })[0];
+      if (ex) { ex.qty = Math.round((ex.qty + qty) * 100) / 100; } else { lines.push({ id: o.value, name: o.dataset.name, um: o.dataset.um, price: parseFloat(o.dataset.price) || 0, qty: qty }); }
+      pick.value = ''; document.getElementById('itemQty').value = '1';
+      drawItems();
+    });
+    itbl.addEventListener('click', function (e) { var b = e.target.closest('[data-del]'); if (b) { lines.splice(+b.dataset.del, 1); drawItems(); } });
+    itbl.addEventListener('change', function (e) { var q = e.target.closest('input[data-i]'); if (q) { var v = parseFloat(q.value); lines[+q.dataset.i].qty = v > 0 ? v : 1; drawItems(); } });
+  }
+
   // Ofertă nouă: previzualizarea emailului cu datele completate și materialele bifate, înainte de trimitere
   var form = document.getElementById('newDeal'), dlg = document.getElementById('prevDlg');
   if (form && dlg && typeof dlg.showModal === 'function') {
@@ -2450,7 +2649,8 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
         .then(function (r) { return r.json(); })
         .then(function (j) {
           if (!j.ok) { alert(j.error); return; }
-          meta.textContent = 'Către: ' + j.to + ' · Subiect: ' + j.subject + ' · ' + j.materials + (j.materials === 1 ? ' material' : ' materiale') + ' · prin ' + j.transport
+          meta.textContent = 'Către: ' + j.to + ' · Subiect: ' + j.subject + ' · ' + j.materials + (j.materials === 1 ? ' material' : ' materiale')
+            + ' · ' + j.items + (j.items === 1 ? ' livrabil' : ' livrabile') + (j.items ? ' (' + j.value + ' RON)' : '') + ' · prin ' + j.transport
             + (j.materials ? '' : ' · ATENȚIE: niciun material bifat');
           frame.srcdoc = '<!doctype html><meta charset="utf-8"><body style="margin:0;padding:18px;background:#fff">' + j.html + '</body>';
           dlg.showModal();
