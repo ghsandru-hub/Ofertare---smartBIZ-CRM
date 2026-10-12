@@ -120,7 +120,7 @@ Gestiunea catalogului de produse și servicii, tabela `catalog` din `ofertare.db
 | --- | --- |
 | Tip | Serviciu, Licență, Serviciu digital, Produs, Pachet servicii sau Pachet produse (pachetele au o compoziție, vezi mai jos) |
 | Denumire | numele articolului (max. 200 de caractere) |
-| UM | unitatea de măsură, din listă (buc, oră, zi, lună, an, salariat, salariat/lună, utilizator, pachet) sau „Altă unitate…”, cu text liber |
+| UM | unitatea de măsură, din listă (srv, buc, oră, zi, lună, an, salariat, salariat/lună, utilizator, pachet) sau „Altă unitate…”, cu text liber; la articol nou se propune după tip: srv la servicii, buc la produs și licență, pachet la pachete |
 | Valid de la / Valid până la | perioada de valabilitate; „până la” gol = nelimitat |
 | Preț unitar | RON fără TVA, pe UM; un pachet fără preț propriu are prețul calculat din compoziție (cantitate × preț pe componentă), iar un preț scris pe pachet are prioritate |
 
