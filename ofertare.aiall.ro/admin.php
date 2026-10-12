@@ -1358,8 +1358,8 @@ function view_catalog(): string
         . '<section class="panel"><div class="ph"><h2>Catalog produse și servicii</h2>'
         . '<div class="rsum catsum"><span><b>' . count($rows) . '</b> articole</span><span><b class="ok">' . $count['valid'] . '</b> valide</span>'
         . '<span><b>' . $count['viitor'] . '</b> din viitor</span><span><b class="err">' . $count['expirat'] . '</b> expirate</span></div></div>'
-        . '<div class="rtools cattools">'
-        . '<div class="rsearch"><label for="kQ">Caută</label><input id="kQ" type="search" placeholder="denumire, UM, tip, componentă…"></div>'
+        . '<div class="ktools">'
+        . '<div><label for="kQ">Caută</label><input id="kQ" type="search" placeholder="denumire, UM, tip, componentă…"></div>'
         . '<div><label for="kType">Tip</label><select id="kType"><option value="">Toate tipurile</option>' . $typeOpts . '</select></div>'
         . '<div><label for="kSt">Valabilitate</label><select id="kSt"><option value="">Toate</option><option value="valid">Valide azi</option>'
         . '<option value="viitor">Din viitor</option><option value="expirat">Expirate</option></select></div></div>'
@@ -2420,8 +2420,9 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .catf{grid-template-columns:170px minmax(240px,3fr) 120px 150px 150px 130px auto}
 @media (max-width:1100px){.catf{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}.catf .wide{grid-column:1/-1}}
 .catsum{border:0;padding:0 0 8px;margin:0}
-.cattools{grid-template-columns:minmax(220px,2fr) repeat(2,minmax(160px,1fr))}
-@media (max-width:1200px){.cattools{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}}
+.ktools{display:grid;grid-template-columns:minmax(220px,2fr) repeat(2,minmax(160px,1fr));gap:10px;align-items:end;margin-bottom:10px}
+.ktools input,.ktools select{height:36px;box-sizing:border-box}
+@media (max-width:900px){.ktools{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}}
 .cathead,.cat{display:grid;grid-template-columns:170px minmax(220px,3fr) 110px 150px 150px 110px auto auto auto;gap:10px;align-items:start}
 /* Rândurile din catalog și componentele pachetelor: o linie de controale la 36px, textul secundar dedesubt */
 .cat>select,.cat>input,.cat .mt input,.ci>input,.ci>select,.ci .mt input,.umw select,.umw input{height:36px;box-sizing:border-box}
