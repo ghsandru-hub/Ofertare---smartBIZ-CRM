@@ -1404,8 +1404,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 var(--sans)}
 .top .sp{flex:1}
 .top .me{font:500 12px var(--mono);opacity:.85;overflow-wrap:anywhere}
 .foot{border-top:1px solid var(--line);margin-top:8px}
-.foot .in{max-width:1440px;margin:0 auto;padding:14px 20px;display:flex;justify-content:space-between;gap:6px 18px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
-.foot .sbc-title{font-size:13px}.foot .sbc-smart{color:var(--ink)}.foot .sbc-biz{color:var(--teal)}.foot .sbc-copilot{color:var(--amber)}
+.foot .in{max-width:1440px;margin:0 auto;padding:14px 20px;display:flex;justify-content:flex-end;font-size:12px;color:var(--muted)}
 .top button{background:transparent;border:1px solid rgba(255,255,255,.5);color:#fff;border-radius:4px;padding:4px 12px;font:500 13px var(--sans);cursor:pointer}
 .top nav{flex-basis:100%;display:flex;gap:4px;margin-top:8px;overflow-x:auto}
 .top nav a{color:#fff;opacity:.75;text-decoration:none;padding:8px 14px;border-radius:4px 4px 0 0;font-weight:500;white-space:nowrap}
@@ -1585,7 +1584,6 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 <?= $content ?>
 </main>
 <footer class="foot"><div class="in">
-  <span><b class="sbc-title"><span class="sbc-smart">smart</span><span class="sbc-biz">BIZ</span> <span class="sbc-copilot">Copilot</span></b> · e2e OPS Ofertare</span>
   <span>AiALL S.R.L. · ofertare.aiall.ro · <?= date('Y') ?></span>
 </div></footer>
 <script>
