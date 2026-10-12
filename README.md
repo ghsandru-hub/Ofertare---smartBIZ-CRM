@@ -45,8 +45,8 @@ Cele două foldere trebuie să fie frați în directorul contului.
    - `admin_pass_hash`: `php -r "echo password_hash('parola-ta', PASSWORD_DEFAULT), PHP_EOL;"` — contul inițial;
      la prima autentificare este copiat în tabela `users`, iar de atunci parola se schimbă din cockpit → Utilizatori
    - `mail_from`: o căsuță existentă pe aiall.ro (ex. `oferte@aiall.ro`), ca emailurile să treacă de SPF/DKIM
-   - `smtp_host`, `smtp_port`, `smtp_secure`, `smtp_user`, `smtp_pass`: trimitere prin SMTP autentificat, recomandată
-     (vezi „Emailuri”); cu `smtp_host` gol, emailurile pleacă prin `mail()`
+   - `graph_tenant_id`, `graph_client_id`, `graph_client_secret`: trimitere prin Microsoft 365 (Graph API), recomandată,
+     emailul aiall.ro fiind în M365 (vezi „Emailuri”); alternativ `smtp_*`; cu ambele goale, emailurile pleacă prin `mail()`
    - `notify_email`: adresa ta, pentru notificarea la prima deschidere
 5. **Drepturi.** `chmod 700 ofertare_private ofertare_private/data` și `chmod 600 ofertare_private/config.php`.
 6. **Test.** Deschizi `https://ofertare.aiall.ro/admin.php`, te autentifici și creezi un link către propria adresă.
@@ -201,17 +201,28 @@ nu ce face destinatarul cu fișierul.
 
 ## Emailuri
 
-Două moduri de trimitere, alese din `config.php`:
+Trei moduri de trimitere, alese din `config.php`, în această ordine de prioritate:
 
 | Mod | Când | Ce înseamnă „trimis” |
 | --- | --- | --- |
-| `mail()` din PHP | `smtp_host` gol (implicit) | serverul local de email a pus mesajul în coadă; dacă îl respinge ulterior (expeditor nepermis, SPF/DKIM, limite), cockpitul a afișat deja „trimis” |
-| SMTP autentificat | `smtp_host` completat | serverul de email a acceptat mesajul; orice refuz apare în cockpit cu răspunsul exact al serverului (ex. `535 authentication failed`) |
+| Microsoft 365 prin Graph API | `graph_tenant_id`, `graph_client_id`, `graph_client_secret` completate | Microsoft a acceptat mesajul; emailul pleacă din căsuța `mail_from` din M365, cu SPF/DKIM/DMARC ale domeniului; orice eroare apare cu mesajul Graph |
+| SMTP autentificat | `smtp_host` completat | serverul de email a acceptat mesajul; un refuz apare cu răspunsul lui exact (ex. `535 authentication failed`) |
+| `mail()` din PHP | nimic configurat | serverul local a pus mesajul în coadă; dacă îl respinge ulterior sau destinatarul îl refuză la SPF (domeniul are emailul în M365, nu pe serverul web), cockpitul a afișat deja „trimis” |
 
-Pe cPanel, varianta recomandată este SMTP prin căsuța din `mail_from`: `smtp_host` = serverul de email al contului
-(ex. `mail.aiall.ro` sau `localhost`), `smtp_port` 465 cu `smtp_secure` `ssl` (sau 587 cu `tls`, sau 25 pe `localhost`
-fără criptare), `smtp_user` = căsuța, `smtp_pass` = parola ei. Clientul SMTP este în `send_mail()` / `smtp_send()` din
-`ofertare_private/lib.php`, fără dependențe externe. Verifici livrarea cu „Email de test” din Șabloane email.
+**Microsoft 365 (recomandat).** Același mecanism ca în portalul ContaCheck: o aplicație în Entra ID (App registrations)
+cu permisiunea de aplicație Microsoft Graph `Mail.Send` și consimțământ de administrator; în `config.php` pui Tenant ID,
+Client ID și un Client secret, iar `mail_from` este o căsuță existentă în M365 (poate fi un shared mailbox). Trimiterea
+face `POST https://graph.microsoft.com/v1.0/users/{mail_from}/sendMail` cu un token de aplicație; `graph_save_to_sent`
+păstrează o copie în „Sent Items”. Serverul are nevoie de acces HTTPS către `login.microsoftonline.com` și
+`graph.microsoft.com` (curl sau `allow_url_fopen`). Dacă vrei ca aplicația să poată trimite doar din anumite căsuțe,
+limitezi în Exchange Online cu o *application access policy*.
+
+**SMTP.** Pentru M365: `smtp.office365.com`, port 587, `smtp_secure` `tls`, căsuța și parola ei, cu „Authenticated SMTP”
+activ pe căsuță (Microsoft dezactivează treptat autentificarea de bază). Pentru căsuțe pe cPanel: serverul de email al
+contului, 465 cu `ssl`. Clientul SMTP este în `smtp_send()` din `ofertare_private/lib.php`, fără dependențe externe.
+
+Opțional, pentru toate modurile: `mail_reply_to` (unde ajung răspunsurile; gol = `mail_from`) și `mail_bcc`
+(copie ascunsă a fiecărui email trimis). Verifici livrarea cu „Email de test” din Șabloane email.
 
 ## Actualizări ulterioare
 
