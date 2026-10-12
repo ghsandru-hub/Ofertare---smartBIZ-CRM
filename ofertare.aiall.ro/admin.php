@@ -1318,6 +1318,7 @@ function view_report(): string
         'trash'  => $svg('<path d="M3 4h10M6 4V2.5h4V4M4.5 4l.7 9.5h5.6l.7-9.5M6.7 7v4M9.3 7v4"/>'),
         'cols'   => $svg('<rect x="2" y="3" width="12" height="10" rx="1.2"/><path d="M6.5 3v10M10.5 3v10"/>'),
         'more'   => $svg('<circle cx="3.5" cy="8" r="1.1" fill="currentColor"/><circle cx="8" cy="8" r="1.1" fill="currentColor"/><circle cx="12.5" cy="8" r="1.1" fill="currentColor"/>'),
+        'reset'  => $svg('<path d="M3 8a5 5 0 1 0 1.5-3.6"/><path d="M3 2.5V5h2.5"/>'),
     ];
 
     return '<section class="panel rep">'
@@ -1329,7 +1330,7 @@ function view_report(): string
         . '<div><label for="rCfgName">Denumire</label><input id="rCfgName" maxlength="40" placeholder="ex. Oferte deschise pe județe"><button type="button" class="sm" id="rCfgSave">Salvează</button></div></details>'
         . '<button type="button" class="ico" id="rCfgDel" title="Șterge configurația" aria-label="Șterge configurația" disabled>' . $ic['trash'] . '</button>'
         . '<details class="rmenu rcols"><summary class="ico" title="Setări coloane" aria-label="Setări coloane">' . $ic['cols'] . '</summary><div id="rCols"></div></details>'
-        . '<button type="button" class="sm" id="rReset">Resetează vederea</button>'
+        . '<button type="button" class="ico" id="rReset" title="Resetează vederea (filtre, sortare, grupare, coloane)" aria-label="Resetează vederea">' . $ic['reset'] . '</button>'
         . '<details class="rmenu rexp"><summary class="ico" title="Export" aria-label="Export">' . $ic['more'] . '</summary>'
         . '<div><button type="button" id="rXlsx">Export Excel</button><button type="button" id="rCsv">Export CSV</button><button type="button" id="rPdf">Export PDF</button></div></details>'
         . '</div></div>'
@@ -2268,14 +2269,17 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .hp pre{font:12px/1.6 var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:8px 12px;margin:6px 0 8px;white-space:pre-wrap}
 .hp a{color:var(--teal)}
 /* Raportare — tabel smartBIZ */
-.rep .ph{align-items:center;gap:10px}.rep .ph h2{display:flex;align-items:center;gap:8px}
-.ico{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:4px;width:30px;height:30px;display:inline-grid;place-items:center;padding:0;cursor:pointer;flex:none}
-.ico:hover,.ico.on{color:var(--teal);border-color:var(--teal)}.ico:disabled{opacity:.4;cursor:default}.ico svg{width:15px;height:15px}
+/* Bara Raportare: o singură linie de controale, toate de 36px (regula de UI nr. 1 și 2) */
+.rep .ph{align-items:center;gap:10px}.rep .ph h2{display:flex;align-items:center;gap:8px;margin:0;height:36px}
+.ico{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:4px;width:36px;height:36px;display:inline-grid;place-items:center;padding:0;cursor:pointer;flex:none;box-sizing:border-box}
+.ico:hover,.ico.on{color:var(--teal);border-color:var(--teal)}.ico:disabled{opacity:.4;cursor:default}.ico svg{width:16px;height:16px}
+.rsearch input,.rep .acts select{height:36px;box-sizing:border-box}.rsearch input{margin-top:0}
+.rmenu{display:inline-flex;align-items:center;height:36px;line-height:0;margin:0}.rmenu summary.ico{display:inline-grid}
 .rsearch{position:relative;flex:1;min-width:200px;max-width:380px}.rsearch svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--muted);pointer-events:none}
 .rsearch input{padding-left:30px}
-.rep .acts{align-items:center;flex-wrap:wrap}.rep .acts select{width:auto;max-width:220px;padding:5px 28px 5px 8px;font-size:12px}.sm2{margin:0;padding:6px 12px}
+.rep .acts{align-items:center;flex-wrap:wrap}.rep .acts select{width:auto;max-width:220px;padding:0 28px 0 10px;font-size:13px}.sm2{margin:0;padding:6px 12px}
 .rmenu{position:relative}.rmenu summary{list-style:none}.rmenu summary::-webkit-details-marker{display:none}
-.rmenu>div{position:absolute;right:0;top:34px;z-index:6;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:8px 10px;display:grid;gap:5px;min-width:220px;box-shadow:0 6px 18px rgba(0,0,0,.12)}
+.rmenu>div{position:absolute;right:0;top:40px;z-index:6;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:8px 10px;display:grid;gap:5px;min-width:220px;box-shadow:0 6px 18px rgba(0,0,0,.12)}
 .rcols>div{max-height:60vh;overflow:auto}.rcols label{display:flex;gap:6px;align-items:center;color:var(--ink);font-size:13px;margin:0}.rcols input{width:auto}.fhdr{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 .rexp>div button{background:none;border:0;text-align:left;padding:6px 8px;border-radius:4px;color:var(--ink);font:500 13px var(--sans);cursor:pointer}.rexp>div button:hover{background:var(--soft)}
 .rcfg>div{min-width:260px}.rcfg label{margin:0}.rcfg .sm{justify-self:start}
@@ -2295,9 +2299,12 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .fl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fc{font:12px var(--mono);color:var(--muted)}.fempty{font-size:12px;color:var(--muted)}
 .fper{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.fper input{font-size:12px;padding:5px 8px}
 .rmain{display:grid;gap:12px;min-width:0}
-.rgroup{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px}.rgroup select{width:auto;padding:5px 28px 5px 8px;font-size:12px}
-.gchip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--teal);color:var(--teal);border-radius:999px;padding:2px 6px 2px 4px;font-size:12px}
-.gi{background:var(--teal);color:var(--surface);border-radius:999px;width:16px;height:16px;display:inline-grid;place-items:center;font:600 10px var(--mono)}
+.rgroup{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;min-height:36px}.rgroup>.muted{line-height:36px}
+.rgroup select{width:auto;height:36px;box-sizing:border-box;padding:0 28px 0 10px;font-size:13px}
+.rgroup .act{height:36px}.rgroup .lnk{margin:0;height:36px;display:inline-flex;align-items:center;font-size:13px}
+#rGroupChips{display:inline-flex;gap:8px;flex-wrap:wrap;align-items:center}
+.gchip{display:inline-flex;align-items:center;gap:7px;height:36px;box-sizing:border-box;border:1px solid var(--teal);color:var(--teal);border-radius:18px;padding:0 8px 0 6px;font-size:13px}
+.gi{background:var(--teal);color:var(--surface);border-radius:999px;width:20px;height:20px;display:inline-grid;place-items:center;font:600 11px var(--mono)}
 .gx{background:none;border:0;color:inherit;font-size:14px;line-height:1;padding:0 2px;cursor:pointer}
 .kpis.rk{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}.rk .kpi{padding:8px 12px}.rk .kpi b{font-size:18px}
 .rsel{display:flex;gap:10px;align-items:center;font-size:13px;padding:6px 10px;border:1px dashed var(--teal);border-radius:4px}.rsel[hidden]{display:none}.rsel .lnk{margin:0}
