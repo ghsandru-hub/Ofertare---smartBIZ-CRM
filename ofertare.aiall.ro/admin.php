@@ -106,14 +106,17 @@ function ui_icon(string $name): string
         'check' => '<path d="M3 8.5l3 3 7-7"/>',
         'anaf'  => '<circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/><path d="M5.5 7h3M7 5.5v3"/>',
         'info'  => '<circle cx="8" cy="8" r="6.3"/><path d="M8 7.2v4.3"/><circle cx="8" cy="5" r=".6" fill="currentColor"/>',
+        'edit'  => '<path d="M11.5 2.5l2 2L6 12H4v-2l7.5-7.5z"/><path d="M10 4l2 2"/>',
     ];
     return '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . ($d[$name] ?? '') . '</svg>';
 }
 
 // Buton de acțiune doar cu pictogramă: $kind = '' (neutru), 'main' (acțiune principală, teal), 'bad' (distructiv, roșu).
-function ui_btn(string $icon, string $label, string $kind = '', string $attrs = ''): string
+function ui_btn(string $icon, string $label, string $kind = '', string $attrs = '', string $confirm = ''): string
 {
-    return '<button type="submit" class="ico' . ($kind !== '' ? ' ' . $kind : '') . '" title="' . h($label) . '" aria-label="' . h($label) . '"' . ($attrs !== '' ? ' ' . $attrs : '') . '>' . ui_icon($icon) . '</button>';
+    return '<button type="submit" class="ico' . ($kind !== '' ? ' ' . $kind : '') . '" title="' . h($label) . '" aria-label="' . h($label) . '"'
+        . ($confirm !== '' ? ' data-confirm="' . h($confirm) . '" data-kind="' . (str_contains($kind, 'bad') ? 'bad' : 'main') . '"' : '')
+        . ($attrs !== '' ? ' ' . $attrs : '') . '>' . ui_icon($icon) . '</button>';
 }
 
 // Buton „Detalii” (pictogramă) care deschide un mic panou cu informațiile secundare ale unui rând.
@@ -882,13 +885,13 @@ function deal_card(array $d, array $stages, array $links, string $csrf): string
     }
     $hid    = '<input type="hidden" name="csrf" value="' . h($csrf) . '"><input type="hidden" name="id" value="' . $id . '">';
     $revoke = $d['revoked'] ? '' : '<form method="post">' . $hid . '<input type="hidden" name="action" value="revoke">'
-        . ui_btn('ban', 'Revocă toate linkurile ofertei', 'bad') . '</form>';
+        . ui_btn('ban', 'Revocă toate linkurile ofertei', 'bad', '', 'Revoci toate linkurile ofertei pentru ' . ($d['company'] ?: $d['email']) . '? Clientul nu va mai putea deschide materialele.') . '</form>';
     $acts = '<div class="cardacts">'
         . '<form method="post">' . $hid . '<input type="hidden" name="action" value="deal_resend">'
-        . ui_btn('send', 'Retrimite emailul cu linkuri noi la ' . $d['email'], 'main') . '</form>'
+        . ui_btn('send', 'Retrimite emailul cu linkuri noi la ' . $d['email'], 'main', '', 'Generezi linkuri noi și retrimiți emailul la ' . $d['email'] . '? Linkurile trimise anterior nu vor mai funcționa.') . '</form>'
         . $revoke
-        . '<form method="post" onsubmit="return confirm(\'Ștergi definitiv oferta pentru ' . h(addslashes($d['company'] ?: $d['email'])) . '? Linkurile trimise nu vor mai funcționa.\')">'
-        . $hid . '<input type="hidden" name="action" value="deal_delete">' . ui_btn('trash', 'Șterge oferta', 'bad') . '</form></div>';
+        . '<form method="post">'
+        . $hid . '<input type="hidden" name="action" value="deal_delete">' . ui_btn('trash', 'Șterge oferta', 'bad', '', 'Ștergi definitiv oferta pentru ' . ($d['company'] ?: $d['email']) . '? Linkurile trimise nu vor mai funcționa.') . '</form></div>';
 
     return '<article class="card" draggable="true" data-id="' . $id . '" id="c' . $id . '">'
         . '<header><strong>' . h($d['company'] ?: $d['email']) . '</strong><small>' . h(ago($d['stage_at'] ? (int)$d['stage_at'] : (int)$d['created_at'])) . '</small></header>'
@@ -922,7 +925,7 @@ function deal_items_editor(int $id, array $items, string $hid): string
     foreach ($items as $it) {
         $rows .= '<li><span>' . h(fmt_qty((float)$it['qty']) . ' ' . $it['um'] . ' × ' . $it['name']) . '</span>'
             . '<form method="post" class="inline">' . $hid . '<input type="hidden" name="action" value="deal_item_del"><input type="hidden" name="item_id" value="' . (int)$it['id'] . '">'
-            . ui_btn('x', 'Scoate de pe ofertă', 'bad xs') . '</form></li>';
+            . ui_btn('x', 'Scoate de pe ofertă', 'bad xs', '', 'Scoți „' . $it['name'] . '” de pe ofertă?') . '</form></li>';
     }
     return '<div class="ditems"><p class="meta">Livrabile ofertate</p><ul class="items edit">' . ($rows ?: '<li class="muted">Niciun livrabil.</li>') . '</ul>'
         . '<form method="post" class="mv iadd">' . $hid . '<input type="hidden" name="action" value="deal_item_add">'
@@ -1072,10 +1075,10 @@ function view_pipeline(string $csrf): string
             . '<td>' . ($d['first_open'] ? h(date('d.m.Y', (int)$d['first_open'])) : '—') . '</td>'
             . '<td><span class="lk l-' . $st . '">' . $st . '</span><br><small class="muted">până la ' . h(date('d.m.Y', (int)$d['expires_at'])) . '</small></td>'
             . '<td class="wrap">' . h($d['nota']) . '</td>'
-            . '<td class="tacts"><form method="post">' . $hid . '<input type="hidden" name="action" value="deal_resend">' . ui_btn('send', 'Retrimite emailul cu linkuri noi la ' . $d['email'], 'main') . '</form>'
-            . ($d['revoked'] ? '' : '<form method="post">' . $hid . '<input type="hidden" name="action" value="revoke">' . ui_btn('ban', 'Revocă toate linkurile ofertei', 'bad') . '</form>')
-            . '<form method="post" onsubmit="return confirm(\'Ștergi definitiv oferta pentru ' . h(addslashes($d['company'] ?: $d['email'])) . '? Linkurile trimise nu vor mai funcționa.\')">'
-            . $hid . '<input type="hidden" name="action" value="deal_delete">' . ui_btn('trash', 'Șterge oferta', 'bad') . '</form></td></tr>';
+            . '<td class="tacts"><form method="post">' . $hid . '<input type="hidden" name="action" value="deal_resend">' . ui_btn('send', 'Retrimite emailul cu linkuri noi la ' . $d['email'], 'main', '', 'Generezi linkuri noi și retrimiți emailul la ' . $d['email'] . '? Linkurile trimise anterior nu vor mai funcționa.') . '</form>'
+            . ($d['revoked'] ? '' : '<form method="post">' . $hid . '<input type="hidden" name="action" value="revoke">' . ui_btn('ban', 'Revocă toate linkurile ofertei', 'bad', '', 'Revoci toate linkurile ofertei pentru ' . ($d['company'] ?: $d['email']) . '?') . '</form>')
+            . '<form method="post">'
+            . $hid . '<input type="hidden" name="action" value="deal_delete">' . ui_btn('trash', 'Șterge oferta', 'bad', '', 'Ștergi definitiv oferta pentru ' . ($d['company'] ?: $d['email']) . '? Linkurile trimise nu vor mai funcționa.') . '</form></td></tr>';
     }
     $table = '<div class="rtw dtw"><table class="rt dt"><thead><tr><th>Companie</th><th>Persoană / email</th><th>Etapă</th><th class="n">Citite</th><th class="n">Salariați</th><th class="n">Onorariu an 1</th><th class="n">Livrabile · valoare</th>'
         . '<th>Creată</th><th>Deschisă</th><th>Linkuri</th><th>Notă</th><th>Acțiuni</th></tr></thead><tbody>'
@@ -1166,8 +1169,8 @@ function view_templates(): string
     $hid  = csrf_field() . '<input type="hidden" name="id" value="' . (int)$tpl['id'] . '">';
     $side = '<button type="button" class="ico main" id="tplPrevBtn" title="Previzualizează emailul cu date de exemplu, după ultima salvare" aria-label="Previzualizare email">' . ui_icon('eye') . '</button>';
     $side .= $tpl['id']
-        ? '<form method="post" class="inline">' . $hid . '<input type="hidden" name="action" value="tpl_copy">' . ui_btn('copy', 'Copiază șablonul') . '</form>'
-          . '<form method="post" class="inline">' . $hid . '<input type="hidden" name="action" value="tpl_delete">' . ui_btn('trash', 'Șterge șablonul', 'bad') . '</form>'
+        ? '<form method="post" class="inline">' . $hid . '<input type="hidden" name="action" value="tpl_copy">' . ui_btn('copy', 'Copiază șablonul', '', '', 'Creezi o copie a șablonului „' . $tpl['name'] . '”?') . '</form>'
+          . '<form method="post" class="inline">' . $hid . '<input type="hidden" name="action" value="tpl_delete">' . ui_btn('trash', 'Șterge șablonul', 'bad', '', 'Ștergi șablonul „' . $tpl['name'] . '”? Ofertele deja trimise nu sunt afectate.') . '</form>'
         : '';
 
     return '<div class="tplgrid"><aside class="panel tlist"><h2>Șabloane email</h2>' . $list . '</aside>'
@@ -1268,7 +1271,7 @@ function catalog_composition(array $pk, array $comps, array $all, string $today)
             . '<input name="qty" type="number" step="0.01" min="0.01" value="' . h(fmt_qty((float)$c['qty'])) . '" aria-label="Cantitate">'
             . '<span class="um">' . h($c['um']) . '</span>'
             . ui_btn('save', 'Salvează cantitatea', 'main', 'name="action" value="cat_item_qty"')
-            . ui_btn('x', 'Scoate din pachet', 'bad', 'name="action" value="cat_item_del"') . '</form>';
+            . ui_btn('x', 'Scoate din pachet', 'bad', 'name="action" value="cat_item_del"', 'Scoți „' . $c['name'] . '” din pachet?') . '</form>';
     }
 
     $opts = '';
@@ -1368,7 +1371,7 @@ function view_catalog(): string
             $q .= ' ' . $ci['name']; // un pachet se găsește și după componentele lui
         }
         $list .= '<div class="catrow st-' . $st . ($isPk ? ' pkg' : '') . '" id="k' . $id . '" data-type="' . h($c['type']) . '" data-status="' . $st . '" data-q="' . h(mb_strtolower($q)) . '">'
-            . '<form method="post" class="cat">' . csrf_field() . '<input type="hidden" name="id" value="' . $id . '">'
+            . '<form method="post" class="cat ro">' . csrf_field() . '<input type="hidden" name="id" value="' . $id . '">'
             . '<select name="type" aria-label="Tip">' . catalog_type_options((string)$c['type']) . '</select>'
             . '<div class="mt"><input name="name" value="' . h($c['name']) . '" aria-label="Denumire" maxlength="200" required></div>'
             . um_select((string)$c['um'])
@@ -1377,9 +1380,11 @@ function view_catalog(): string
             . price_fields($c['price'] > 0 ? fmt_qty((float)$c['price']) : '', (string)$c['currency'],
                 $isPk && (float)$c['price'] <= 0 ? fmt_qty(catalog_price($c)) : '0',
                 $isPk && (float)$c['price'] <= 0 ? 'Preț calculat din compoziție; scrie un preț ca să îl înlocuiești' . (catalog_price_note($c) !== '' ? ' (' . catalog_price_note($c) . ')' : '') : '')
-            . ui_btn('save', 'Salvează articolul', 'main', 'name="action" value="cat_save"')
-            . ui_btn('copy', 'Copiază articolul', '', 'name="action" value="cat_copy"')
-            . ui_btn('trash', 'Șterge articolul', 'bad', 'name="action" value="cat_delete"')
+            . '<span class="tg2"><button type="button" class="ico main edit" title="Editează articolul" aria-label="Editează articolul">' . ui_icon('edit') . '</button>'
+            . ui_btn('save', 'Salvează articolul', 'main', 'name="action" value="cat_save" hidden') . '</span>'
+            . '<span class="tg2">' . ui_btn('copy', 'Copiază articolul', '', 'name="action" value="cat_copy"', 'Creezi o copie a articolului „' . $c['name'] . '”' . ($isPk ? ', cu tot cu compoziție' : '') . '?')
+            . '<button type="button" class="ico cancel" title="Renunță la modificări" aria-label="Renunță la modificări" hidden>' . ui_icon('x') . '</button></span>'
+            . ui_btn('trash', 'Șterge articolul', 'bad', 'name="action" value="cat_delete"', 'Ștergi definitiv articolul „' . $c['name'] . '”?')
             . ui_info('<b><span class="lk l-' . $st . '">' . $labels[$st] . '</span></b>' . h($extra)
                 . ($isPk && (float)$c['price'] <= 0 ? '<br>preț ' . h(fmt_amount(catalog_price($c), (string)$c['currency'])) . ' din compoziție' . (catalog_price_note($c) !== '' ? ' (' . h(catalog_price_note($c)) . ')' : '') : '')
                 . '<br>actualizat ' . h(fmt_time((int)$c['updated_at'])))
@@ -1439,7 +1444,7 @@ function view_users(array $me): string
             . '<input name="pass" type="password" autocomplete="new-password" minlength="10" aria-label="Parolă nouă" placeholder="Parolă nouă (opțional)">'
             . '<label class="act"><input type="checkbox" name="active" value="1"' . ($u['active'] ? ' checked' : '') . ($self ? ' disabled' : '') . '> Activ</label>'
             . ui_btn('save', 'Salvează utilizatorul', 'main', 'name="action" value="user_update"')
-            . ($self ? '<span></span>' : ui_btn('trash', 'Șterge utilizatorul', 'bad', 'name="action" value="user_delete"'))
+            . ($self ? '<span></span>' : ui_btn('trash', 'Șterge utilizatorul', 'bad', 'name="action" value="user_delete"', 'Ștergi utilizatorul „' . $u['username'] . '”?'))
             . ui_info('creat ' . h(fmt_time((int)$u['created_at'])) . '<br>ultima autentificare '
                 . h(fmt_time($u['last_login'] !== null ? (int)$u['last_login'] : null))) . '</form>';
     }
@@ -2500,6 +2505,11 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .rinfo[open] summary{color:var(--teal);border-color:var(--teal)}
 .rinfo>div{position:absolute;right:0;top:40px;z-index:7;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 12px;min-width:240px;max-width:420px;font-size:12px;line-height:1.6;color:var(--muted);box-shadow:0 6px 18px rgba(0,0,0,.14);white-space:normal;text-align:left}
 .rinfo>div b{color:var(--ink)}
+/* rând în mod citire: câmpurile arată ca text, fără chenar; Editează le activează */
+.cat.ro input,.cat.ro select{background:transparent;border-color:transparent;color:var(--ink);opacity:1;cursor:default;background-image:none}
+.cat.ro input::-webkit-calendar-picker-indicator{display:none}.cat.ro .umw select,.cat.ro .prw select{padding-right:8px}
+.tg2{display:inline-flex}.tg2 [hidden]{display:none}
+.pdlg.cf{width:min(460px,92vw)}.pdlg.cf .pdh p{margin:6px 0 0;font-size:14px;color:var(--ink);line-height:1.5}.pri.bad{background:var(--red)}
 .catrow.hide{display:none}
 .lk.l-valid{color:var(--green)}.lk.l-viitor{color:var(--amber)}
 .comp{margin:0;border-top:1px dashed var(--line);background:var(--soft);padding:6px 12px 10px;border-radius:0 0 5px 5px}
@@ -2643,6 +2653,8 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 <?= $content ?>
 </section>
 </main>
+<dialog id="cfDlg" class="pdlg cf" aria-labelledby="cfTtl"><div class="pdh"><h2 id="cfTtl">Confirmare</h2><p id="cfMsg"></p></div>
+<div class="pdf"><button type="button" class="sm" id="cfNo">Renunță</button><span class="sp"></span><button type="button" class="pri" id="cfYes">Confirmă</button></div></dialog>
 <footer class="foot"><div class="in">
   <span>AiALL S.R.L. · ofertare.aiall.ro · <?= date('Y') ?></span>
 </div></footer>
@@ -2740,6 +2752,39 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
     document.getElementById('prevClose').addEventListener('click', function () { dlg.close(); });
     document.getElementById('prevSend').addEventListener('click', function () { dlg.close(); form.requestSubmit ? form.requestSubmit() : form.submit(); });
   }
+
+  // Confirmare în stilul aplicației pentru orice buton cu data-confirm (ștergere, scoatere, revocare, retrimitere, copiere)
+  var cf = document.getElementById('cfDlg');
+  if (cf && typeof cf.showModal === 'function') {
+    var cfYes = document.getElementById('cfYes'), cfPending = null;
+    document.addEventListener('submit', function (e) {
+      var btn = e.submitter, msg = btn && btn.dataset.confirm;
+      if (!msg || btn.dataset.confirmed === '1') { if (btn) { delete btn.dataset.confirmed; } return; }
+      e.preventDefault();
+      document.getElementById('cfMsg').textContent = msg;
+      cfYes.className = btn.dataset.kind === 'bad' ? 'pri bad' : 'pri';
+      cfYes.textContent = btn.dataset.kind === 'bad' ? 'Da, continuă' : 'Confirmă';
+      cfPending = btn; cf.showModal();
+    }, true);
+    cfYes.addEventListener('click', function () { cf.close(); if (cfPending) { var b = cfPending; cfPending = null; b.dataset.confirmed = '1'; b.click(); } });
+    document.getElementById('cfNo').addEventListener('click', function () { cfPending = null; cf.close(); });
+    cf.addEventListener('close', function () { cfPending = null; });
+  }
+
+  // Catalog: rândul pornește în mod citire; „Editează” activează câmpurile și arată Salvează / Renunță
+  var setRowEdit = function (form, on) {
+    form.classList.toggle('ro', !on);
+    form.querySelectorAll('input:not([type=hidden]):not([name=um_alt]),select').forEach(function (f) { f.disabled = !on; });
+    var e = form.querySelector('.edit'), sv = form.querySelector('button[value=cat_save]'), cp = form.querySelector('button[value=cat_copy]'), cn = form.querySelector('.cancel');
+    if (e) { e.hidden = on; } if (sv) { sv.hidden = !on; } if (cp) { cp.hidden = on; } if (cn) { cn.hidden = !on; }
+    var alt = form.querySelector('input[name=um_alt]'); if (alt) { alt.disabled = !on || alt.hidden; }
+  };
+  document.querySelectorAll('form.cat').forEach(function (f) { setRowEdit(f, false); });
+  document.addEventListener('click', function (e) {
+    var ed = e.target.closest('form.cat .edit'), cn = e.target.closest('form.cat .cancel');
+    if (ed) { var f = ed.closest('form'); setRowEdit(f, true); var first = f.querySelector('input[name=name]'); if (first) { first.focus(); first.select(); } }
+    if (cn) { var f2 = cn.closest('form'); f2.reset(); f2.querySelectorAll('.ums').forEach(function (s) { s.dispatchEvent(new Event('change', { bubbles: true })); }); setRowEdit(f2, false); }
+  });
 
   // Panourile „Detalii” din liste: unul singur deschis, se închide la clic în afară sau Escape
   document.addEventListener('click', function (e) {
