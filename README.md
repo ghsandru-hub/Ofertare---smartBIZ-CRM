@@ -1,7 +1,7 @@
 # Ofertare — smartBIZ CRM
 
 Aplicația de ofertare de pe `ofertare.aiall.ro`: documente accesibile doar din linkul personal primit pe email,
-cu cockpit e2e OPS Ofertare (pipeline, raportare, șabloane email, materiale).
+cu cockpit e2e OPS Ofertare (pipeline, raportare, catalog de produse și servicii, șabloane email, materiale).
 
 Destinatarul primește pe email, dintr-un șablon administrat în aplicație, câte un link personal pentru fiecare material
 (ofertă și materiale suport), de forma `https://ofertare.aiall.ro/<token>`. Fiecare link deschide **un singur fișier**,
@@ -10,7 +10,7 @@ Fișierele stau în `ofertare_private`, în afara folderului public al subdomeni
 iar folderul nu poate fi răsfoit.
 
 Administrarea are login separat, la `https://ofertare.aiall.ro/admin.php`, și este un cockpit e2e OPS Ofertare
-cu cinci secțiuni: Pipeline (indicatori, pâlnie, kanban, ofertă nouă), Raportare, Șabloane email, Materiale și Utilizatori.
+cu șase secțiuni: Pipeline (indicatori, pâlnie, kanban, ofertă nouă), Raportare, Catalog, Șabloane email, Materiale și Utilizatori.
 
 ## Structura pe server (cPanel)
 
@@ -61,9 +61,9 @@ Repo-ul este public, așa că nu conține:
   sau se urcă direct pe server. Dacă folderul este gol la prima rulare, șablonul implicit se creează fără materiale
   și le asociezi după încărcare.
 
-## Cockpit: Pipeline, Raportare, Șabloane email, Materiale, Utilizatori
+## Cockpit: Pipeline, Raportare, Catalog, Șabloane email, Materiale, Utilizatori
 
-Cockpitul (`admin.php`) are cinci secțiuni.
+Cockpitul (`admin.php`) are șase secțiuni.
 
 ### 1. Pipeline
 
@@ -96,7 +96,25 @@ licență, economie client, stare link și notă.
 - Rând de total și sumar: număr de oferte, procent deschise, acceptate, salariați, onorariu an 1, economie client.
 - Export CSV pentru Excel (UTF-8, separator „;”), cu rândurile filtrate, în ordinea și cu coloanele afișate.
 
-### 3. Șabloane email
+### 3. Catalog produse și servicii
+
+Gestiunea catalogului de produse și servicii, tabela `catalog` din `ofertare.db`. Fiecare articol are:
+
+| Câmp | Conținut |
+| --- | --- |
+| Tip | Serviciu, Licență, Serviciu digital, Produs, Pachet servicii sau Pachet produse |
+| Denumire | numele articolului (max. 200 de caractere) |
+| UM | unitatea de măsură (ex. buc, oră, lună, salariat, salariat/lună, pachet); câmpul propune valorile uzuale |
+| Valid de la / Valid până la | perioada de valabilitate; „până la” gol = nelimitat |
+
+- „Articol nou în catalog” adaugă un articol; lista de dedesubt editează fiecare articol pe loc (tip, denumire, UM, perioadă),
+  cu „Salvează”, „Copiază” (articol nou cu aceleași date, util pentru o nouă perioadă de valabilitate) și „Șterge” (definitiv).
+- Starea față de data de azi: **valid**, **din viitor** (nu a intrat încă în vigoare) sau **expirat**; sumarul numără articolele pe stări.
+- Căutare liberă și filtre pe tip și valabilitate, fără reîncărcarea paginii.
+- Validări: tipul trebuie să fie unul din listă, denumirea și UM sunt obligatorii, „până la” nu poate fi înaintea lui „de la”.
+  Datele se acceptă ca `AAAA-LL-ZZ` sau `ZZ.LL.AAAA` și se păstrează ca `AAAA-LL-ZZ`.
+
+### 4. Șabloane email
 
 - Nume intern, subiect și textul emailului, cu previzualizare pe date de exemplu.
 - Format text: rând gol = paragraf nou; rânduri consecutive = listă compactă; `✓ ` la început = bifă colorată; `**text**` = bold.
@@ -105,7 +123,7 @@ licență, economie client, stare link și notă.
 - Fiecare șablon are lista lui de materiale, cu ordine. Șabloanele se pot copia și șterge; ofertele deja trimise nu sunt afectate.
 - La prima rulare se creează automat șablonul „Ofertă e2e OPS Salarizare”, cu materialele din `ofertare_private/fisiere`.
 
-### 4. Materiale
+### 5. Materiale
 
 - Încărcare din cockpit: PDF, HTML, DOCX, XLSX, PPTX, PNG, JPG, MP4 (limita din `max_upload_mb`, implicit 25 MB).
 - Tip: Ofertă sau Material suport. Titlul este textul butonului din email.
@@ -119,7 +137,7 @@ Un singur cod de acces, trimis pe emailul destinatarului, deschide toate materia
 timp de 12 ore. Un link redirecționat ajunge la pagina de cod, iar codul pleacă tot la destinatarul inițial.
 
 
-### 5. Utilizatori
+### 6. Utilizatori
 
 - Fiecare utilizator are nume de utilizator, nume afișat, parolă (bcrypt) și stare activ/inactiv; tabela `users` din `ofertare.db`.
 - „Parola mea”: schimbarea propriei parole (parola actuală + parola nouă de minimum 10 caractere, repetată).
