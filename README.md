@@ -147,13 +147,13 @@ Gestiunea catalogului de produse și servicii, tabela `catalog` din `ofertare.db
 
 ### 4. Șabloane email
 
-- Nume intern, subiect și textul emailului, cu previzualizare pe date de exemplu.
+- Nume intern, subiect și textul emailului, cu previzualizare pe date de exemplu (buton, modal).
 - Format text: rând gol = paragraf nou; rânduri consecutive = listă compactă; `✓ ` la început = bifă colorată; `**text**` = bold.
 - Variabile: `{{salut}}`, `{{nume}}`, `{{companie}}`, `{{email}}`, `{{salariati}}`, `{{economie_an}}`, `{{expira}}`,
   `{{valoare}}` (totalul livrabilelor, pe valute); `{{materiale}}` pe rând separat inserează butoanele cu linkurile personale;
   `{{livrabile}}` pe rând separat inserează tabelul livrabilelor ofertate (denumire, cantitate, UM, preț unitar, valoare, total).
 - Fiecare șablon are lista lui de materiale, cu ordine. Șabloanele se pot copia și șterge; ofertele deja trimise nu sunt afectate.
-- „Email de test” (panoul Previzualizare): trimite șablonul cu date de exemplu și linkuri fictive la adresa ta și arată
+- „Previzualizare” deschide emailul cu date de exemplu într-un modal; de acolo, „Email de test” trimite șablonul cu date de exemplu și linkuri fictive la adresa ta și arată
   rezultatul real al trimiterii; este cel mai simplu mod de a verifica livrarea pe server.
 - Cum ajung materialele în email: materialul este încărcat și activ în „Materiale”; este bifat în șablon, cu ordinea lui
   (ordinea cea mai mică = butonul principal, colorat; următoarele = butoane cu contur); iar textul șablonului conține

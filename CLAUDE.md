@@ -9,8 +9,12 @@ prin `.cpanel.yml`. Detalii funcționale în `README.md`; ghidul de utilizare es
    formulare, toate controalele unui rând (input, select, file, checkbox, butoane) stau pe aceeași linie, aliniate la
    câmpul principal, cu înălțimea de 36px. Textul secundar (meta, explicații, stări) merge sub câmp, nu deasupra.
    Nu centra vertical celulele cu înălțimi diferite; aliniază la început (`align-items:start`) și egalizează înălțimile.
-2. **Butonul care acționează asupra unui câmp este o pictogramă**, lipită în dreapta câmpului, de aceeași înălțime
-   (ex. încărcarea fișierului). Fără butoane late cu text pentru acțiuni locale. Întotdeauna `title` + `aria-label`.
+2. **Acțiunile sunt doar pictograme.** Orice buton de acțiune (salvează, copiază, șterge, scoate, adaugă, mută, retrimite,
+   revocă, previzualizează; pe rânduri, carduri, tabele și în antetul editorului) este un buton-pictogramă de 36px
+   (`ui_btn()` / `ui_icon()` din `admin.php`; `.ico`, `.ico.main` teal, `.ico.bad` roșu, `.icb` plin pentru „adaugă”),
+   întotdeauna cu `title` + `aria-label`. Butonul care acționează asupra unui câmp stă lipit în dreapta câmpului, la aceeași
+   înălțime. Textul rămâne doar pe butoanele principale de trimitere a formularelor (ex. „Creează și trimite oferta”,
+   „Salvează șablonul”, „Trimite testul”).
 3. **Comutatoarele de vedere folosesc pictograme**, nu etichete text (ex. Kanban / Tabel), cu tooltip și `aria-pressed`;
    pictogramele sunt SVG inline, `currentColor`, cu acul/detaliile desenate ca linii trasate, nu ca forme de sub-pixel.
    Clase CSS proprii pentru fiecare grup de pictograme, ca să nu intre în coliziune cu stilurile altor pagini.
