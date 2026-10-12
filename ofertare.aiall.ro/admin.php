@@ -1363,7 +1363,8 @@ function view_catalog(): string
         . '<div><label for="kType">Tip</label><select id="kType"><option value="">Toate tipurile</option>' . $typeOpts . '</select></div>'
         . '<div><label for="kSt">Valabilitate</label><select id="kSt"><option value="">Toate</option><option value="valid">Valide azi</option>'
         . '<option value="viitor">Din viitor</option><option value="expirat">Expirate</option></select></div></div>'
-        . '<div class="cathead"><span>Tip</span><span>Denumire</span><span>UM</span><span>Valid de la</span><span>Valid până la</span><span>Preț (RON)</span><span></span><span></span><span></span></div>'
+        . '<div class="cathead" aria-hidden="true"><span>Tip</span><span>Denumire</span><span>UM</span><span>Valid de la</span><span>Valid până la</span><span>Preț (RON)</span>'
+        . '<span class="ghost"><button type="button" class="sm" tabindex="-1">Salvează</button></span><span class="ghost"><button type="button" class="sm" tabindex="-1">Copiază</button></span><span class="ghost"><button type="button" class="sm bad" tabindex="-1">Șterge</button></span></div>'
         . '<div class="matlist" id="kList">' . ($list ?: '<p class="muted">Catalogul este gol. Adaugă primul articol din formularul de mai sus.</p>') . '</div>'
         . '<p class="muted catempty" id="kEmpty" hidden>Niciun articol pentru filtrele alese.</p>'
         . '<p class="muted">Un articol expirat rămâne în catalog pentru istoric; ștergerea este definitivă. „Copiază” creează un articol nou cu aceleași date (la pachete, cu tot cu compoziție), util pentru o nouă perioadă de valabilitate.'
@@ -2426,7 +2427,8 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .cat>select,.cat>input,.cat .mt input,.ci>input,.ci>select,.ci .mt input,.umw select,.umw input{height:36px;box-sizing:border-box}
 .umw{display:grid;gap:4px}.umw input[hidden]{display:none}
 .cat>.sm,.ci>.sm{height:36px;display:inline-flex;align-items:center;box-sizing:border-box}
-.cathead{font-size:12px;color:var(--navy);font-weight:600;padding:0 12px 4px}
+.cathead{font-size:12px;color:var(--navy);font-weight:600;padding:0 12px 4px;align-items:end}
+.cathead .ghost button{visibility:hidden;height:1px;padding-top:0;padding-bottom:0;border-top:0;border-bottom:0;display:block} /* aceeași lățime ca butoanele din rânduri, fără înălțime */
 .catrow{border:1px solid var(--line);border-radius:5px}
 .cat{padding:10px 12px}
 .catrow.st-expirat{opacity:.65}.catrow.st-viitor{border-left:3px solid var(--amber)}.catrow.st-valid{border-left:3px solid var(--green)}
