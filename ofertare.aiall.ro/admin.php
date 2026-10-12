@@ -2024,53 +2024,79 @@ header('Content-Type: text/html; charset=utf-8');
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <title>e2e OPS Ofertare</title>
+<script>try{var t=localStorage.getItem('oftheme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}</script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 /* Cockpit: bară smartBIZ cu secțiuni, apoi conținutul secțiunii (pipeline / șabloane / materiale) */
 :root{
   --bg:#f5f6f7;--surface:#ffffff;--ink:#1b2430;--muted:#5b6672;--line:#d9dee4;--soft:#eef2f5;
-  --navy:#1F4788;--navy2:#2A5899;--navy3:#4A90B5;--teal:#2D8B8E;--amber:#d97706;--green:#16a34a;--red:#dc2626;
+  --navy:#1F4788;--navy2:#2A5899;--navy3:#4A90B5;--teal:#2D8B8E;--teal-l:#3aacb0;--amber:#d97706;--green:#16a34a;--red:#dc2626;
+  --hd:#fbfcfe;--hd-grad:linear-gradient(115deg,rgba(31,71,136,.97),rgba(45,139,142,.88));--hd-border:rgba(31,71,136,.20);
   --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;--mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#0d1520;--surface:#121c29;--ink:#e3e8ee;--muted:#9aa6b3;--line:#263445;--soft:#18263a;
-  --navy:#7fa6e6;--navy2:#6f9ad8;--navy3:#5fb0d4;--teal:#5cc0c3;--amber:#f0a94a;--green:#4ade80;--red:#f87171;color-scheme:dark}}
+  --navy:#7fa6e6;--navy2:#6f9ad8;--navy3:#5fb0d4;--teal:#5cc0c3;--amber:#f0a94a;--green:#4ade80;--red:#f87171;color-scheme:dark;
+  --hd:#0f1826;--hd-grad:linear-gradient(115deg,rgba(31,71,136,.92),rgba(45,139,142,.78));--hd-border:rgba(45,139,142,.30)}}
 :root[data-theme="dark"]{
   --bg:#0d1520;--surface:#121c29;--ink:#e3e8ee;--muted:#9aa6b3;--line:#263445;--soft:#18263a;
-  --navy:#7fa6e6;--navy2:#6f9ad8;--navy3:#5fb0d4;--teal:#5cc0c3;--amber:#f0a94a;--green:#4ade80;--red:#f87171;color-scheme:dark}
+  --navy:#7fa6e6;--navy2:#6f9ad8;--navy3:#5fb0d4;--teal:#5cc0c3;--amber:#f0a94a;--green:#4ade80;--red:#f87171;color-scheme:dark;
+  --hd:#0f1826;--hd-grad:linear-gradient(115deg,rgba(31,71,136,.92),rgba(45,139,142,.78));--hd-border:rgba(45,139,142,.30)}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 var(--sans)}
-.top{background:linear-gradient(115deg,#1F4788 0%,#24608f 55%,#2D8B8E 100%);color:#fff;box-shadow:0 4px 24px rgba(13,21,32,.22);position:sticky;top:0;z-index:50}
-.top .in{max-width:1440px;margin:0 auto;padding:10px 20px 0;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.top .logo{display:flex;align-items:center;gap:11px}
-.top .mark{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:linear-gradient(135deg,#2D8B8E,#1F4788);border:1px solid rgba(255,255,255,.28);font:700 13px var(--mono);color:#fff;letter-spacing:-.02em}
-.top .ttl{line-height:1.15}
+/* ---- HEADER (ca în ContaCheck: glassmorphism navy→teal, 60px, fixat) ---- */
+.top{position:sticky;top:0;z-index:50;background:var(--hd-grad);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--hd-border);box-shadow:0 4px 24px rgba(13,21,32,.35)}
+.top .in{max-width:1480px;margin:0 auto;padding:0 24px;height:60px;display:flex;align-items:center;gap:14px;position:relative}
+.top .in::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;background:linear-gradient(90deg,transparent,rgba(58,172,176,.6),transparent)}
+.logo{display:flex;align-items:center;gap:11px;font-weight:700;font-size:16px;letter-spacing:-.3px;color:#fff}
+.logo .mark{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;color:#fff;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);box-shadow:0 2px 10px rgba(13,21,32,.3),inset 0 1px 0 rgba(255,255,255,.18);font:700 13px var(--mono);letter-spacing:-.02em}
+.logo .ttl{line-height:1.15}
 .sbc-title{font-weight:700;font-size:16px;letter-spacing:-.3px}
-.sbc-smart{color:#F2F6FA;font-weight:600}.sbc-biz{color:#3aacb0;font-weight:700}.sbc-copilot{color:#f0a94a;font-weight:600}
-.top h1{font:500 12px var(--sans);margin:1px 0 0;opacity:.85}
-.top .sp{flex:1}
-/* Utilizatorul și ieșirea, într-un pill ca în celelalte aplicații smartBIZ */
-.hd-pill{display:inline-flex;align-items:stretch;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:9px;overflow:hidden;backdrop-filter:blur(6px)}
-.hd-pill .who{display:inline-flex;align-items:center;gap:8px;padding:3px 11px 3px 4px;color:#fff;text-decoration:none;font:500 12px var(--sans);transition:.15s}
-.hd-pill .who:hover{background:rgba(255,255,255,.14)}
-.hd-pill .av{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#2D8B8E,#1F4788);border:1px solid rgba(255,255,255,.28);font:700 11px var(--mono);letter-spacing:-.02em}
-.hd-pill .nm{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hd-pill form{display:flex;margin:0}
-.top .hd-pill button{background:transparent;border:0;border-left:1px solid rgba(255,255,255,.22);border-radius:0;color:rgba(255,255,255,.85);font:600 11px/1 var(--mono);padding:0 12px;cursor:pointer;transition:.15s}
-.top .hd-pill button:hover{color:#fff;background:rgba(255,255,255,.14)}
-@media (max-width:600px){.hd-pill .nm{display:none}.hd-pill .who{padding-right:6px}}
+.sbc-smart{color:#F2F6FA;font-weight:600}.sbc-biz{color:var(--teal-l);font-weight:700}.sbc-copilot{color:#f0a94a;font-weight:600}
+.logo small{color:rgba(255,255,255,.74);font-weight:500;font-size:10px;display:block;letter-spacing:.4px;margin-top:1px}
+.spacer{flex:1}
+.hbtn{padding:8px 13px;border-radius:9px;cursor:pointer;font:500 12px var(--sans);display:inline-flex;align-items:center;gap:6px;transition:.16s;white-space:nowrap;text-decoration:none;
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;backdrop-filter:blur(6px)}
+.hbtn:hover{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.4);color:#fff;transform:translateY(-1px)}
+.hbtn .qm{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;border:1.5px solid currentColor;font:700 11px/1 var(--mono)}
+.hd-pill{display:inline-flex;align-items:center;gap:1px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:9px;overflow:hidden;backdrop-filter:blur(6px);vertical-align:middle}
+.hd-pill button{background:transparent;border:0;color:rgba(255,255,255,.8);font:600 11px/1 var(--mono);padding:7px 11px;cursor:pointer;transition:.15s}
+.hd-pill button:hover{color:#fff;background:rgba(255,255,255,.14)}
+.hd-pill button.on{background:#fff;color:var(--navy);box-shadow:inset 0 0 0 1px rgba(255,255,255,.70)}
+.hd-pill button.on:hover{background:#fff;color:#1F4788}
+.hd-pill.theme-pill button{font-size:13px;padding:6px 10px;font-family:inherit}
+/* contul: avatar cu inițiale și panou (parolă, ieșire) */
+.acc-wrap{position:relative;margin-inline-start:2px}
+.acc-avatar{width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.28);background:linear-gradient(135deg,#2D8B8E,#1F4788);color:#fff;font:700 13px var(--mono);cursor:pointer;display:grid;place-items:center;padding:0;line-height:1}
+.acc-avatar:hover{filter:brightness(1.12)}
+.acc-pop{position:absolute;top:46px;inset-inline-end:0;width:270px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 36px rgba(0,0,0,.4);padding:14px;display:none;z-index:300;color:var(--ink);text-align:left}
+.acc-pop.show{display:block}
+.acc-head{display:flex;align-items:center;gap:11px;margin-bottom:6px}
+.acc-av2{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#2D8B8E,#1F4788);color:#fff;font:700 15px var(--mono);display:grid;place-items:center;flex-shrink:0}
+.acc-meta{min-width:0}
+.acc-name{font-size:13px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acc-sub{font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+.acc-desc{font-size:11px;color:var(--muted);line-height:1.5;margin-top:4px}
+.acc-sep{border:0;border-top:1px solid var(--line);margin:10px 0 2px}
+.acc-pop form{margin:0}
+.acc-btn{display:block;width:100%;margin-top:9px;padding:9px 12px;border-radius:9px;border:1px solid var(--line);background:var(--soft);color:var(--ink);font:500 12px var(--sans);cursor:pointer;text-align:center;text-decoration:none;transition:.15s;box-sizing:border-box}
+.acc-btn:hover{border-color:var(--teal)}
+.acc-btn.primary{background:linear-gradient(135deg,#2D8B8E,#1F4788);color:#fff;border:none}
+/* ---- TABS (ca în ContaCheck: bară sub antet, subliniere teal pe tab-ul activ) ---- */
+nav.tabs{background:var(--hd);border-bottom:1px solid var(--line);backdrop-filter:blur(8px)}
+nav.tabs .in{max-width:1480px;margin:0 auto;padding:0 18px;display:flex;gap:4px;overflow-x:auto}
+nav.tabs a{color:var(--muted);padding:13px 16px;font:500 13px var(--sans);text-decoration:none;border-bottom:2px solid transparent;transition:.16s;white-space:nowrap;position:relative}
+nav.tabs a:hover{color:var(--ink)}
+nav.tabs a[aria-current]{color:var(--teal);border-bottom-color:var(--teal)}
+nav.tabs a[aria-current]::before{content:"";position:absolute;left:8px;right:8px;top:0;height:2px;background:linear-gradient(90deg,var(--navy),var(--teal));border-radius:0 0 3px 3px;opacity:.5}
 .foot{border-top:1px solid var(--line);margin-top:8px}
-.foot .in{max-width:1440px;margin:0 auto;padding:14px 20px;display:flex;justify-content:flex-end;font-size:12px;color:var(--muted)}
-.top button{background:transparent;border:1px solid rgba(255,255,255,.5);color:#fff;border-radius:4px;padding:4px 12px;font:500 13px var(--sans);cursor:pointer}
-.top nav{flex-basis:100%;display:flex;gap:4px;margin-top:8px;overflow-x:auto}
-.top nav a{color:#fff;opacity:.75;text-decoration:none;padding:8px 14px;border-radius:4px 4px 0 0;font-weight:500;white-space:nowrap}
-.top nav a:hover{opacity:1}
-.top nav a[aria-current]{opacity:1;background:var(--soft);color:var(--navy);font-weight:600;box-shadow:inset 0 3px 0 var(--teal)}
-main{max-width:1440px;margin:0 auto;padding:0 20px 20px}
-/* Conținutul secțiunii alese stă într-un container distinct, legat vizual de tab-ul activ din meniu */
-.tabpanel{background:var(--soft);border:1px solid var(--line);border-top:0;border-radius:0 0 8px 8px;padding:14px 18px 18px;display:grid;gap:18px}
+.foot .in{max-width:1480px;margin:0 auto;padding:14px 20px;display:flex;justify-content:flex-end;font-size:12px;color:var(--muted)}
+main{max-width:1480px;margin:0 auto;padding:18px 20px 20px}
+/* Conținutul secțiunii alese stă într-un container distinct */
+.tabpanel{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:14px 18px 18px;display:grid;gap:18px}
 .tabtitle{font-size:13px;font-weight:600;color:var(--navy);margin:0;padding-bottom:10px;border-bottom:1px solid var(--line);letter-spacing:.02em;text-transform:uppercase}
 @media (max-width:980px){.tabpanel{padding:12px 12px 14px}}
+@media (max-width:640px){.hbtn .btn-txt{display:none}.logo small{display:none}}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
 .kpi{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px}
 .kpi span{display:block;font-size:12px;color:var(--muted)}
@@ -2305,18 +2331,37 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 </style>
 </head>
 <body>
-<header class="top"><div class="in">
+<header class="top">
+<div class="in">
   <div class="logo">
     <span class="mark" aria-hidden="true">sB</span>
-    <div class="ttl"><b class="sbc-title"><span class="sbc-smart">smart</span><span class="sbc-biz">BIZ</span> <span class="sbc-copilot">Copilot</span></b><h1>Cockpit e2e OPS Ofertare</h1></div>
+    <div class="ttl"><b class="sbc-title"><span class="sbc-smart">smart</span><span class="sbc-biz">BIZ</span> <span class="sbc-copilot">Copilot</span></b><small>Cockpit e2e OPS Ofertare</small></div>
   </div>
-  <span class="sp"></span>
-  <div class="hd-pill user-pill">
-    <a class="who" href="admin.php?v=utilizatori" title="Contul meu: <?= h($me['username']) ?> · parola se schimbă în Utilizatori"><span class="av" aria-hidden="true"><?= h(user_initials($me)) ?></span><span class="nm"><?= h($me['name'] !== '' ? $me['name'] : $me['username']) ?></span></a>
-    <form method="post"><?= csrf_field() ?><input type="hidden" name="action" value="logout"><button type="submit" title="Ieșire din cockpit">Ieșire</button></form>
+  <span class="spacer"></span>
+  <a class="hbtn" href="admin.php?v=ajutor" title="Ghid de utilizare"><span class="qm" aria-hidden="true">?</span><span class="btn-txt">Ghid</span></a>
+  <div class="hd-pill theme-pill" id="themeSwitch" title="Temă deschisă / închisă" role="group" aria-label="Temă">
+    <button type="button" data-theme="light" aria-label="Temă deschisă">☀</button>
+    <button type="button" data-theme="dark" aria-label="Temă închisă">🌙</button>
   </div>
-  <nav aria-label="Secțiuni"><?= $nav ?></nav>
-</div></header>
+  <div class="acc-wrap" id="accWrap">
+    <button type="button" class="acc-avatar" id="accAvatar" title="Contul meu" aria-label="Contul meu" aria-haspopup="menu" aria-expanded="false"><?= h(user_initials($me)) ?></button>
+    <div class="acc-pop" id="accPop" role="menu">
+      <div class="acc-head">
+        <div class="acc-av2" aria-hidden="true"><?= h(user_initials($me)) ?></div>
+        <div class="acc-meta">
+          <div class="acc-name"><?= h($me['name'] !== '' ? $me['name'] : $me['username']) ?></div>
+          <div class="acc-sub"><?= h($me['username']) ?> · Contul meu</div>
+        </div>
+      </div>
+      <div class="acc-desc">Cont cockpit · schimbă parola din Utilizatori sau ieși din cockpit.</div>
+      <hr class="acc-sep">
+      <a class="acc-btn primary" href="admin.php?v=utilizatori" role="menuitem">🔑 Schimbă parola</a>
+      <form method="post"><?= csrf_field() ?><input type="hidden" name="action" value="logout"><button type="submit" class="acc-btn" role="menuitem">Ieși din cockpit</button></form>
+    </div>
+  </div>
+</div>
+<nav class="tabs" aria-label="Secțiuni"><div class="in"><?= $nav ?></div></nav>
+</header>
 <main>
 <section class="tabpanel" aria-label="<?= h($tabs[$view]) ?>">
 <h2 class="tabtitle"><?= h($tabs[$view]) ?></h2>
@@ -2385,6 +2430,31 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
     });
     document.getElementById('prevClose').addEventListener('click', function () { dlg.close(); });
     document.getElementById('prevSend').addEventListener('click', function () { dlg.close(); form.requestSubmit ? form.requestSubmit() : form.submit(); });
+  }
+
+  // Antet: tema (☀ / 🌙, reținută în browser) și panoul contului
+  var sw = document.getElementById('themeSwitch');
+  if (sw) {
+    var curTheme = function () {
+      var t = document.documentElement.getAttribute('data-theme');
+      return t === 'light' || t === 'dark' ? t : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    };
+    var paintTheme = function () { var t = curTheme(); sw.querySelectorAll('button[data-theme]').forEach(function (b) { b.classList.toggle('on', b.dataset.theme === t); }); };
+    sw.querySelectorAll('button[data-theme]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        document.documentElement.setAttribute('data-theme', b.dataset.theme);
+        try { localStorage.setItem('oftheme', b.dataset.theme); } catch (e) {}
+        paintTheme();
+      });
+    });
+    paintTheme();
+  }
+  var accBtn = document.getElementById('accAvatar'), accPop = document.getElementById('accPop');
+  if (accBtn && accPop) {
+    var setAcc = function (open) { accPop.classList.toggle('show', open); accBtn.setAttribute('aria-expanded', open ? 'true' : 'false'); };
+    accBtn.addEventListener('click', function (e) { e.stopPropagation(); setAcc(!accPop.classList.contains('show')); });
+    document.addEventListener('click', function (e) { if (!accPop.contains(e.target)) { setAcc(false); } });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { setAcc(false); } });
   }
 
   // Ajutor: o singură secțiune vizibilă, aleasă din bară (sau din #hash / ultima alegere)

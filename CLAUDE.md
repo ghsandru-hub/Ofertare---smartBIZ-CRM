@@ -14,8 +14,11 @@ prin `.cpanel.yml`. Detalii funcționale în `README.md`; ghidul de utilizare es
 3. **Comutatoarele de vedere folosesc pictograme**, nu etichete text (ex. Kanban / Tabel), cu tooltip și `aria-pressed`;
    pictogramele sunt SVG inline, `currentColor`, cu acul/detaliile desenate ca linii trasate, nu ca forme de sub-pixel.
    Clase CSS proprii pentru fiecare grup de pictograme, ca să nu intre în coliziune cu stilurile altor pagini.
-4. **Antetul și meniul sunt fixate** (`position:sticky`). Utilizatorul și „Ieșire” stau într-un pill translucid în antet,
-   ca în celelalte aplicații smartBIZ Copilot (avatar cu inițiale, nume, buton de ieșire). Footerul are doar textul din dreapta.
+4. **Antetul replică antetul din ContaCheck** (`ghsandru-hub/ContaCheckCopilot`, `frontend/index.html`): bară de 60px fixată,
+   gradient navy→teal cu blur, logo cu marcă + titlu, buton „Ghid” (`.hbtn`), pill de temă ☀ / 🌙 (`.hd-pill.theme-pill`, alegerea
+   reținută în `localStorage`), avatar rotund cu inițiale (`.acc-avatar`) care deschide panoul contului (`.acc-pop`: nume, utilizator,
+   „Schimbă parola”, „Ieși din cockpit”). Fără selector de companie. Sub antet, bara de tab-uri `nav.tabs` cu subliniere teal pe
+   tab-ul activ, tot fixată. Footerul are doar textul din dreapta.
 5. **Conținutul secțiunii alese stă într-un container distinct**, legat vizual de tab-ul activ. Același principiu în interiorul
    unei pagini cu mai multe secțiuni (ex. Ajutor): câte un container per secțiune, vizibil doar când este ales din bară;
    alegerea intră în hash-ul URL-ului și se reține în browser.
