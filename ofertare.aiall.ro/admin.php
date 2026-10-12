@@ -928,9 +928,9 @@ function view_pipeline(string $csrf): string
         . '<div class="kpi won"><span>Câștigat, onorariu an 1</span><b>' . ron($salWon * ONORARIU_AN1_PER_SALARIAT) . ' RON</b><small>apoi ' . ron($salWon * LICENTA_AN_PER_SALARIAT) . ' RON/an licență</small></div>'
         . '<div class="kpi"><span>Economie anuală generată clienților</span><b>' . ron($salWon * ECONOMIE_AN_PER_SALARIAT) . ' RON</b><small>la ofertele acceptate</small></div>'
         . '</section>'
-        . '<div class="row2"><section class="panel"><h2>Pâlnia ofertelor</h2>' . funnel_svg($reached)
-        . '<p class="fnote">Etapa maximă atinsă de fiecare ofertă; ofertele pierdute rămân numărate la etapa la care au ajuns. Pierdute: ' . count($byStage['pierduta']) . '.</p></section>'
-        . '<section class="panel"><h2>Ofertă nouă</h2>' . $form . '</section></div>'
+        . '<div class="row2 offer"><section class="panel"><h2>Ofertă nouă</h2>' . $form . '</section>'
+        . '<section class="panel"><h2>Pâlnia ofertelor</h2>' . funnel_svg($reached)
+        . '<p class="fnote">Etapa maximă atinsă de fiecare ofertă; ofertele pierdute rămân numărate la etapa la care au ajuns. Pierdute: ' . count($byStage['pierduta']) . '.</p></section></div>'
         . '<section class="panel" id="pipePanel"><div class="ph"><h2>Pipeline</h2><div class="acts seg" role="group" aria-label="Mod de afișare">'
         . '<button type="button" class="sm tgl" data-mode="kanban" aria-pressed="true" aria-label="Kanban" title="Kanban: carduri pe etape">'
         . '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><rect x="2" y="3" width="4.5" height="14" rx="1"/><rect x="7.75" y="3" width="4.5" height="9" rx="1"/><rect x="13.5" y="3" width="4.5" height="11" rx="1"/></svg></button>'
@@ -2077,6 +2077,7 @@ main{max-width:1440px;margin:0 auto;padding:0 20px 20px}
 .kpi small{color:var(--muted);font-size:12px}
 .kpi.won b{color:var(--green)}.kpi.pipe b{color:var(--teal)}
 .row2{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:18px}
+.row2.offer{grid-template-columns:minmax(0,7fr) minmax(0,5fr)} /* oferta nouă în stânga, pâlnia în dreapta */
 @media (max-width:980px){.row2{grid-template-columns:1fr}}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px 18px;min-width:0}
 .panel h2{font-size:15px;margin:0 0 12px;color:var(--navy)}
