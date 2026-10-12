@@ -105,6 +105,7 @@ function ui_icon(string $name): string
         'ban'   => '<circle cx="8" cy="8" r="6"/><path d="M3.8 3.8l8.4 8.4"/>',
         'check' => '<path d="M3 8.5l3 3 7-7"/>',
         'anaf'  => '<circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/><path d="M5.5 7h3M7 5.5v3"/>',
+        'info'  => '<circle cx="8" cy="8" r="6.3"/><path d="M8 7.2v4.3"/><circle cx="8" cy="5" r=".6" fill="currentColor"/>',
     ];
     return '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . ($d[$name] ?? '') . '</svg>';
 }
@@ -113,6 +114,12 @@ function ui_icon(string $name): string
 function ui_btn(string $icon, string $label, string $kind = '', string $attrs = ''): string
 {
     return '<button type="submit" class="ico' . ($kind !== '' ? ' ' . $kind : '') . '" title="' . h($label) . '" aria-label="' . h($label) . '"' . ($attrs !== '' ? ' ' . $attrs : '') . '>' . ui_icon($icon) . '</button>';
+}
+
+// Buton „Detalii” (pictogramă) care deschide un mic panou cu informațiile secundare ale unui rând.
+function ui_info(string $html): string
+{
+    return '<details class="rinfo"><summary class="ico" title="Detalii" aria-label="Detalii">' . ui_icon('info') . '</summary><div>' . $html . '</div></details>';
 }
 
 // Inițialele pentru avatarul din antet: primele litere din primele două cuvinte ale numelui (sau ale utilizatorului).
@@ -1207,12 +1214,12 @@ function view_materials(): string
             . '<select name="kind" aria-label="Tip"><option value="oferta"' . ($m['kind'] === 'oferta' ? ' selected' : '') . '>Ofertă</option>'
             . '<option value="suport"' . ($m['kind'] === 'suport' ? ' selected' : '') . '>Material suport</option></select>'
             . '<div class="stats"><b>' . (int)$m['in_tpl'] . '</b> șabloane<br><b>' . (int)$m['sent'] . '</b> trimiteri · <b>' . (int)$m['opened'] . '</b> deschideri</div>'
-            . '<label class="fl"><input type="file" name="file" aria-label="Înlocuiește fișierul"><small>Înlocuiește fișierul; linkurile trimise deschid noua versiune</small></label>'
+            . '<label class="fl"><input type="file" name="file" aria-label="Înlocuiește fișierul" title="Înlocuiește fișierul; linkurile deja trimise deschid noua versiune"></label>'
             . '<label class="act"><input type="checkbox" name="active" value="1"' . ($m['active'] ? ' checked' : '') . '> Activ</label>'
             . ui_btn('save', 'Salvează materialul', 'main')
-            . '<div class="rmeta"><span class="ext">' . h($ext) . '</span> ' . h($m['orig_name'] ?: $m['file']) . ' · '
-            . ($path ? h(human_size((int)filesize($path))) : '<span class="err">fișier lipsă</span>')
-            . ' · actualizat ' . h(fmt_time((int)$m['updated_at'])) . '</div></form>';
+            . ui_info('<span class="ext">' . h($ext) . '</span> ' . h($m['orig_name'] ?: $m['file']) . '<br>'
+                . ($path ? h(human_size((int)filesize($path))) : '<span class="err">fișier lipsă</span>')
+                . '<br>actualizat ' . h(fmt_time((int)$m['updated_at'])) . '<br>Înlocuiește fișierul: linkurile deja trimise deschid noua versiune.') . '</form>';
     }
 
     return '<section class="panel"><h2>Încarcă material</h2>'
@@ -1373,9 +1380,9 @@ function view_catalog(): string
             . ui_btn('save', 'Salvează articolul', 'main', 'name="action" value="cat_save"')
             . ui_btn('copy', 'Copiază articolul', '', 'name="action" value="cat_copy"')
             . ui_btn('trash', 'Șterge articolul', 'bad', 'name="action" value="cat_delete"')
-            . '<div class="rmeta"><span class="lk l-' . $st . '">' . $labels[$st] . '</span>' . h($extra)
-            . ($isPk && (float)$c['price'] <= 0 ? ' · preț ' . h(fmt_amount(catalog_price($c), (string)$c['currency'])) . ' din compoziție' . (catalog_price_note($c) !== '' ? ' (' . h(catalog_price_note($c)) . ')' : '') : '')
-            . ' · actualizat ' . h(fmt_time((int)$c['updated_at'])) . '</div>'
+            . ui_info('<b><span class="lk l-' . $st . '">' . $labels[$st] . '</span></b>' . h($extra)
+                . ($isPk && (float)$c['price'] <= 0 ? '<br>preț ' . h(fmt_amount(catalog_price($c), (string)$c['currency'])) . ' din compoziție' . (catalog_price_note($c) !== '' ? ' (' . h(catalog_price_note($c)) . ')' : '') : '')
+                . '<br>actualizat ' . h(fmt_time((int)$c['updated_at'])))
             . '</form>'
             . ($isPk ? catalog_composition($c, $comps[$id] ?? [], $all, $today) : '')
             . '</div>';
@@ -1407,7 +1414,7 @@ function view_catalog(): string
         . '<div><label for="kSt">Valabilitate</label><select id="kSt"><option value="">Toate</option><option value="valid">Valide azi</option>'
         . '<option value="viitor">Din viitor</option><option value="expirat">Expirate</option></select></div></div>'
         . '<div class="cathead" aria-hidden="true"><span>Tip</span><span>Denumire</span><span>UM</span><span>Valid de la</span><span>Valid până la</span><span>Preț · valută</span>'
-        . '<span class="ghost"><button type="button" class="ico" tabindex="-1"></button></span><span class="ghost"><button type="button" class="ico" tabindex="-1"></button></span><span class="ghost"><button type="button" class="ico" tabindex="-1"></button></span></div>'
+        . str_repeat('<span class="ghost"><button type="button" class="ico" tabindex="-1"></button></span>', 4) . '</div>'
         . '<div class="matlist" id="kList">' . ($list ?: '<p class="muted">Catalogul este gol. Adaugă primul articol din formularul de mai sus.</p>') . '</div>'
         . '<p class="muted catempty" id="kEmpty" hidden>Niciun articol pentru filtrele alese.</p>'
         . '<p class="muted">Un articol expirat rămâne în catalog pentru istoric; ștergerea este definitivă. „Copiază” creează un articol nou cu aceleași date (la pachete, cu tot cu compoziție), util pentru o nouă perioadă de valabilitate.'
@@ -1433,8 +1440,8 @@ function view_users(array $me): string
             . '<label class="act"><input type="checkbox" name="active" value="1"' . ($u['active'] ? ' checked' : '') . ($self ? ' disabled' : '') . '> Activ</label>'
             . ui_btn('save', 'Salvează utilizatorul', 'main', 'name="action" value="user_update"')
             . ($self ? '<span></span>' : ui_btn('trash', 'Șterge utilizatorul', 'bad', 'name="action" value="user_delete"'))
-            . '<div class="rmeta">creat ' . h(fmt_time((int)$u['created_at'])) . ' · ultima autentificare '
-            . h(fmt_time($u['last_login'] !== null ? (int)$u['last_login'] : null)) . '</div></form>';
+            . ui_info('creat ' . h(fmt_time((int)$u['created_at'])) . '<br>ultima autentificare '
+                . h(fmt_time($u['last_login'] !== null ? (int)$u['last_login'] : null))) . '</form>';
     }
 
     return '<div class="row2">'
@@ -2446,7 +2453,7 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .up{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;align-items:end}
 .up .pri{margin:0}
 .matlist{display:grid;gap:8px}
-.mat{display:grid;grid-template-columns:minmax(220px,3fr) 150px 175px minmax(170px,2fr) auto auto;gap:10px;align-items:start;border:1px solid var(--line);border-radius:5px;padding:10px 12px}
+.mat{display:grid;grid-template-columns:minmax(200px,3fr) 140px 170px minmax(160px,2fr) auto auto auto;gap:10px;align-items:start;border:1px solid var(--line);border-radius:5px;padding:10px 12px}
 /* Rânduri de listă (materiale, utilizatori): toate controalele pe aceeași linie, la aceeași înălțime; textul secundar dedesubt */
 .mat>select,.mat>input,.mat .mt input,.mat .fl input,.usr>select,.usr>input,.usr .mt input{height:36px;box-sizing:border-box}
 .mat>.sm,.usr>.sm,.mat .act,.usr .act{height:36px;display:inline-flex;align-items:center}
@@ -2459,7 +2466,6 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 @media (max-width:1100px){.mat{grid-template-columns:1fr 1fr}}
 .mt{display:grid;gap:3px;min-width:0}.mt small{font-size:11px;color:var(--muted);overflow-wrap:anywhere}
 /* Linia de informații a unui rând: un singur rând, aliniat la stânga, întins pe toate coloanele; fără date deja prezente în câmpuri */
-.rmeta{grid-column:1/-1;font-size:11px;color:var(--muted);line-height:1.5;overflow-wrap:anywhere;margin-top:-2px}
 .usr .un{line-height:36px}
 .ext{font:600 10px var(--mono);border:1px solid var(--line);border-radius:3px;padding:0 4px}
 .stats{font-size:12px;color:var(--muted)}.stats b{color:var(--ink)}
@@ -2467,7 +2473,7 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .act{display:flex;gap:6px;align-items:center;margin:0;font-size:13px;color:var(--ink)}
 /* Utilizatori */
 .pwf{display:grid;gap:10px}.pwf .pri{margin:0;justify-self:start}
-.usr{display:grid;grid-template-columns:minmax(200px,2fr) minmax(160px,2fr) minmax(170px,2fr) auto auto minmax(64px,auto);gap:10px;align-items:start;border:1px solid var(--line);border-radius:5px;padding:10px 12px}
+.usr{display:grid;grid-template-columns:minmax(200px,2fr) minmax(160px,2fr) minmax(170px,2fr) auto auto minmax(36px,auto) auto;gap:10px;align-items:start;border:1px solid var(--line);border-radius:5px;padding:10px 12px}
 .usr.off{opacity:.6}
 @media (max-width:1100px){.usr{grid-template-columns:1fr 1fr}}
 .un{font:600 13px var(--mono);overflow-wrap:anywhere}.un .tag{font-size:10px;vertical-align:middle}
@@ -2478,7 +2484,7 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .ktools{display:grid;grid-template-columns:minmax(220px,2fr) repeat(2,minmax(160px,1fr));gap:10px;align-items:end;margin-bottom:10px}
 .ktools input,.ktools select{height:36px;box-sizing:border-box}
 @media (max-width:900px){.ktools{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}}
-.cathead,.cat{display:grid;grid-template-columns:170px minmax(220px,3fr) 110px 150px 150px 170px auto auto auto;gap:10px;align-items:start}
+.cathead,.cat{display:grid;grid-template-columns:130px minmax(160px,3fr) 100px 126px 126px 150px auto auto auto auto;gap:8px;align-items:start}
 .prw{display:grid;grid-template-columns:minmax(0,1fr) 74px;gap:4px}.prw input,.prw select{height:36px;box-sizing:border-box}.prw select{padding:0 24px 0 8px;background-position:right 7px center}
 /* Rândurile din catalog și componentele pachetelor: o linie de controale la 36px, textul secundar dedesubt */
 .cat>select,.cat>input,.cat .mt input,.ci>input,.ci>select,.ci .mt input,.umw select,.umw input{height:36px;box-sizing:border-box}
@@ -2487,7 +2493,13 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .cathead{font-size:12px;color:var(--navy);font-weight:600;padding:0 12px 4px;align-items:end}
 .catrow{border:1px solid var(--line);border-radius:5px}
 .cat{padding:10px 12px}
-.catrow.st-expirat{opacity:.65}.catrow.st-viitor{border-left:3px solid var(--amber)}.catrow.st-valid{border-left:3px solid var(--green)}
+/* starea doar ca accent colorat pe marginea dreaptă: verde valid, galben din viitor, roșu expirat */
+.catrow{border-right:3px solid var(--line)}.catrow.st-valid{border-right-color:var(--green)}.catrow.st-viitor{border-right-color:var(--amber)}.catrow.st-expirat{border-right-color:var(--red)}
+/* butonul „Detalii”: panou mic sub buton, aliniat la dreapta */
+.rinfo{position:relative;display:inline-flex;height:36px;margin:0;line-height:0}.rinfo summary{list-style:none;display:inline-grid}.rinfo summary::-webkit-details-marker{display:none}
+.rinfo[open] summary{color:var(--teal);border-color:var(--teal)}
+.rinfo>div{position:absolute;right:0;top:40px;z-index:7;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 12px;min-width:240px;max-width:420px;font-size:12px;line-height:1.6;color:var(--muted);box-shadow:0 6px 18px rgba(0,0,0,.14);white-space:normal;text-align:left}
+.rinfo>div b{color:var(--ink)}
 .catrow.hide{display:none}
 .lk.l-valid{color:var(--green)}.lk.l-viitor{color:var(--amber)}
 .comp{margin:0;border-top:1px dashed var(--line);background:var(--soft);padding:6px 12px 10px;border-radius:0 0 5px 5px}
@@ -2499,7 +2511,7 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .ci.add{grid-template-columns:minmax(260px,1fr) 90px auto;background:transparent;border:0;padding:0}
 .ci input,.ci select{padding:0 8px;font-size:13px}.ci select{padding-right:28px}
 .kt-serviciu,.kt-serviciu_digital{color:var(--teal)}.kt-licenta{color:var(--amber)}.kt-produs{color:var(--navy3)}
-@media (max-width:1100px){.cathead{display:none}.cat{grid-template-columns:1fr 1fr}.cat .mt{grid-column:1/-1}.ci{grid-template-columns:1fr 1fr}.ci .mt{grid-column:1/-1}.ci.add{grid-template-columns:1fr}}
+@media (max-width:1160px){.cathead{display:none}.cat{grid-template-columns:1fr 1fr}.cat .mt{grid-column:1/-1}.ci{grid-template-columns:1fr 1fr}.ci .mt{grid-column:1/-1}.ci.add{grid-template-columns:1fr}}
 /* Ajutor */
 .hp{max-width:980px;line-height:1.6}
 .hnav{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 14px}
@@ -2728,6 +2740,12 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
     document.getElementById('prevClose').addEventListener('click', function () { dlg.close(); });
     document.getElementById('prevSend').addEventListener('click', function () { dlg.close(); form.requestSubmit ? form.requestSubmit() : form.submit(); });
   }
+
+  // Panourile „Detalii” din liste: unul singur deschis, se închide la clic în afară sau Escape
+  document.addEventListener('click', function (e) {
+    document.querySelectorAll('details.rinfo[open]').forEach(function (d) { if (!d.contains(e.target)) { d.open = false; } });
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { document.querySelectorAll('details.rinfo[open]').forEach(function (d) { d.open = false; }); } });
 
   // Catalog, articol nou: UM propus după tip (srv la servicii, buc la produs, pachet la pachete), cât timp nu a fost schimbat manual
   var ctype = document.getElementById('ctype'), cum = document.getElementById('cum');
