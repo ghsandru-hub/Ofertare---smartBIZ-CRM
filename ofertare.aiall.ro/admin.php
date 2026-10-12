@@ -1853,6 +1853,7 @@ function report_js(): string
     var rows = filtered(), cs = cols(), T = $('rTable');
     pinCount = cs.filter(function (c) { return st.pinned.indexOf(c.k) !== -1; }).length;
     T.tHead.innerHTML = headHtml(cs, rows);
+    T.classList.toggle('fixedw', Object.keys(st.widths).length > 0); // lățimi explicite: doar coloana trasă se schimbă
     T.tBodies[0].innerHTML = bodyHtml(rows, cs, false)
       || '<tr><td colspan="' + (cs.length + 1) + '" class="empty">' + (rows.length ? 'Rândurile sunt ascunse: „Numai grupările” este bifat.' : 'Nu există înregistrări pentru criteriul curent.') + '</td></tr>';
     T.tFoot.innerHTML = rows.length ? totalHtml(rows, cs, false) : '';
@@ -1966,6 +1967,12 @@ function report_js(): string
     if (!rz) { return; }
     e.preventDefault();
     var th = rz.parentNode, k = rz.dataset.rz, x0 = e.clientX, w0 = th.offsetWidth;
+    // înghețăm lățimea curentă a tuturor coloanelor, ca trasul să schimbe numai coloana aleasă (nu redistribuie restul)
+    Array.prototype.forEach.call(head.querySelectorAll('th'), function (h) {
+      var w = h.offsetWidth; h.style.width = h.style.minWidth = h.style.maxWidth = w + 'px';
+      if (h.dataset.k) { st.widths[h.dataset.k] = w; }
+    });
+    $('rTable').classList.add('fixedw');
     var move = function (ev) { var w = Math.max(60, Math.min(600, w0 + ev.clientX - x0)); th.style.width = th.style.minWidth = th.style.maxWidth = w + 'px'; st.widths[k] = w; };
     var up = function () { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); render(); };
     document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
@@ -2554,6 +2561,8 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .rsel{display:flex;gap:10px;align-items:center;font-size:13px;padding:6px 10px;border:1px dashed var(--teal);border-radius:4px}.rsel[hidden]{display:none}.rsel .lnk{margin:0}
 .rtw{overflow:auto;max-height:70vh;border:1px solid var(--line);border-radius:5px}
 .rt{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}
+.rt.fixedw{table-layout:fixed;width:auto} /* după o redimensionare: fiecare coloană își păstrează lățimea, tabelul derulează orizontal dacă e cazul */
+.rt.fixedw th,.rt.fixedw td{overflow:hidden;text-overflow:ellipsis}
 .rt th{position:sticky;top:0;z-index:2;background:var(--soft);color:var(--navy);text-align:left;font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none}
 .rt th.drag{opacity:.5}.rt th.over{box-shadow:inset 3px 0 0 var(--teal)}
 .rt th .tht{display:inline-flex;align-items:center;gap:4px;max-width:100%}.thl{overflow:hidden;text-overflow:ellipsis}
