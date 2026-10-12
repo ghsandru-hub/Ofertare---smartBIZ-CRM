@@ -10,6 +10,7 @@
 //   links               câte un link personal per material, per ofertă
 //   otps / sessions     codul de acces și sesiunea, la nivel de ofertă (un cod deschide toate materialele)
 //   access_log          jurnalul evenimentelor
+//   catalog             catalogul de produse și servicii (tip, denumire, UM, perioada de valabilitate)
 
 declare(strict_types=1);
 
@@ -147,6 +148,16 @@ function db(): PDO
             active     INTEGER NOT NULL DEFAULT 1,
             created_at INTEGER NOT NULL,
             last_login INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS catalog (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            type       TEXT NOT NULL DEFAULT 'serviciu',
+            name       TEXT NOT NULL,
+            um         TEXT NOT NULL DEFAULT 'buc',
+            valid_from TEXT NOT NULL DEFAULT '',
+            valid_to   TEXT NOT NULL DEFAULT '',
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
         );
         CREATE INDEX IF NOT EXISTS ix_links_deal ON links(deal_id);
         CREATE INDEX IF NOT EXISTS ix_log_deal ON access_log(deal_id, at);
@@ -375,6 +386,49 @@ function stages(): array
         'acceptata' => ['label' => 'Acceptată',    'rank' => 4],
         'pierduta'  => ['label' => 'Pierdută',     'rank' => 0],
     ];
+}
+
+// ---------------------------------------------------------------------------
+// Catalog de produse și servicii
+// ---------------------------------------------------------------------------
+// Tipurile de articole din catalog: cheia se stochează în coloana `type`, eticheta se afișează în cockpit.
+function catalog_types(): array
+{
+    return [
+        'serviciu'         => 'Serviciu',
+        'licenta'          => 'Licență',
+        'serviciu_digital' => 'Serviciu digital',
+        'produs'           => 'Produs',
+        'pachet_servicii'  => 'Pachet servicii',
+        'pachet_produse'   => 'Pachet produse',
+    ];
+}
+
+// Data de valabilitate din formular: acceptă YYYY-MM-DD (input type=date) sau DD.MM.YYYY; altfel gol (= nelimitat).
+function catalog_date(string $raw): string
+{
+    $raw = trim($raw);
+    if ($raw === '') {
+        return '';
+    }
+    if (preg_match('/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/', $raw, $m)) {
+        $raw = sprintf('%04d-%02d-%02d', $m[3], $m[2], $m[1]);
+    }
+    $d = DateTime::createFromFormat('!Y-m-d', $raw);
+    return $d && $d->format('Y-m-d') === $raw ? $raw : '';
+}
+
+// Starea unui articol față de perioada de valabilitate: valid / viitor (nu a intrat în vigoare) / expirat.
+function catalog_status(array $item, ?string $today = null): string
+{
+    $today = $today ?? date('Y-m-d');
+    if ($item['valid_from'] !== '' && $item['valid_from'] > $today) {
+        return 'viitor';
+    }
+    if ($item['valid_to'] !== '' && $item['valid_to'] < $today) {
+        return 'expirat';
+    }
+    return 'valid';
 }
 
 function set_stage(int $dealId, string $stage): void

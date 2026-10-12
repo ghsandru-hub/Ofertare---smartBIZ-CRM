@@ -1,6 +1,6 @@
 <?php
 // Cockpit e2e OPS Ofertare: https://ofertare.aiall.ro/admin.php
-// Secțiuni: Pipeline (indicatori, pâlnie, kanban, ofertă nouă), Raportare, Șabloane email, Materiale, Utilizatori.
+// Secțiuni: Pipeline (indicatori, pâlnie, kanban, ofertă nouă), Raportare, Catalog (produse și servicii), Șabloane email, Materiale, Utilizatori.
 // Login separat de partea publică: sesiune proprie (cookie „ofadm”). Utilizatorii stau în tabela `users`;
 // contul din ofertare_private/config.php este contul inițial și calea de recuperare (vezi autentificarea).
 
@@ -96,7 +96,7 @@ function new_password(): string
 // ---------------------------------------------------------------------------
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $action = (string)($_POST['action'] ?? '');
-$view   = in_array($_GET['v'] ?? '', ['pipeline', 'sabloane', 'materiale', 'raportare', 'utilizatori'], true) ? $_GET['v'] : 'pipeline';
+$view   = in_array($_GET['v'] ?? '', ['pipeline', 'sabloane', 'materiale', 'raportare', 'catalog', 'utilizatori'], true) ? $_GET['v'] : 'pipeline';
 
 if ($action === 'logout' && csrf_ok()) {
     $_SESSION = [];
@@ -365,6 +365,52 @@ if ($method === 'POST') {
                     . ($file !== $m['file'] ? '; linkurile deja trimise deschid noua versiune' : '') . '.</div>');
             }
             redirect('admin.php?v=materiale');
+
+        // --- Catalog produse și servicii -------------------------------------
+        case 'cat_save':
+            $id    = (int)($_POST['id'] ?? 0);
+            $types = catalog_types();
+            $type  = (string)($_POST['type'] ?? '');
+            $name  = mb_substr(trim((string)($_POST['name'] ?? '')), 0, 200);
+            $um    = mb_substr(trim((string)($_POST['um'] ?? '')), 0, 20);
+            $from  = catalog_date((string)($_POST['valid_from'] ?? ''));
+            $to    = catalog_date((string)($_POST['valid_to'] ?? ''));
+            $back  = 'admin.php?v=catalog' . ($id ? '#k' . $id : '');
+            if (!isset($types[$type])) {
+                flash('<div class="note err">Alege tipul articolului.</div>');
+            } elseif ($name === '') {
+                flash('<div class="note err">Denumirea este obligatorie.</div>');
+            } elseif ($um === '') {
+                flash('<div class="note err">Unitatea de măsură este obligatorie.</div>');
+            } elseif ($from !== '' && $to !== '' && $to < $from) {
+                flash('<div class="note err">„Valid până la” nu poate fi înainte de „Valid de la”.</div>');
+            } elseif ($id) {
+                db()->prepare('UPDATE catalog SET type = ?, name = ?, um = ?, valid_from = ?, valid_to = ?, updated_at = ? WHERE id = ?')
+                    ->execute([$type, $name, $um, $from, $to, time(), $id]);
+                flash('<div class="note">Articolul „' . h($name) . '” a fost actualizat.</div>');
+            } else {
+                db()->prepare('INSERT INTO catalog (type, name, um, valid_from, valid_to, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+                    ->execute([$type, $name, $um, $from, $to, time(), time()]);
+                $back = 'admin.php?v=catalog#k' . (int)db()->lastInsertId();
+                flash('<div class="note">Articolul „' . h($name) . '” a fost adăugat în catalog.</div>');
+            }
+            redirect($back);
+
+        case 'cat_copy':
+            $src = db()->prepare('SELECT * FROM catalog WHERE id = ?');
+            $src->execute([(int)($_POST['id'] ?? 0)]);
+            if ($c = $src->fetch()) {
+                db()->prepare('INSERT INTO catalog (type, name, um, valid_from, valid_to, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+                    ->execute([$c['type'], $c['name'] . ' (copie)', $c['um'], $c['valid_from'], $c['valid_to'], time(), time()]);
+                flash('<div class="note">Am creat o copie a articolului „' . h($c['name']) . '”.</div>');
+                redirect('admin.php?v=catalog#k' . (int)db()->lastInsertId());
+            }
+            redirect('admin.php?v=catalog');
+
+        case 'cat_delete':
+            db()->prepare('DELETE FROM catalog WHERE id = ?')->execute([(int)($_POST['id'] ?? 0)]);
+            flash('<div class="note">Articolul a fost șters din catalog.</div>');
+            redirect('admin.php?v=catalog');
 
         // --- Utilizatori ----------------------------------------------------
         case 'pw_change':
@@ -754,6 +800,80 @@ function view_materials(): string
 }
 
 // ===========================================================================
+// SECȚIUNEA CATALOG (produse și servicii: tip, denumire, UM, valid de la / până la)
+// ===========================================================================
+function catalog_type_options(string $selected): string
+{
+    $out = '';
+    foreach (catalog_types() as $k => $label) {
+        $out .= '<option value="' . $k . '"' . ($k === $selected ? ' selected' : '') . '>' . h($label) . '</option>';
+    }
+    return $out;
+}
+
+function view_catalog(): string
+{
+    $types  = catalog_types();
+    $rows   = db()->query('SELECT * FROM catalog ORDER BY type, name COLLATE NOCASE')->fetchAll();
+    $today  = date('Y-m-d');
+    $labels = ['valid' => 'valid', 'viitor' => 'din viitor', 'expirat' => 'expirat'];
+    $count  = ['valid' => 0, 'viitor' => 0, 'expirat' => 0];
+    $byType = array_fill_keys(array_keys($types), 0);
+    $fmtD   = fn(string $d) => $d !== '' ? date('d.m.Y', strtotime($d)) : 'nelimitat';
+
+    $list = '';
+    foreach ($rows as $c) {
+        $id  = (int)$c['id'];
+        $st  = catalog_status($c, $today);
+        $count[$st]++;
+        $byType[$c['type']] = ($byType[$c['type']] ?? 0) + 1;
+        $list .= '<form method="post" class="cat st-' . $st . '" id="k' . $id . '" data-type="' . h($c['type']) . '" data-status="' . $st . '"'
+            . ' data-q="' . h(mb_strtolower($c['name'] . ' ' . $c['um'] . ' ' . ($types[$c['type']] ?? $c['type']))) . '">'
+            . csrf_field() . '<input type="hidden" name="id" value="' . $id . '">'
+            . '<select name="type" aria-label="Tip">' . catalog_type_options((string)$c['type']) . '</select>'
+            . '<div class="mt"><input name="name" value="' . h($c['name']) . '" aria-label="Denumire" maxlength="200" required>'
+            . '<small><span class="lk l-' . $st . '">' . $labels[$st] . '</span> · ' . h($fmtD((string)$c['valid_from'])) . ' → ' . h($fmtD((string)$c['valid_to']))
+            . ' · actualizat ' . h(fmt_time((int)$c['updated_at'])) . '</small></div>'
+            . '<input name="um" value="' . h($c['um']) . '" aria-label="UM" maxlength="20" required>'
+            . '<input name="valid_from" type="date" value="' . h($c['valid_from']) . '" aria-label="Valid de la">'
+            . '<input name="valid_to" type="date" value="' . h($c['valid_to']) . '" aria-label="Valid până la">'
+            . '<button type="submit" class="sm" name="action" value="cat_save">Salvează</button>'
+            . '<button type="submit" class="sm" name="action" value="cat_copy" title="Creează o copie">Copiază</button>'
+            . '<button type="submit" class="sm bad" name="action" value="cat_delete">Șterge</button>'
+            . '</form>';
+    }
+
+    $typeOpts = '';
+    foreach ($types as $k => $label) {
+        $typeOpts .= '<option value="' . $k . '">' . h($label) . ' (' . $byType[$k] . ')</option>';
+    }
+
+    return '<section class="panel"><h2>Articol nou în catalog</h2>'
+        . '<form method="post" class="up catf">' . csrf_field() . '<input type="hidden" name="action" value="cat_save">'
+        . '<div><label for="ctype">Tip</label><select id="ctype" name="type">' . catalog_type_options('serviciu') . '</select></div>'
+        . '<div class="wide"><label for="cname">Denumire</label><input id="cname" name="name" maxlength="200" placeholder="ex. Implementare e2e OPS Salarizare" required></div>'
+        . '<div><label for="cum">UM</label><input id="cum" name="um" maxlength="20" value="buc" list="umList" required>'
+        . '<datalist id="umList"><option value="buc"><option value="ora"><option value="zi"><option value="luna"><option value="an"><option value="salariat"><option value="salariat/luna"><option value="utilizator"><option value="pachet"></datalist></div>'
+        . '<div><label for="cfrom">Valid de la</label><input id="cfrom" name="valid_from" type="date" value="' . $today . '"></div>'
+        . '<div><label for="cto">Valid până la</label><input id="cto" name="valid_to" type="date"></div>'
+        . '<button type="submit" class="pri">Adaugă în catalog</button></form>'
+        . '<p class="muted">Tipuri: serviciu, licență, serviciu digital, produs, pachet servicii, pachet produse. Lasă „Valid până la” gol pentru valabilitate nelimitată.</p></section>'
+        . '<section class="panel"><div class="ph"><h2>Catalog produse și servicii</h2>'
+        . '<div class="rsum catsum"><span><b>' . count($rows) . '</b> articole</span><span><b class="ok">' . $count['valid'] . '</b> valide</span>'
+        . '<span><b>' . $count['viitor'] . '</b> din viitor</span><span><b class="err">' . $count['expirat'] . '</b> expirate</span></div></div>'
+        . '<div class="rtools cattools">'
+        . '<div class="rsearch"><label for="kQ">Caută</label><input id="kQ" type="search" placeholder="denumire, UM, tip…"></div>'
+        . '<div><label for="kType">Tip</label><select id="kType"><option value="">Toate tipurile</option>' . $typeOpts . '</select></div>'
+        . '<div><label for="kSt">Valabilitate</label><select id="kSt"><option value="">Toate</option><option value="valid">Valide azi</option>'
+        . '<option value="viitor">Din viitor</option><option value="expirat">Expirate</option></select></div></div>'
+        . '<div class="cathead"><span>Tip</span><span>Denumire</span><span>UM</span><span>Valid de la</span><span>Valid până la</span><span></span><span></span><span></span></div>'
+        . '<div class="matlist" id="kList">' . ($list ?: '<p class="muted">Catalogul este gol. Adaugă primul articol din formularul de mai sus.</p>') . '</div>'
+        . '<p class="muted catempty" id="kEmpty" hidden>Niciun articol pentru filtrele alese.</p>'
+        . '<p class="muted">Un articol expirat rămâne în catalog pentru istoric; ștergerea este definitivă. „Copiază” creează un articol nou cu aceleași date, util pentru o nouă perioadă de valabilitate.</p>'
+        . '</section>';
+}
+
+// ===========================================================================
 // SECȚIUNEA UTILIZATORI (parola mea, utilizator nou, lista cu nume / activ / resetare parolă / ștergere)
 // ===========================================================================
 function view_users(array $me): string
@@ -1085,6 +1205,7 @@ JS;
 $views   = [
     'pipeline'  => ['Pipeline',       fn() => view_pipeline($csrf)],
     'raportare' => ['Raportare',      fn() => view_report()],
+    'catalog'   => ['Catalog',        fn() => view_catalog()],
     'sabloane'  => ['Șabloane email', fn() => view_templates()],
     'materiale' => ['Materiale',      fn() => view_materials()],
     'utilizatori' => ['Utilizatori',  fn() => view_users($me)],
@@ -1249,6 +1370,19 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .usr.off{opacity:.6}
 @media (max-width:1100px){.usr{grid-template-columns:1fr 1fr}}
 .un{font:600 13px var(--mono);overflow-wrap:anywhere}.un .tag{font-size:10px;vertical-align:middle}
+/* Catalog produse și servicii */
+.catf{grid-template-columns:170px minmax(240px,3fr) 120px 160px 160px auto}
+@media (max-width:1100px){.catf{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}.catf .wide{grid-column:1/-1}}
+.catsum{border:0;padding:0 0 8px;margin:0}
+.cattools{grid-template-columns:minmax(220px,2fr) repeat(2,minmax(160px,1fr))}
+@media (max-width:1200px){.cattools{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}}
+.cathead,.cat{display:grid;grid-template-columns:170px minmax(220px,3fr) 110px 150px 150px auto auto auto;gap:10px;align-items:center}
+.cathead{font-size:12px;color:var(--navy);font-weight:600;padding:0 12px 4px}
+.cat{border:1px solid var(--line);border-radius:5px;padding:10px 12px}
+.cat.st-expirat{opacity:.65}.cat.st-viitor{border-left:3px solid var(--amber)}.cat.st-valid{border-left:3px solid var(--green)}
+.cat.hide,.cathead.hide{display:none}
+.lk.l-valid{color:var(--green)}.lk.l-viitor{color:var(--amber)}
+@media (max-width:1100px){.cathead{display:none}.cat{grid-template-columns:1fr 1fr}.cat .mt{grid-column:1/-1}}
 /* Raportare */
 .rep .ph{align-items:center}.sm2{margin:0;padding:6px 12px}
 .rtools{display:grid;grid-template-columns:minmax(220px,2fr) repeat(6,minmax(120px,1fr)) auto;gap:10px;align-items:end;margin-bottom:10px}
@@ -1369,6 +1503,28 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
     cuiBtn.addEventListener('click', lookup);
     cuiIn.addEventListener('change', lookup);
     cuiIn.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); lookup(); } });
+  }
+
+  // Catalog: filtrare pe tip, valabilitate și text, fără reîncărcare
+  var kList = document.getElementById('kList');
+  if (kList) {
+    var kQ = document.getElementById('kQ'), kType = document.getElementById('kType'), kSt = document.getElementById('kSt'), kEmpty = document.getElementById('kEmpty');
+    var items = Array.prototype.slice.call(kList.querySelectorAll('.cat'));
+    var kFilter = function () {
+      var q = kQ.value.trim().toLowerCase(), shown = 0;
+      items.forEach(function (it) {
+        var ok = (!kType.value || it.dataset.type === kType.value) && (!kSt.value || it.dataset.status === kSt.value)
+          && (!q || it.dataset.q.indexOf(q) !== -1);
+        it.classList.toggle('hide', !ok);
+        if (ok) { shown++; }
+      });
+      kEmpty.hidden = shown > 0 || items.length === 0;
+    };
+    [kQ, kType, kSt].forEach(function (el) { el.addEventListener('input', kFilter); el.addEventListener('change', kFilter); });
+    if (location.hash && /^#k\d+$/.test(location.hash)) {
+      var tgt = document.querySelector(location.hash);
+      if (tgt) { tgt.scrollIntoView({ block: 'center' }); }
+    }
   }
 })();
 </script>
