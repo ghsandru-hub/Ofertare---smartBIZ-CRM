@@ -2045,9 +2045,8 @@ header('Content-Type: text/html; charset=utf-8');
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 var(--sans)}
 /* ---- HEADER (ca în ContaCheck: glassmorphism navy→teal, 60px, fixat) ---- */
-.top{position:sticky;top:0;z-index:50;background:var(--hd-grad);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--hd-border);box-shadow:0 4px 24px rgba(13,21,32,.35)}
+.top{position:sticky;top:0;z-index:50;background:var(--hd-grad);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 4px 24px rgba(13,21,32,.35)}
 .top .in{max-width:1480px;margin:0 auto;padding:0 24px;height:60px;display:flex;align-items:center;gap:14px;position:relative}
-.top .in::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;background:linear-gradient(90deg,transparent,rgba(58,172,176,.6),transparent)}
 .logo{display:flex;align-items:center;gap:11px;font-weight:700;font-size:16px;letter-spacing:-.3px;color:#fff}
 .logo .mark{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;color:#fff;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);box-shadow:0 2px 10px rgba(13,21,32,.3),inset 0 1px 0 rgba(255,255,255,.18);font:700 13px var(--mono);letter-spacing:-.02em}
 .logo .ttl{line-height:1.15}
