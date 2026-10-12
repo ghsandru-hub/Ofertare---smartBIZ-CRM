@@ -90,11 +90,18 @@ Tabel smartBIZ cu toate ofertele: o ofertă pe rând, cu companie, persoană, ș
 date (creare, prima și ultima deschidere, expirare), zile până la deschidere, deschideri, salariați mobili, onorariu an 1,
 licență, economie client, stare link și notă.
 
-- Căutare liberă și filtre pe etapă, șablon, stare link și perioada creării.
-- Sortare pe orice coloană (clic pe antet), grupare pe etapă, șablon, luna creării sau stare link, cu subtotaluri.
-- Alegerea coloanelor afișate; vederea (filtre, sortare, grupare, coloane) se păstrează în browser.
-- Rând de total și sumar: număr de oferte, procent deschise, acceptate, salariați, onorariu an 1, economie client.
-- Export CSV pentru Excel (UTF-8, separator „;”), cu rândurile filtrate, în ordinea și cu coloanele afișate.
+Tabelul reia comportamentul tabelului smartBIZ din Time-Mobility-Tracker (`ConfigurableDataTableScreen`); lista
+funcționalităților preluate și a diferențelor este în [`docs/tabel-smartbiz.md`](docs/tabel-smartbiz.md), iar modul de
+lucru în [`docs/manual-utilizare.md`](docs/manual-utilizare.md).
+
+- Panou de filtre facet (stânga): o secțiune per coloană text, valori cu numărători, „Fără valoare”, căutare în facet peste
+  8 valori, Reset pe secțiune și „Resetează filtrele (n)”; OR între valorile unei coloane, AND între coloane; perioada creării.
+- Căutare în textul tuturor coloanelor; sortare în trei stări (clic pe antet); grupare pe mai multe niveluri cu subtotaluri,
+  restrângere și „Numai grupările”.
+- Coloane: afișare, ordine prin tragere, lățime, fixare la stânga (max. 3); selecție de rânduri; 6 carduri KPI.
+- Export Excel (.xlsx generat în browser, antet înghețat, autofiltru), CSV și PDF (fereastră de tipărire cu KPI, grupări și
+  total); exporturile iau selecția sau rândurile filtrate.
+- Vederea curentă și configurațiile denumite se păstrează în browser.
 
 ### 3. Catalog produse și servicii
 
@@ -150,12 +157,6 @@ Gestiunea catalogului de produse și servicii, tabela `catalog` din `ofertare.db
 - Un material dezactivat nu mai poate fi deschis și nu mai apare în șabloane.
 - Pentru fiecare material vezi în câte șabloane apare, de câte ori a fost trimis și de câte ori a fost deschis.
 
-### Accesul clientului
-
-Un singur cod de acces, trimis pe emailul destinatarului, deschide toate materialele din același email,
-timp de 12 ore. Un link redirecționat ajunge la pagina de cod, iar codul pleacă tot la destinatarul inițial.
-
-
 ### 6. Utilizatori
 
 - Fiecare utilizator are nume de utilizator, nume afișat, parolă (bcrypt) și stare activ/inactiv; tabela `users` din `ofertare.db`.
@@ -173,6 +174,11 @@ Ghid de utilizare în cockpit: fluxul pe scurt, cum ajung materialele suport în
 cu ordine, rândul `{{materiale}}`, oferta nouă, ce vede clientul, ce vezi tu, întreținere), câte o secțiune pentru fiecare tab
 și o listă de probleme frecvente. Valorile (limita de încărcare, valabilitatea codului, numărul de coduri și de încercări,
 durata sesiunii) se citesc din `config.php`.
+
+### Accesul clientului
+
+Un singur cod de acces, trimis pe emailul destinatarului, deschide toate materialele din același email,
+timp de 12 ore. Un link redirecționat ajunge la pagina de cod, iar codul pleacă tot la destinatarul inițial.
 
 ## Ce protejează
 

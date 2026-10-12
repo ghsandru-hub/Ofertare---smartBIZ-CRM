@@ -1067,7 +1067,9 @@ function view_users(array $me): string
 }
 
 // ===========================================================================
-// SECȚIUNEA RAPORTARE (tabel smartBIZ: căutare, filtre, sortare, grupare, totaluri, export CSV)
+// SECȚIUNEA RAPORTARE — tabel smartBIZ (după ConfigurableDataTableScreen din Time-Mobility-Tracker):
+// panou de filtre facet, căutare, sortare în trei stări, grupare pe niveluri cu subtotaluri, KPI, coloane
+// (afișare, ordine, fixare, lățime), selecție rânduri, export Excel / CSV / PDF, configurații salvate.
 // ===========================================================================
 function view_report(): string
 {
@@ -1118,37 +1120,49 @@ function view_report(): string
             'nota'      => (string)$r['nota'],
         ];
     }
-    $tplNames = array_values(array_unique(array_map(fn($d) => $d['sablon'], $data)));
-    sort($tplNames);
 
-    $stageOpts = '';
-    foreach ($stages as $k => $s) {
-        $stageOpts .= '<option value="' . $k . '">' . $s['label'] . '</option>';
-    }
-    $tplOpts = '';
-    foreach ($tplNames as $t) {
-        $tplOpts .= '<option>' . h($t) . '</option>';
-    }
+    // Pictograme inline (16px, currentColor), ca butoanele icon-only din tabelul smartBIZ.
+    $svg = fn(string $d) => '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . $d . '</svg>';
+    $ic  = [
+        'filter' => $svg('<path d="M2 3h12l-4.5 5.5v4L6.5 14V8.5L2 3z"/>'),
+        'search' => $svg('<circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/>'),
+        'save'   => $svg('<path d="M3 2h8l2.5 2.5V14H3z"/><path d="M5 2v4h5V2M5 14V9h6v5"/>'),
+        'trash'  => $svg('<path d="M3 4h10M6 4V2.5h4V4M4.5 4l.7 9.5h5.6l.7-9.5M6.7 7v4M9.3 7v4"/>'),
+        'cols'   => $svg('<rect x="2" y="3" width="12" height="10" rx="1.2"/><path d="M6.5 3v10M10.5 3v10"/>'),
+        'more'   => $svg('<circle cx="3.5" cy="8" r="1.1" fill="currentColor"/><circle cx="8" cy="8" r="1.1" fill="currentColor"/><circle cx="12.5" cy="8" r="1.1" fill="currentColor"/>'),
+    ];
 
     return '<section class="panel rep">'
-        . '<div class="ph"><h2>Raportare oferte</h2><div class="acts">'
+        . '<div class="ph"><h2>Raportare oferte <button type="button" class="ico" id="rFiltBtn" title="Afișează filtrele" aria-label="Afișează filtrele" aria-expanded="false" aria-controls="rFilt">' . $ic['filter'] . '</button></h2>'
+        . '<div class="rsearch">' . $ic['search'] . '<input id="rQ" type="search" placeholder="Caută în tabel" aria-label="Caută în tabel"></div>'
+        . '<div class="acts">'
+        . '<select id="rCfg" aria-label="Configurație tabel"><option value="">Configurație curentă</option></select>'
+        . '<details class="rmenu rcfg"><summary class="ico" title="Salvează configurația" aria-label="Salvează configurația">' . $ic['save'] . '</summary>'
+        . '<div><label for="rCfgName">Denumire</label><input id="rCfgName" maxlength="40" placeholder="ex. Oferte deschise pe județe"><button type="button" class="sm" id="rCfgSave">Salvează</button></div></details>'
+        . '<button type="button" class="ico" id="rCfgDel" title="Șterge configurația" aria-label="Șterge configurația" disabled>' . $ic['trash'] . '</button>'
+        . '<details class="rmenu rcols"><summary class="ico" title="Setări coloane" aria-label="Setări coloane">' . $ic['cols'] . '</summary><div id="rCols"></div></details>'
         . '<button type="button" class="sm" id="rReset">Resetează vederea</button>'
-        . '<button type="button" class="pri sm2" id="rCsv">Export CSV (Excel)</button></div></div>'
-        . '<div class="rtools">'
-        . '<div class="rsearch"><label for="rQ">Caută</label><input id="rQ" type="search" placeholder="companie, CUI, persoană, email, notă…"></div>'
-        . '<div><label for="rStage">Etapă</label><select id="rStage"><option value="">Toate</option>' . $stageOpts . '</select></div>'
-        . '<div><label for="rTpl">Șablon</label><select id="rTpl"><option value="">Toate</option>' . $tplOpts . '</select></div>'
-        . '<div><label for="rLink">Link</label><select id="rLink"><option value="">Toate</option><option>activ</option><option>expirat</option><option>revocat</option></select></div>'
-        . '<div><label for="rFrom">Creată de la</label><input id="rFrom" type="date"></div>'
-        . '<div><label for="rTo">până la</label><input id="rTo" type="date"></div>'
-        . '<div><label for="rGroup">Grupare</label><select id="rGroup"><option value="">Fără</option><option value="etapa">Etapă</option><option value="judet">Județ</option>'
-        . '<option value="sablon">Șablon</option><option value="luna">Luna creării</option><option value="link">Stare link</option></select></div>'
-        . '<details class="rcols"><summary>Coloane</summary><div id="rCols"></div></details>'
-        . '</div>'
-        . '<div class="rsum" id="rSum" aria-live="polite"></div>'
+        . '<details class="rmenu rexp"><summary class="ico" title="Export" aria-label="Export">' . $ic['more'] . '</summary>'
+        . '<div><button type="button" id="rXlsx">Export Excel</button><button type="button" id="rCsv">Export CSV</button><button type="button" id="rPdf">Export PDF</button></div></details>'
+        . '</div></div>'
+        . '<div class="rwrap" id="rWrap">'
+        . '<aside class="rfilt" id="rFilt" hidden><div class="rfh"><span class="rft">Filtre <span class="badge" id="rFiltBadge"></span></span>'
+        . '<button type="button" class="lnk" id="rFiltReset" disabled>Resetează filtrele</button></div>'
+        . '<div id="rFacets"></div>'
+        . '<section class="facet open"><div class="fh"><span class="ft">Creată</span></div><div class="fper">'
+        . '<div><label for="rFrom">de la</label><input id="rFrom" type="date"></div><div><label for="rTo">până la</label><input id="rTo" type="date"></div></div></section>'
+        . '</aside>'
+        . '<div class="rmain">'
+        . '<div class="rgroup"><span class="muted">Grupare</span><span id="rGroupChips"></span><select id="rGroupAdd" aria-label="Adaugă nivel de grupare"></select>'
+        . '<label class="act"><input type="checkbox" id="rOnlyGroups" title="Ascunde rândurile detaliate și afișează numai grupările"> Numai grupările</label>'
+        . '<button type="button" class="lnk" id="rCollapse" hidden>Restrânge tot</button></div>'
+        . '<div class="kpis rk" id="rSum" aria-label="Indicatori raport"></div>'
+        . '<div class="rsel" id="rSel" hidden></div>'
         . '<div class="rtw"><table class="rt" id="rTable"><thead></thead><tbody></tbody><tfoot></tfoot></table></div>'
+        . '<p class="rfoot" id="rCount"></p>'
         . '<p class="muted">Valori în RON fără TVA. Onorariu an 1 = implementare + licență; economia client = 10.368 RON/an per salariat mobil.'
-        . ' Exportul conține rândurile filtrate, în ordinea și cu coloanele afișate.</p>'
+        . ' Exporturile conțin rândurile selectate sau, fără selecție, rândurile filtrate, în ordinea și cu coloanele afișate.</p>'
+        . '</div></div>'
         . '<script type="application/json" id="repData">' . json_encode($data, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) . '</script>'
         . '<script>' . report_js() . '</script>'
         . '</section>';
@@ -1159,73 +1173,99 @@ function report_js(): string
     return <<<'JS'
 (function () {
   var data = JSON.parse(document.getElementById('repData').textContent);
+  // n = numeric, dec = zecimale, sum/avg = agregare în subtotaluri, chip = etichetă etapă,
+  // f = filtru facet, g = grupabil, off = ascunsă implicit
   var COLS = [
-    { k: 'id',         t: 'Nr.',               n: true },
-    { k: 'companie',   t: 'Companie' },
+    { k: 'id',         t: 'Nr.',                  n: true },
+    { k: 'companie',   t: 'Companie',             f: true, g: true },
     { k: 'cui',        t: 'CUI' },
-    { k: 'reg_com',    t: 'Nr. Reg. Com.',      off: true },
-    { k: 'adresa',     t: 'Adresă',             off: true },
-    { k: 'judet',      t: 'Județ',              off: true },
-    { k: 'caen',       t: 'CAEN',               off: true },
-    { k: 'tva',        t: 'Plătitor TVA',       off: true },
-    { k: 'inactiv',    t: 'Inactiv ANAF',       off: true },
-    { k: 'persoana',   t: 'Persoană' },
-    { k: 'email',      t: 'Email',             off: true },
-    { k: 'sablon',     t: 'Șablon' },
+    { k: 'reg_com',    t: 'Nr. Reg. Com.',        off: true },
+    { k: 'adresa',     t: 'Adresă',               off: true },
+    { k: 'judet',      t: 'Județ',                off: true, f: true, g: true },
+    { k: 'caen',       t: 'CAEN',                 off: true, f: true, g: true },
+    { k: 'tva',        t: 'Plătitor TVA',         off: true, f: true, g: true },
+    { k: 'inactiv',    t: 'Inactiv ANAF',         off: true, f: true, g: true },
+    { k: 'persoana',   t: 'Persoană',             f: true, g: true },
+    { k: 'email',      t: 'Email',                off: true },
+    { k: 'sablon',     t: 'Șablon',               f: true, g: true },
     { k: 'mat',        t: 'Materiale citite' },
-    { k: 'materiale',  t: 'Materiale trimise', off: true },
-    { k: 'etapa',      t: 'Etapă',             chip: true },
-    { k: 'max',        t: 'Etapă maximă',      off: true },
+    { k: 'materiale',  t: 'Materiale trimise',    off: true },
+    { k: 'etapa',      t: 'Etapă',                chip: true, f: true, g: true },
+    { k: 'max',        t: 'Etapă maximă',         off: true, f: true, g: true },
     { k: 'creata',     t: 'Creată' },
+    { k: 'luna',       t: 'Luna creării',         off: true, f: true, g: true },
     { k: 'deschisa',   t: 'Prima deschidere' },
     { k: 'zile',       t: 'Zile până la deschidere', n: true, dec: 1, avg: true },
-    { k: 'ultima',     t: 'Ultima deschidere', off: true },
-    { k: 'deschideri', t: 'Deschideri',        n: true, sum: true },
-    { k: 'salariati',  t: 'Salariați mobili',  n: true, sum: true },
-    { k: 'onorariu',   t: 'Onorariu an 1',     n: true, sum: true },
-    { k: 'licenta',    t: 'Licență / an',      n: true, sum: true, off: true },
+    { k: 'ultima',     t: 'Ultima deschidere',    off: true },
+    { k: 'deschideri', t: 'Deschideri',           n: true, sum: true },
+    { k: 'salariati',  t: 'Salariați mobili',     n: true, sum: true },
+    { k: 'onorariu',   t: 'Onorariu an 1',        n: true, sum: true },
+    { k: 'licenta',    t: 'Licență / an',         n: true, sum: true, off: true },
     { k: 'economie',   t: 'Economie client / an', n: true, sum: true },
-    { k: 'link',       t: 'Link' },
-    { k: 'expira',     t: 'Expiră',            off: true },
-    { k: 'nota',       t: 'Notă',              off: true }
+    { k: 'link',       t: 'Link',                 f: true, g: true },
+    { k: 'expira',     t: 'Expiră',               off: true },
+    { k: 'nota',       t: 'Notă',                 off: true }
   ];
-  var KEY = 'ofertare_raport_v2'; // v2: coloanele firmei (ANAF)
-  var def = { q: '', stage: '', tpl: '', link: '', from: '', to: '', group: '', sort: 'id', dir: -1,
-              hidden: COLS.filter(function (c) { return c.off; }).map(function (c) { return c.k; }) };
-  var st = Object.assign({}, def);
-  try { var saved = JSON.parse(localStorage.getItem(KEY) || 'null'); if (saved) { st = Object.assign(st, saved); } } catch (e) {}
+  var BY = {}; COLS.forEach(function (c) { BY[c.k] = c; });
+  var STAGE_K = {}; data.forEach(function (r) { STAGE_K[r.etapa] = r.etapa_k; });
+  var EMPTY = 'Fără valoare', FACET_SEARCH_MIN = 8, MAX_PIN = 3;
+  var KEY = 'ofertare_raport_v3', CFG_KEY = 'ofertare_raport_cfg';
+  var def = { q: '', from: '', to: '', filters: {}, groups: [], onlyGroups: false, collapsed: [], sort: '', dir: 0,
+              hidden: COLS.filter(function (c) { return c.off; }).map(function (c) { return c.k; }),
+              order: COLS.map(function (c) { return c.k; }), pinned: [], widths: {}, panel: false, cfg: '' };
+  var clone = function (o) { return JSON.parse(JSON.stringify(o)); };
+  var st = clone(def);
+  try { var saved = JSON.parse(localStorage.getItem(KEY) || 'null'); if (saved) { st = Object.assign(clone(def), saved); } } catch (e) {}
+  var cfgs = {};
+  try { cfgs = JSON.parse(localStorage.getItem(CFG_KEY) || '{}') || {}; } catch (e) {}
+  var sel = {}, open = {}, fq = {}, pinCount = 0; // selecție, facet deschis, căutare în facet: nu se memorează
 
   var $ = function (id) { return document.getElementById(id); };
   var fmtN = new Intl.NumberFormat('ro-RO', { maximumFractionDigits: 0 });
   var fmt1 = new Intl.NumberFormat('ro-RO', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  var low = function (s) { return String(s == null ? '' : s).toLocaleLowerCase('ro'); };
+  var cmpS = function (a, b) { return String(a).localeCompare(String(b), 'ro', { sensitivity: 'base', numeric: true }); };
+  var blank = function (v) { return v === null || v === undefined || String(v).trim() === ''; };
   var cell = function (c, v) {
-    if (v === null || v === undefined || v === '') { return c.n ? '' : '—'; }
+    if (blank(v)) { return c.n ? '' : '—'; }
     if (c.n) { return c.dec ? fmt1.format(v) : fmtN.format(v); }
     return String(v);
   };
-  var visible = function () { return COLS.filter(function (c) { return st.hidden.indexOf(c.k) === -1; }); };
+  var fval = function (r, k) { return blank(r[k]) ? EMPTY : String(r[k]).trim(); }; // valoarea pentru facet și grupare
   var save = function () { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {} };
+  var saveCfgs = function () { try { localStorage.setItem(CFG_KEY, JSON.stringify(cfgs)); } catch (e) {} };
+  var activeFilters = function () { return Object.keys(st.filters).filter(function (k) { return BY[k] && st.filters[k].length; }); };
+  var filterCount = function () { return activeFilters().length + ((st.from || st.to) ? 1 : 0); };
 
+  // Coloanele vizibile, în ordine: cele fixate primele.
+  function cols() {
+    var ord = st.order.filter(function (k) { return BY[k]; });
+    COLS.forEach(function (c) { if (ord.indexOf(c.k) === -1) { ord.push(c.k); } });
+    var vis = ord.filter(function (k) { return st.hidden.indexOf(k) === -1; });
+    var pin = st.pinned.filter(function (k) { return vis.indexOf(k) !== -1; });
+    return pin.concat(vis.filter(function (k) { return pin.indexOf(k) === -1; })).map(function (k) { return BY[k]; });
+  }
+
+  // --- filtrare: perioadă, facete (OR în coloană, AND între coloane), căutare în textul tuturor coloanelor; sortare în trei stări
   function filtered() {
-    var q = st.q.trim().toLowerCase();
+    var q = low(st.q.trim()), act = activeFilters();
     var rows = data.filter(function (r) {
-      if (st.stage && r.etapa_k !== st.stage) { return false; }
-      if (st.tpl && r.sablon !== st.tpl) { return false; }
-      if (st.link && r.link !== st.link) { return false; }
       if (st.from && r.creata < st.from) { return false; }
       if (st.to && r.creata > st.to) { return false; }
-      if (q && [r.companie, r.cui, r.reg_com, r.adresa, r.judet, r.persoana, r.email, r.nota, r.sablon, r.materiale].join(' ').toLowerCase().indexOf(q) === -1) { return false; }
+      for (var i = 0; i < act.length; i++) { if (st.filters[act[i]].indexOf(fval(r, act[i])) === -1) { return false; } }
+      if (q && !COLS.some(function (c) { return low(cell(c, r[c.k])).indexOf(q) !== -1; })) { return false; }
       return true;
     });
-    var col = COLS.filter(function (c) { return c.k === st.sort; })[0] || COLS[0];
-    rows.sort(function (a, b) {
-      var x = a[col.k], y = b[col.k];
-      if (x === y) { return 0; }
-      if (x === null || x === '') { return 1; }
-      if (y === null || y === '') { return -1; }
-      return (col.n ? x - y : String(x).localeCompare(String(y), 'ro')) * st.dir;
-    });
+    if (st.sort && st.dir && BY[st.sort]) {
+      var c = BY[st.sort];
+      rows = rows.slice().sort(function (a, b) {
+        var x = a[c.k], y = b[c.k], bx = blank(x), by = blank(y);
+        if (bx && by) { return 0; }
+        if (bx || by) { return (bx ? -1 : 1) * st.dir; } // valorile goale primele, ca în tabelul smartBIZ
+        return (c.n ? x - y : cmpS(x, y)) * st.dir;
+      });
+    }
     return rows;
   }
 
@@ -1240,108 +1280,407 @@ function report_js(): string
     });
     return t;
   }
-
-  // Rând de total / subtotal: eticheta ocupă coloanele dinaintea primei coloane cu valori agregate.
-  function totalRow(rows, label, cls) {
-    var t = totals(rows), cols = visible();
-    var span = 0;
-    while (span < cols.length && !cols[span].sum && !cols[span].avg) { span++; }
-    span = Math.max(1, span);
-    var html = '<tr class="' + cls + '"><td colspan="' + span + '"><b>' + esc(label) + '</b> <span class="cnt">' + rows.length + '</span></td>';
-    cols.slice(span).forEach(function (c) {
-      if (c.sum || c.avg) { html += '<td class="n">' + (t[c.k] === null ? '' : (c.avg ? '⌀ ' : '') + cell(c, t[c.k])) + '</td>'; }
-      else { html += '<td></td>'; }
-    });
-    return html + '</tr>';
-  }
-
-  function render() {
-    var rows = filtered(), cols = visible();
-    $('rTable').tHead.innerHTML = '<tr>' + cols.map(function (c) {
-      var arrow = st.sort === c.k ? (st.dir > 0 ? ' ▲' : ' ▼') : '';
-      return '<th class="' + (c.n ? 'n' : '') + '" data-k="' + c.k + '" tabindex="0" aria-sort="' + (st.sort === c.k ? (st.dir > 0 ? 'ascending' : 'descending') : 'none') + '">' + esc(c.t) + arrow + '</th>';
-    }).join('') + '</tr>';
-
-    var body = '';
-    var rowHtml = function (r) {
-      return '<tr>' + cols.map(function (c) {
-        var v = cell(c, r[c.k]);
-        if (c.chip) { return '<td><span class="chip s-' + esc(r.etapa_k) + '">' + esc(v) + '</span></td>'; }
-        if (c.k === 'link') { return '<td><span class="lk l-' + esc(r.link) + '">' + esc(v) + '</span></td>'; }
-        if (c.k === 'companie') { return '<td><a href="admin.php?v=pipeline#c' + r.id + '">' + esc(v) + '</a></td>'; }
-        return '<td class="' + (c.n ? 'n' : (c.k === 'nota' || c.k === 'materiale' ? 'wrap' : '')) + '">' + esc(v) + '</td>';
-      }).join('') + '</tr>';
-    };
-    if (st.group) {
-      var groups = {}, order = [];
-      rows.forEach(function (r) {
-        var g = st.group === 'etapa' ? r.etapa : r[st.group];
-        if (!groups[g]) { groups[g] = []; order.push(g); }
-        groups[g].push(r);
-      });
-      order.forEach(function (g) {
-        body += totalRow(groups[g], g || '—', 'grp');
-        body += groups[g].map(rowHtml).join('');
-      });
-    } else {
-      body = rows.map(rowHtml).join('');
-    }
-    $('rTable').tBodies[0].innerHTML = body || '<tr><td colspan="' + cols.length + '" class="empty">Nicio ofertă pentru filtrele alese.</td></tr>';
-    $('rTable').tFoot.innerHTML = rows.length ? totalRow(rows, 'Total', 'tot') : '';
-
+  var labelSpan = function (cs) { var s = 0; while (s < cs.length && !cs[s].sum && !cs[s].avg) { s++; } return Math.max(1, s); };
+  function aggCells(rows, cs, from) {
     var t = totals(rows);
-    var acc = rows.filter(function (r) { return r.etapa_k === 'acceptata'; }).length;
-    var opened = rows.filter(function (r) { return r.deschisa; }).length;
-    $('rSum').innerHTML =
-      '<span><b>' + rows.length + '</b> oferte</span>' +
-      '<span><b>' + (rows.length ? Math.round(100 * opened / rows.length) : 0) + '%</b> deschise</span>' +
-      '<span><b>' + acc + '</b> acceptate</span>' +
-      '<span><b>' + fmtN.format(t.salariati || 0) + '</b> salariați mobili</span>' +
-      '<span><b>' + fmtN.format(t.onorariu || 0) + ' RON</b> onorariu an 1</span>' +
-      '<span><b>' + fmtN.format(t.economie || 0) + ' RON</b> economie client / an</span>';
-    save();
-  }
-
-  function sync() {
-    $('rQ').value = st.q; $('rStage').value = st.stage; $('rTpl').value = st.tpl; $('rLink').value = st.link;
-    $('rFrom').value = st.from; $('rTo').value = st.to; $('rGroup').value = st.group;
-    $('rCols').innerHTML = COLS.map(function (c) {
-      return '<label><input type="checkbox" data-k="' + c.k + '"' + (st.hidden.indexOf(c.k) === -1 ? ' checked' : '') + '> ' + esc(c.t) + '</label>';
+    return cs.slice(from).map(function (c) {
+      return (c.sum || c.avg) ? '<td class="n">' + (t[c.k] === null ? '' : (c.avg ? '⌀ ' : '') + cell(c, t[c.k])) + '</td>' : '<td></td>';
     }).join('');
   }
 
-  [['rQ', 'q', 'input'], ['rStage', 'stage', 'change'], ['rTpl', 'tpl', 'change'], ['rLink', 'link', 'change'],
-   ['rFrom', 'from', 'change'], ['rTo', 'to', 'change'], ['rGroup', 'group', 'change']].forEach(function (b) {
-    $(b[0]).addEventListener(b[2], function (e) { st[b[1]] = e.target.value; render(); });
+  // --- rânduri și grupări (plain = pentru tipărire: fără selecție, fără coloane fixate, grupările extinse)
+  function rowHtml(r, cs, plain) {
+    var html = plain ? '<tr>' : '<tr data-id="' + r.id + '"' + (sel[r.id] ? ' class="on"' : '') + '><td class="sel"><input type="checkbox" data-sel="' + r.id + '" aria-label="Selectează rândul"' + (sel[r.id] ? ' checked' : '') + '></td>';
+    cs.forEach(function (c, i) {
+      var v = cell(c, r[c.k]);
+      var cls = (c.n ? 'n' : (c.k === 'nota' || c.k === 'materiale' || c.k === 'adresa' ? 'wrap' : '')) + (!plain && i < pinCount ? ' pin' : '');
+      if (c.chip) { html += '<td class="' + cls + '"><span class="chip s-' + esc(r.etapa_k) + '">' + esc(v) + '</span></td>'; }
+      else if (c.k === 'link') { html += '<td class="' + cls + '"><span class="lk l-' + esc(r.link) + '">' + esc(v) + '</span></td>'; }
+      else if (c.k === 'companie' && !plain) { html += '<td class="' + cls + '"><a href="admin.php?v=pipeline#c' + r.id + '">' + esc(v) + '</a></td>'; }
+      else { html += '<td class="' + cls + '">' + esc(v) + '</td>'; }
+    });
+    return html + '</tr>';
+  }
+  function groupHtml(rows, cs, level, parent, plain) {
+    if (level >= st.groups.length) { return st.onlyGroups ? '' : rows.map(function (r) { return rowHtml(r, cs, plain); }).join(''); }
+    var k = st.groups[level], buckets = {}, keys = [];
+    rows.forEach(function (r) { var g = fval(r, k); if (!buckets[g]) { buckets[g] = []; keys.push(g); } buckets[g].push(r); });
+    keys.sort(cmpS);
+    var span = labelSpan(cs), html = '';
+    keys.forEach(function (g) {
+      var gid = parent + '\u001f' + g, col = !plain && st.collapsed.indexOf(gid) !== -1;
+      html += '<tr class="grp l' + level + (col ? ' col' : '') + '"' + (plain ? '' : ' data-gid="' + esc(gid) + '"') + '>' + (plain ? '' : '<td class="sel"></td>')
+        + '<td colspan="' + span + '" style="padding-left:' + (10 + level * 16) + 'px">' + (plain ? '' : '<span class="caret" aria-hidden="true">' + (col ? '▸' : '▾') + '</span> ')
+        + '<b>' + esc(BY[k].t) + ': ' + esc(g) + '</b> <span class="cnt">' + buckets[g].length + '</span></td>' + aggCells(buckets[g], cs, span) + '</tr>';
+      if (!col) { html += groupHtml(buckets[g], cs, level + 1, gid, plain); }
+    });
+    return html;
+  }
+  function allGids(rows, level, parent, out) {
+    if (level >= st.groups.length) { return out; }
+    var k = st.groups[level], buckets = {};
+    rows.forEach(function (r) { var g = fval(r, k); (buckets[g] = buckets[g] || []).push(r); });
+    Object.keys(buckets).forEach(function (g) { var gid = parent + '\u001f' + g; out.push(gid); allGids(buckets[g], level + 1, gid, out); });
+    return out;
+  }
+  function bodyHtml(rows, cs, plain) {
+    return st.groups.length ? groupHtml(rows, cs, 0, '', plain) : (st.onlyGroups ? '' : rows.map(function (r) { return rowHtml(r, cs, plain); }).join(''));
+  }
+  function totalHtml(rows, cs, plain) {
+    return '<tr class="tot">' + (plain ? '' : '<td class="sel"></td>') + '<td colspan="' + labelSpan(cs) + '"><b>Total</b> <span class="cnt">' + rows.length + '</span></td>' + aggCells(rows, cs, labelSpan(cs)) + '</tr>';
+  }
+
+  // --- antet: sortare, fixare, redimensionare, reordonare prin tragere
+  var PIN = '<svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M7.5 1l3.5 3.5-2.2.4L6.6 7.1 6.4 11 3.8 8.4 1.2 11 1 10.8l2.6-2.6L1 5.6l3.9-.2 2.2-2.2z"/></svg>';
+  var sortIcon = function (dir) {
+    return '<svg class="si' + (dir ? ' on' : '') + '" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">'
+      + (dir > 0 ? '<path d="M6 10V2M3 5l3-3 3 3"/>' : dir < 0 ? '<path d="M6 2v8M3 7l3 3 3-3"/>' : '<path d="M4 1v10M2 3l2-2 2 2M8 11V1M6 9l2 2 2-2"/>') + '</svg>';
+  };
+  function headHtml(cs, rows) {
+    var all = rows.length > 0 && rows.every(function (r) { return sel[r.id]; });
+    var h = '<tr><th class="sel pin" style="left:0"><input type="checkbox" id="rSelAll" aria-label="Selectează rândurile vizibile"' + (all ? ' checked' : '') + '></th>';
+    cs.forEach(function (c, i) {
+      var dir = st.sort === c.k ? st.dir : 0, w = st.widths[c.k], pinned = st.pinned.indexOf(c.k) !== -1;
+      h += '<th class="' + (c.n ? 'n' : '') + (i < pinCount ? ' pin' : '') + '" data-k="' + c.k + '" draggable="true" tabindex="0"'
+        + (w ? ' style="width:' + w + 'px;min-width:' + w + 'px;max-width:' + w + 'px"' : '')
+        + ' aria-sort="' + (dir > 0 ? 'ascending' : dir < 0 ? 'descending' : 'none') + '" title="Sortează · trage pentru reordonare">'
+        + '<span class="tht"><span class="thl">' + esc(c.t) + '</span>' + sortIcon(dir)
+        + '<button type="button" class="pinb' + (pinned ? ' on' : '') + '" data-pin="' + c.k + '" title="' + (pinned ? 'Desprinde coloana' : 'Fixează coloana (max. ' + MAX_PIN + ')') + '" aria-label="' + (pinned ? 'Desprinde coloana' : 'Fixează coloana') + '">' + PIN + '</button></span>'
+        + '<span class="rz" data-rz="' + c.k + '" aria-hidden="true"></span></th>';
+    });
+    return h + '</tr>';
+  }
+  function stickyOffsets() {
+    var T = $('rTable'), ths = T.tHead.rows[0] ? T.tHead.rows[0].cells : [], left = 0;
+    for (var i = 0; i < ths.length && ths[i].classList.contains('pin'); i++) {
+      var l = left;
+      Array.prototype.forEach.call(T.rows, function (tr) { var td = tr.cells[i]; if (td && td.classList.contains('pin')) { td.style.left = l + 'px'; } });
+      left += ths[i].offsetWidth;
+    }
+  }
+
+  // --- panoul de filtre facet
+  function facetOptions(k) {
+    var counts = {}, keys = [];
+    data.forEach(function (r) { var v = fval(r, k); if (!(v in counts)) { counts[v] = 0; keys.push(v); } counts[v]++; }); // numărate pe toate rândurile
+    (st.filters[k] || []).forEach(function (v) { if (!(v in counts)) { counts[v] = 0; keys.push(v); } }); // o valoare bifată care nu mai apare rămâne, ca să poată fi debifată
+    keys.sort(cmpS);
+    return keys.map(function (v) { return { v: v, n: counts[v] }; });
+  }
+  function facetOptionsHtml(k, opts) {
+    var q = low((fq[k] || '').trim()), selv = st.filters[k] || [];
+    var vis = q ? opts.filter(function (o) { return low(o.v).indexOf(q) !== -1; }) : opts;
+    if (!vis.length) { return '<div class="fempty">Nu există valori.</div>'; }
+    return vis.map(function (o) {
+      var dot = '<span class="fdot' + (k === 'etapa' && STAGE_K[o.v] ? ' s-' + esc(STAGE_K[o.v]) : (k === 'link' ? ' l-' + esc(o.v) : '')) + '"></span>';
+      return '<label class="fo"><input type="checkbox" data-f="' + esc(k) + '" value="' + esc(o.v) + '"' + (selv.indexOf(o.v) !== -1 ? ' checked' : '') + '>' + dot
+        + '<span class="fl" title="' + esc(o.v) + '">' + esc(o.v) + '</span><span class="fc">' + o.n + '</span></label>';
+    }).join('');
+  }
+  function renderFacets(rows) {
+    $('rFacets').innerHTML = COLS.filter(function (c) { return c.f; }).map(function (c) {
+      var opts = facetOptions(c.k), selv = st.filters[c.k] || [], isOpen = !!open[c.k], searchable = opts.length > FACET_SEARCH_MIN;
+      return '<section class="facet' + (isOpen ? ' open' : '') + '"><div class="fh" data-facet="' + c.k + '">'
+        + '<button type="button" class="ftog" aria-expanded="' + isOpen + '"><span class="ft">' + esc(c.t) + '</span></button><span class="fa">'
+        + (selv.length ? '<button type="button" class="lnk fr" data-freset="' + c.k + '">Reset</button><span class="badge">' + selv.length + '/' + opts.length + '</span>' : '')
+        + '<span class="chev" aria-hidden="true"></span></span></div>'
+        + (isOpen ? '<div class="fb">' + (searchable ? '<input type="search" class="fs" data-fs="' + c.k + '" value="' + esc(fq[c.k] || '') + '" placeholder="Caută ' + esc(c.t.toLowerCase()) + '" aria-label="Caută ' + esc(c.t.toLowerCase()) + '">' : '')
+          + '<div class="fos" data-fos="' + c.k + '">' + facetOptionsHtml(c.k, opts) + '</div></div>' : '')
+        + '</section>';
+    }).join('');
+    var n = filterCount();
+    $('rFiltReset').textContent = 'Resetează filtrele' + (n ? ' (' + n + ')' : '');
+    $('rFiltReset').disabled = !n;
+    $('rFiltBadge').textContent = rows.length + '/' + data.length;
+    $('rFiltBtn').classList.toggle('on', n > 0);
+    $('rFiltBtn').title = $('rFiltBtn').getAttribute('aria-label') + (n ? ' · ' + n + ' active' : '');
+  }
+  function syncPanel() {
+    $('rFilt').hidden = !st.panel;
+    $('rWrap').classList.toggle('open', st.panel);
+    var b = $('rFiltBtn'), label = st.panel ? 'Ascunde filtrele' : 'Afișează filtrele';
+    b.setAttribute('aria-expanded', st.panel ? 'true' : 'false'); b.setAttribute('aria-label', label); b.title = label;
+  }
+
+  // --- grupare, KPI, coloane, selecție, subsol
+  function renderGroups() {
+    $('rGroupChips').innerHTML = st.groups.map(function (k, i) {
+      return '<span class="gchip"><span class="gi">' + (i + 1) + '</span>' + esc(BY[k].t) + '<button type="button" class="gx" data-gdel="' + k + '" aria-label="Scoate nivelul ' + esc(BY[k].t) + '">×</button></span>';
+    }).join('');
+    $('rGroupAdd').innerHTML = '<option value="">' + (st.groups.length ? '+ nivel…' : 'Fără grupare') + '</option>'
+      + COLS.filter(function (c) { return c.g && st.groups.indexOf(c.k) === -1; }).map(function (c) { return '<option value="' + c.k + '">' + esc(c.t) + '</option>'; }).join('');
+    $('rOnlyGroups').checked = st.onlyGroups; $('rOnlyGroups').disabled = !st.groups.length;
+    $('rCollapse').hidden = !st.groups.length;
+    $('rCollapse').textContent = allCollapsed() ? 'Extinde tot' : 'Restrânge tot';
+  }
+  // „Restrânge tot” cât timp mai există un grup deschis; „Extinde tot” doar când toate sunt restrânse.
+  function allCollapsed() {
+    var all = allGids(filtered(), 0, '', []);
+    return all.length > 0 && all.every(function (g) { return st.collapsed.indexOf(g) !== -1; });
+  }
+  function renderKpi(rows) {
+    var t = totals(rows), acc = rows.filter(function (r) { return r.etapa_k === 'acceptata'; }).length, opened = rows.filter(function (r) { return r.deschisa; }).length;
+    var tile = function (l, v, s, cls) { return '<div class="kpi' + (cls ? ' ' + cls : '') + '"><span>' + l + '</span><b>' + v + '</b><small>' + (s || '&nbsp;') + '</small></div>'; };
+    $('rSum').innerHTML = tile('Oferte', rows.length, 'din ' + data.length)
+      + tile('Deschise', (rows.length ? Math.round(100 * opened / rows.length) : 0) + '%', opened + ' oferte')
+      + tile('Acceptate', acc, (rows.length ? Math.round(100 * acc / rows.length) : 0) + '% conversie')
+      + tile('Salariați mobili', fmtN.format(t.salariati || 0), '')
+      + tile('Onorariu an 1', fmtN.format(t.onorariu || 0) + ' RON', '', 'pipe')
+      + tile('Economie client / an', fmtN.format(t.economie || 0) + ' RON', '', 'won');
+  }
+  function renderCols() {
+    var ord = st.order.filter(function (k) { return BY[k]; });
+    $('rCols').innerHTML = '<div class="fhdr">Afișare</div>' + ord.map(function (k) {
+      return '<label><input type="checkbox" data-k="' + k + '"' + (st.hidden.indexOf(k) === -1 ? ' checked' : '') + '> ' + esc(BY[k].t) + '</label>';
+    }).join('') + '<p class="help">Trage antetele pentru ordine, pictograma de fixare ține coloana la stânga (max. ' + MAX_PIN + '), marginea dreaptă a antetului schimbă lățimea.</p>';
+  }
+  function renderCfg() {
+    var names = Object.keys(cfgs).sort(cmpS);
+    if (st.cfg && !cfgs[st.cfg]) { st.cfg = ''; }
+    $('rCfg').innerHTML = '<option value="">Configurație curentă</option>' + names.map(function (n) { return '<option value="' + esc(n) + '"' + (n === st.cfg ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('');
+    $('rCfgDel').disabled = !st.cfg;
+  }
+  function renderSel(rows) {
+    var ids = rows.filter(function (r) { return sel[r.id]; }).length;
+    $('rSel').hidden = !ids;
+    $('rSel').innerHTML = ids ? '<b>' + ids + '</b> rânduri selectate · exporturile iau doar selecția <button type="button" class="lnk" id="rSelNone">Deselectează</button>' : '';
+    $('rCount').textContent = 'În baza de date: ' + data.length + ' · Afișate: ' + rows.length + (ids ? ' · Selectate: ' + ids : '');
+  }
+
+  function render() {
+    var rows = filtered(), cs = cols(), T = $('rTable');
+    pinCount = cs.filter(function (c) { return st.pinned.indexOf(c.k) !== -1; }).length;
+    T.tHead.innerHTML = headHtml(cs, rows);
+    T.tBodies[0].innerHTML = bodyHtml(rows, cs, false)
+      || '<tr><td colspan="' + (cs.length + 1) + '" class="empty">' + (rows.length ? 'Rândurile sunt ascunse: „Numai grupările” este bifat.' : 'Nu există înregistrări pentru criteriul curent.') + '</td></tr>';
+    T.tFoot.innerHTML = rows.length ? totalHtml(rows, cs, false) : '';
+    stickyOffsets();
+    renderKpi(rows); renderFacets(rows); renderGroups(); renderCols(); renderCfg(); renderSel(rows);
+    save();
+  }
+  function sync() {
+    $('rQ').value = st.q; $('rFrom').value = st.from; $('rTo').value = st.to;
+    syncPanel();
+  }
+  function apply(state) { st = Object.assign(clone(def), clone(state)); sel = {}; sync(); render(); }
+
+  // --- evenimente
+  $('rQ').addEventListener('input', function (e) { st.q = e.target.value; render(); });
+  $('rFrom').addEventListener('change', function (e) { st.from = e.target.value; render(); });
+  $('rTo').addEventListener('change', function (e) { st.to = e.target.value; render(); });
+  $('rFiltBtn').addEventListener('click', function () { st.panel = !st.panel; syncPanel(); save(); });
+  $('rFiltReset').addEventListener('click', function () { st.filters = {}; st.from = ''; st.to = ''; fq = {}; sync(); render(); });
+  $('rFacets').addEventListener('click', function (e) {
+    var reset = e.target.closest('[data-freset]');
+    if (reset) { delete st.filters[reset.dataset.freset]; render(); return; }
+    var fh = e.target.closest('.fh');
+    if (fh) { open[fh.dataset.facet] = !open[fh.dataset.facet]; render(); }
   });
+  $('rFacets').addEventListener('change', function (e) {
+    var cb = e.target.closest('input[data-f]');
+    if (!cb) { return; }
+    var k = cb.dataset.f, v = cb.value, cur = st.filters[k] || [];
+    st.filters[k] = cb.checked ? cur.concat([v]) : cur.filter(function (x) { return x !== v; });
+    if (!st.filters[k].length) { delete st.filters[k]; }
+    render();
+  });
+  $('rFacets').addEventListener('input', function (e) {
+    var fs = e.target.closest('input[data-fs]');
+    if (!fs) { return; }
+    fq[fs.dataset.fs] = fs.value; // doar lista de valori se reîmprospătează, ca să nu se piardă focusul
+    $('rFacets').querySelector('[data-fos="' + fs.dataset.fs + '"]').innerHTML = facetOptionsHtml(fs.dataset.fs, facetOptions(fs.dataset.fs));
+  });
+  $('rGroupAdd').addEventListener('change', function (e) { if (e.target.value) { st.groups.push(e.target.value); st.collapsed = []; render(); } });
+  $('rGroupChips').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-gdel]');
+    if (b) { st.groups = st.groups.filter(function (k) { return k !== b.dataset.gdel; }); st.collapsed = []; if (!st.groups.length) { st.onlyGroups = false; } render(); }
+  });
+  $('rOnlyGroups').addEventListener('change', function (e) { st.onlyGroups = e.target.checked; render(); });
+  $('rCollapse').addEventListener('click', function () { st.collapsed = allCollapsed() ? [] : allGids(filtered(), 0, '', []); render(); });
+  $('rTable').tBodies[0].addEventListener('click', function (e) {
+    if (e.target.closest('a, input')) { return; }
+    var g = e.target.closest('tr.grp');
+    if (g) {
+      var gid = g.dataset.gid, i = st.collapsed.indexOf(gid);
+      if (i === -1) { st.collapsed.push(gid); } else { st.collapsed.splice(i, 1); }
+      render();
+    }
+  });
+  $('rTable').addEventListener('change', function (e) {
+    var cb = e.target.closest('input[data-sel]');
+    if (cb) { if (cb.checked) { sel[cb.dataset.sel] = true; } else { delete sel[cb.dataset.sel]; } render(); return; }
+    if (e.target.id === 'rSelAll') {
+      var rows = filtered();
+      rows.forEach(function (r) { if (e.target.checked) { sel[r.id] = true; } else { delete sel[r.id]; } });
+      render();
+    }
+  });
+  $('rSel').addEventListener('click', function (e) { if (e.target.id === 'rSelNone') { sel = {}; render(); } });
   $('rCols').addEventListener('change', function (e) {
     var k = e.target.dataset.k;
+    if (!k) { return; }
     st.hidden = e.target.checked ? st.hidden.filter(function (x) { return x !== k; }) : st.hidden.concat([k]);
     render();
   });
+
+  // antet: sortare în trei stări (crescător → descrescător → fără), fixare, reordonare, lățime
+  var head = $('rTable').tHead, dragK = null;
   var sortBy = function (th) {
     if (!th || !th.dataset.k) { return; }
-    if (st.sort === th.dataset.k) { st.dir = -st.dir; } else { st.sort = th.dataset.k; st.dir = 1; }
+    if (st.sort !== th.dataset.k) { st.sort = th.dataset.k; st.dir = 1; }
+    else if (st.dir === 1) { st.dir = -1; }
+    else { st.sort = ''; st.dir = 0; }
     render();
   };
-  $('rTable').tHead.addEventListener('click', function (e) { sortBy(e.target.closest('th')); });
-  $('rTable').tHead.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); sortBy(e.target.closest('th')); } });
-  $('rReset').addEventListener('click', function () { st = JSON.parse(JSON.stringify(def)); sync(); render(); });
+  head.addEventListener('click', function (e) {
+    var pin = e.target.closest('[data-pin]');
+    if (pin) {
+      var k = pin.dataset.pin, i = st.pinned.indexOf(k);
+      if (i !== -1) { st.pinned.splice(i, 1); } else if (st.pinned.length < MAX_PIN) { st.pinned.push(k); }
+      render(); return;
+    }
+    if (e.target.closest('.rz') || e.target.id === 'rSelAll') { return; }
+    sortBy(e.target.closest('th'));
+  });
+  head.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && e.target.tagName === 'TH') { e.preventDefault(); sortBy(e.target); } });
+  head.addEventListener('dragstart', function (e) {
+    var th = e.target.closest('th[data-k]');
+    if (!th || e.target.closest('.rz')) { e.preventDefault(); return; }
+    dragK = th.dataset.k; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', dragK); th.classList.add('drag');
+  });
+  head.addEventListener('dragover', function (e) { var th = e.target.closest('th[data-k]'); if (dragK && th && th.dataset.k !== dragK) { e.preventDefault(); th.classList.add('over'); } });
+  head.addEventListener('dragleave', function (e) { var th = e.target.closest('th'); if (th) { th.classList.remove('over'); } });
+  head.addEventListener('dragend', function () { dragK = null; Array.prototype.forEach.call(head.querySelectorAll('.drag, .over'), function (x) { x.classList.remove('drag', 'over'); }); });
+  head.addEventListener('drop', function (e) {
+    var th = e.target.closest('th[data-k]');
+    if (!dragK || !th || th.dataset.k === dragK) { return; }
+    e.preventDefault();
+    var ord = st.order.filter(function (k) { return k !== dragK; }), at = ord.indexOf(th.dataset.k);
+    ord.splice(at + (e.offsetX > th.offsetWidth / 2 ? 1 : 0), 0, dragK);
+    st.order = ord; dragK = null; render();
+  });
+  head.addEventListener('mousedown', function (e) {
+    var rz = e.target.closest('.rz');
+    if (!rz) { return; }
+    e.preventDefault();
+    var th = rz.parentNode, k = rz.dataset.rz, x0 = e.clientX, w0 = th.offsetWidth;
+    var move = function (ev) { var w = Math.max(60, Math.min(600, w0 + ev.clientX - x0)); th.style.width = th.style.minWidth = th.style.maxWidth = w + 'px'; st.widths[k] = w; };
+    var up = function () { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); render(); };
+    document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
+  });
 
-  $('rCsv').addEventListener('click', function () {
-    var cols = visible(), rows = filtered();
-    var q = function (v) { v = v === null || v === undefined ? '' : String(v); return /[;"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
-    var num = function (c, v) { return v === null || v === undefined || v === '' ? '' : (c.dec ? String(v).replace('.', ',') : String(v)); };
-    var lines = [cols.map(function (c) { return q(c.t); }).join(';')];
-    rows.forEach(function (r) { lines.push(cols.map(function (c) { return c.n ? num(c, r[c.k]) : q(r[c.k]); }).join(';')); });
-    var t = totals(rows);
-    lines.push(cols.map(function (c, i) { return i === 0 ? 'Total ' + rows.length : (c.sum ? String(t[c.k]) : ''); }).join(';'));
-    var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  // configurații salvate (în browser)
+  $('rReset').addEventListener('click', function () { var panel = st.panel; apply(Object.assign(clone(def), { panel: panel })); });
+  $('rCfg').addEventListener('change', function (e) {
+    var name = e.target.value;
+    if (!name) { apply(Object.assign(clone(def), { panel: st.panel })); return; }
+    if (cfgs[name]) { apply(Object.assign(clone(cfgs[name]), { cfg: name, panel: st.panel })); }
+  });
+  $('rCfgSave').addEventListener('click', function () {
+    var name = $('rCfgName').value.trim();
+    if (!name) { $('rCfgName').focus(); return; }
+    st.cfg = name; cfgs[name] = clone(st); saveCfgs();
+    $('rCfgName').value = ''; document.querySelector('.rcfg').open = false; render();
+  });
+  $('rCfgDel').addEventListener('click', function () {
+    if (!st.cfg) { return; }
+    delete cfgs[st.cfg]; saveCfgs(); apply(Object.assign(clone(def), { panel: st.panel }));
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { Array.prototype.forEach.call(document.querySelectorAll('details.rmenu[open]'), function (d) { d.open = false; }); } });
+  document.addEventListener('click', function (e) { Array.prototype.forEach.call(document.querySelectorAll('details.rmenu[open]'), function (d) { if (!d.contains(e.target)) { d.open = false; } }); });
+
+  // --- export: Excel (xlsx nativ, fără biblioteci), CSV, PDF (tipărire); selecția are prioritate
+  var exportRows = function () { var rows = filtered(), s = rows.filter(function (r) { return sel[r.id]; }); return s.length ? s : rows; };
+  var hasSel = function () { return filtered().some(function (r) { return sel[r.id]; }); };
+  var fileName = function (ext) { return 'raport_ofertare_' + (hasSel() ? 'selectie' : 'lista') + '_' + new Date().toISOString().slice(0, 10) + '.' + ext; };
+  var download = function (blob, name) {
     var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'raport_ofertare_' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.href = URL.createObjectURL(blob); a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  };
+  var closeMenus = function () { Array.prototype.forEach.call(document.querySelectorAll('details.rmenu[open]'), function (d) { d.open = false; }); };
+
+  var CRC = (function () { var t = [], c; for (var n = 0; n < 256; n++) { c = n; for (var k = 0; k < 8; k++) { c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; } t[n] = c >>> 0; } return t; })();
+  var crc32 = function (b) { var c = -1; for (var i = 0; i < b.length; i++) { c = CRC[(c ^ b[i]) & 0xff] ^ (c >>> 8); } return (c ^ -1) >>> 0; };
+  // Arhivă zip fără compresie (metoda „store”): suficientă pentru un xlsx și nu are nevoie de biblioteci.
+  function zipStore(files) {
+    var enc = new TextEncoder(), parts = [], cd = [], off = 0, n = 0, d = new Date();
+    var dt = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate(), tm = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+    var u16 = function (v) { return [v & 255, (v >>> 8) & 255]; }, u32 = function (v) { return [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255]; };
+    Object.keys(files).forEach(function (name) {
+      var nm = enc.encode(name), body = enc.encode(files[name]), crc = crc32(body);
+      var head = new Uint8Array([].concat(u32(0x04034b50), u16(20), u16(0x0800), u16(0), u16(tm), u16(dt), u32(crc), u32(body.length), u32(body.length), u16(nm.length), u16(0)));
+      parts.push(head, nm, body);
+      cd.push(new Uint8Array([].concat(u32(0x02014b50), u16(20), u16(20), u16(0x0800), u16(0), u16(tm), u16(dt), u32(crc), u32(body.length), u32(body.length), u16(nm.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(off))), nm);
+      off += head.length + nm.length + body.length; n++;
+    });
+    var cdLen = cd.reduce(function (s, p) { return s + p.length; }, 0);
+    parts = parts.concat(cd, [new Uint8Array([].concat(u32(0x06054b50), u16(0), u16(0), u16(n), u16(n), u32(cdLen), u32(off), u16(0)))]);
+    return new Blob(parts, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  }
+  function xlsx(cs, rows) {
+    var colL = function (i) { var s = ''; i++; while (i) { var m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = (i - m - 1) / 26; } return s; };
+    var xe = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, ''); };
+    var last = colL(cs.length - 1) + (rows.length + 1);
+    var sheet = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+      + '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
+      + '<cols>' + cs.map(function (c, i) { return '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + Math.min(50, Math.max(10, c.t.length + 4)) + '" customWidth="1"/>'; }).join('') + '</cols><sheetData>'
+      + '<row r="1">' + cs.map(function (c, i) { return '<c r="' + colL(i) + '1" t="inlineStr" s="1"><is><t>' + xe(c.t) + '</t></is></c>'; }).join('') + '</row>';
+    rows.forEach(function (r, ri) {
+      sheet += '<row r="' + (ri + 2) + '">' + cs.map(function (c, i) {
+        var v = r[c.k], ref = colL(i) + (ri + 2);
+        if (blank(v)) { return '<c r="' + ref + '"/>'; }
+        if (c.n) { return '<c r="' + ref + '"' + (c.dec ? ' s="2"' : '') + '><v>' + v + '</v></c>'; } // numerele rămân numere
+        return '<c r="' + ref + '" t="inlineStr"><is><t xml:space="preserve">' + xe(v) + '</t></is></c>';
+      }).join('') + '</row>';
+    });
+    sheet += '</sheetData><autoFilter ref="A1:' + last + '"/></worksheet>';
+    var NS = 'http://schemas.openxmlformats.org/';
+    return zipStore({
+      '[Content_Types].xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="' + NS + 'package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>',
+      '_rels/.rels': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="' + NS + 'package/2006/relationships"><Relationship Id="rId1" Type="' + NS + 'officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
+      'xl/workbook.xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="' + NS + 'spreadsheetml/2006/main" xmlns:r="' + NS + 'officeDocument/2006/relationships"><sheets><sheet name="Raport oferte" sheetId="1" r:id="rId1"/></sheets></workbook>',
+      'xl/_rels/workbook.xml.rels': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="' + NS + 'package/2006/relationships"><Relationship Id="rId1" Type="' + NS + 'officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="' + NS + 'officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
+      'xl/styles.xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="' + NS + 'spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.0"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" applyFont="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" applyNumberFormat="1"/></cellXfs></styleSheet>',
+      'xl/worksheets/sheet1.xml': sheet
+    });
+  }
+  $('rXlsx').addEventListener('click', function () { closeMenus(); download(xlsx(cols(), exportRows()), fileName('xlsx')); });
+
+  $('rCsv').addEventListener('click', function () {
+    closeMenus();
+    var cs = cols(), rows = exportRows();
+    var q = function (v) { v = v === null || v === undefined ? '' : String(v); return /[;"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+    var num = function (c, v) { return v === null || v === undefined || v === '' ? '' : (c.dec ? String(v).replace('.', ',') : String(v)); };
+    var lines = [cs.map(function (c) { return q(c.t); }).join(';')];
+    rows.forEach(function (r) { lines.push(cs.map(function (c) { return c.n ? num(c, r[c.k]) : q(r[c.k]); }).join(';')); });
+    var t = totals(rows);
+    lines.push(cs.map(function (c, i) { return i === 0 ? 'Total ' + rows.length : (c.sum ? String(t[c.k]) : ''); }).join(';'));
+    download(new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' }), fileName('csv'));
+  });
+
+  // PDF: fereastră de tipărire (Print / Save as PDF) cu KPI, grupări cu subtotaluri și total; linii punctate subțiri.
+  $('rPdf').addEventListener('click', function () {
+    closeMenus();
+    var cs = cols(), rows = exportRows(), w = window.open('', '_blank');
+    if (!w) { alert('Browserul a blocat fereastra de tipărire. Permite ferestrele pop-up pentru acest site.'); return; }
+    var meta = [new Date().toLocaleString('ro-RO'), 'rânduri: ' + rows.length + (hasSel() ? ' (selecție)' : ''), filterCount() ? 'filtre active: ' + filterCount() : '', st.q ? 'căutare: „' + st.q + '”' : '',
+                st.groups.length ? 'grupare: ' + st.groups.map(function (k) { return BY[k].t; }).join(' › ') : ''].filter(Boolean).join(' · ');
+    var kpi = $('rSum').innerHTML;
+    var html = '<!doctype html><html lang="ro"><head><meta charset="utf-8"><title>Raport oferte</title><style>'
+      + '@page{size:A4 landscape;margin:12mm}body{margin:0;color:#1b2430;font:11px/1.4 "IBM Plex Sans",Arial,sans-serif}h1{font-size:16px;margin:0 0 2px;color:#1F4788}'
+      + '.meta{font-size:10px;color:#5b6672;margin:0 0 10px}.kpis{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}.kpi{border:1px dotted #9aa6b3;border-radius:4px;padding:6px 10px;min-width:130px}'
+      + '.kpi span{display:block;font-size:9px;color:#5b6672}.kpi b{display:block;font-size:14px}.kpi small{font-size:9px;color:#5b6672}'
+      + 'table{border-collapse:collapse;width:100%}th,td{border-bottom:1px dotted #9aa6b3;padding:4px 6px;text-align:left;vertical-align:top}th{color:#1F4788;border-bottom:1px solid #1F4788}'
+      + 'thead{display:table-header-group}tr{page-break-inside:avoid}.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}tr.grp td{background:#eef2f5;font-weight:600}tr.grp.l1 td{background:#f6f8fa}'
+      + 'tr.tot td{border-top:1px solid #1F4788;border-bottom:0;font-weight:700}.cnt{font-size:9px;color:#5b6672}.chip,.lk{font-size:10px}.wrap{min-width:160px}'
+      + '</style></head><body><h1>Raport oferte · smartBIZ Copilot · e2e OPS Ofertare</h1><p class="meta">' + esc(meta) + '</p><div class="kpis">' + kpi + '</div>'
+      + '<table><thead><tr>' + cs.map(function (c) { return '<th class="' + (c.n ? 'n' : '') + '">' + esc(c.t) + '</th>'; }).join('') + '</tr></thead>'
+      + '<tbody>' + (bodyHtml(rows, cs, true) || '<tr><td colspan="' + cs.length + '">Nu există înregistrări pentru criteriul curent.</td></tr>') + '</tbody>'
+      + (rows.length ? '<tfoot>' + totalHtml(rows, cs, true) + '</tfoot>' : '') + '</table></body></html>';
+    w.document.open(); w.document.write(html); w.document.close();
+    w.addEventListener('load', function () { w.focus(); w.print(); });
   });
 
   sync();
@@ -1662,27 +2001,61 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .steps>li::marker{color:var(--teal);font-weight:700}
 .hp pre{font:12px/1.6 var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:8px 12px;margin:6px 0 8px;white-space:pre-wrap}
 .hp a{color:var(--teal)}
-/* Raportare */
-.rep .ph{align-items:center}.sm2{margin:0;padding:6px 12px}
-.rtools{display:grid;grid-template-columns:minmax(220px,2fr) repeat(6,minmax(120px,1fr)) auto;gap:10px;align-items:end;margin-bottom:10px}
-@media (max-width:1200px){.rtools{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}}
-.rcols{position:relative;align-self:end}.rcols summary{border:1px solid var(--line);border-radius:4px;padding:7px 10px;color:var(--ink);background:var(--bg);white-space:nowrap}
-.rcols>div{position:absolute;right:0;z-index:5;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:8px 12px;display:grid;gap:4px;min-width:220px;box-shadow:0 6px 18px rgba(0,0,0,.12)}
-.rcols label{display:flex;gap:6px;align-items:center;color:var(--ink);font-size:13px;margin:0}.rcols input{width:auto}
-.rsum{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--muted);padding:8px 0 10px;border-bottom:1px solid var(--line);margin-bottom:8px}
-.rsum b{color:var(--ink);font-variant-numeric:tabular-nums}
+/* Raportare — tabel smartBIZ */
+.rep .ph{align-items:center;gap:10px}.rep .ph h2{display:flex;align-items:center;gap:8px}
+.ico{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:4px;width:30px;height:30px;display:inline-grid;place-items:center;padding:0;cursor:pointer;flex:none}
+.ico:hover,.ico.on{color:var(--teal);border-color:var(--teal)}.ico:disabled{opacity:.4;cursor:default}.ico svg{width:15px;height:15px}
+.rsearch{position:relative;flex:1;min-width:200px;max-width:380px}.rsearch svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--muted);pointer-events:none}
+.rsearch input{padding-left:30px}
+.rep .acts{align-items:center;flex-wrap:wrap}.rep .acts select{width:auto;max-width:220px;padding:5px 28px 5px 8px;font-size:12px}.sm2{margin:0;padding:6px 12px}
+.rmenu{position:relative}.rmenu summary{list-style:none}.rmenu summary::-webkit-details-marker{display:none}
+.rmenu>div{position:absolute;right:0;top:34px;z-index:6;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:8px 10px;display:grid;gap:5px;min-width:220px;box-shadow:0 6px 18px rgba(0,0,0,.12)}
+.rcols>div{max-height:60vh;overflow:auto}.rcols label{display:flex;gap:6px;align-items:center;color:var(--ink);font-size:13px;margin:0}.rcols input{width:auto}.fhdr{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.rexp>div button{background:none;border:0;text-align:left;padding:6px 8px;border-radius:4px;color:var(--ink);font:500 13px var(--sans);cursor:pointer}.rexp>div button:hover{background:var(--soft)}
+.rcfg>div{min-width:260px}.rcfg label{margin:0}.rcfg .sm{justify-self:start}
+.rwrap{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}.rwrap.open{grid-template-columns:250px minmax(0,1fr)}
+@media (max-width:900px){.rwrap.open{grid-template-columns:1fr}}
+.rfilt{border:1px solid var(--line);border-radius:5px;padding:4px 12px 8px;max-height:78vh;overflow:auto;background:var(--surface)}
+.rfh{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}.rft{font-weight:600;font-size:13px;display:inline-flex;align-items:center;gap:8px}
+.badge{min-width:26px;height:18px;border-radius:999px;background:color-mix(in srgb,var(--teal) 14%,transparent);color:var(--teal);display:inline-flex;align-items:center;justify-content:center;font:600 11px var(--mono);padding:0 6px}
+.facet{border-bottom:1px solid var(--line);padding:8px 0}.facet:last-child{border-bottom:0}
+.fh{display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer}.ftog{background:none;border:0;padding:0;font:inherit;color:var(--ink);text-align:left;min-width:0;flex:1;cursor:pointer}
+.ft{font-size:13px}.fa{display:inline-flex;align-items:center;gap:8px;flex:none}.fr{margin:0;font-size:12px;color:var(--teal)}
+.chev{width:7px;height:7px;border-right:1.6px solid var(--muted);border-bottom:1.6px solid var(--muted);transform:rotate(45deg);margin:-4px 4px 0 2px;transition:transform .15s}.facet.open .chev{transform:rotate(-135deg);margin-top:4px}
+.fb{margin-top:8px}.fs{margin-bottom:8px;font-size:12px;padding:5px 8px}.fos{display:grid;gap:6px;max-height:210px;overflow:auto;padding-right:4px}
+.fo{display:grid;grid-template-columns:16px 8px minmax(0,1fr) auto;align-items:center;gap:6px;font-size:13px;color:var(--ink);margin:0;cursor:pointer}.fo input{width:16px;height:16px;margin:0}
+.fdot{width:8px;height:8px;border-radius:999px}.fdot.s-trimisa{background:var(--navy3)}.fdot.s-deschisa{background:var(--navy2)}.fdot.s-negociere{background:var(--amber)}.fdot.s-acceptata{background:var(--green)}.fdot.s-pierduta{background:var(--red)}
+.fdot.l-activ{background:var(--green)}.fdot.l-expirat{background:var(--muted)}.fdot.l-revocat{background:var(--red)}
+.fl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fc{font:12px var(--mono);color:var(--muted)}.fempty{font-size:12px;color:var(--muted)}
+.fper{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.fper input{font-size:12px;padding:5px 8px}
+.rmain{display:grid;gap:12px;min-width:0}
+.rgroup{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px}.rgroup select{width:auto;padding:5px 28px 5px 8px;font-size:12px}
+.gchip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--teal);color:var(--teal);border-radius:999px;padding:2px 6px 2px 4px;font-size:12px}
+.gi{background:var(--teal);color:var(--surface);border-radius:999px;width:16px;height:16px;display:inline-grid;place-items:center;font:600 10px var(--mono)}
+.gx{background:none;border:0;color:inherit;font-size:14px;line-height:1;padding:0 2px;cursor:pointer}
+.kpis.rk{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}.rk .kpi{padding:8px 12px}.rk .kpi b{font-size:18px}
+.rsel{display:flex;gap:10px;align-items:center;font-size:13px;padding:6px 10px;border:1px dashed var(--teal);border-radius:4px}.rsel[hidden]{display:none}.rsel .lnk{margin:0}
 .rtw{overflow:auto;max-height:70vh;border:1px solid var(--line);border-radius:5px}
-.rt{border-collapse:collapse;width:100%;font-size:13px}
+.rt{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}
 .rt th{position:sticky;top:0;z-index:2;background:var(--soft);color:var(--navy);text-align:left;font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none}
-.rt td{padding:7px 10px;border-bottom:1px dotted var(--line);vertical-align:top;white-space:nowrap}
+.rt th.drag{opacity:.5}.rt th.over{box-shadow:inset 3px 0 0 var(--teal)}
+.rt th .tht{display:inline-flex;align-items:center;gap:4px;max-width:100%}.thl{overflow:hidden;text-overflow:ellipsis}
+.si{color:var(--muted);opacity:.45;flex:none}.si.on{opacity:1;color:var(--teal)}.si path{fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.pinb{background:none;border:0;padding:0 2px;color:var(--muted);opacity:0;cursor:pointer;line-height:0}.pinb svg path{fill:currentColor}.rt th:hover .pinb,.rt th:focus-within .pinb,.pinb.on{opacity:1}.pinb.on{color:var(--teal)}
+.rz{position:absolute;right:0;top:0;width:6px;height:100%;cursor:col-resize}.rz:hover{background:color-mix(in srgb,var(--teal) 30%,transparent)}
+.rt td{padding:7px 10px;border-bottom:1px dotted var(--line);vertical-align:top;white-space:nowrap;background:var(--surface)}
 .rt td.wrap{white-space:normal;min-width:220px}
 .rt .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-.rt tbody tr:hover td{background:color-mix(in srgb,var(--teal) 6%,transparent)}
+.rt th.sel,.rt td.sel{width:28px;padding:6px 4px;text-align:center}.rt td.sel input,.rt th.sel input{width:auto;margin:0}
+.rt th.pin,.rt td.pin{position:sticky;left:0;z-index:1}.rt th.pin{z-index:3}
+.rt tbody tr:hover td{background:color-mix(in srgb,var(--teal) 6%,var(--surface))}.rt tbody tr.on td{background:color-mix(in srgb,var(--teal) 12%,var(--surface))}
 .rt td a{color:var(--ink);font-weight:600;text-decoration:none}.rt td a:hover{color:var(--teal)}
-.rt tr.grp td{background:var(--soft);font-size:12px;color:var(--navy);border-top:1px solid var(--line)}
-.rt tfoot td{position:sticky;bottom:0;background:var(--surface);border-top:2px solid var(--navy);font-weight:600}
+.rt tr.grp{cursor:pointer}.rt tr.grp td{background:var(--soft);font-size:12px;color:var(--navy);border-top:1px solid var(--line)}.rt tr.grp.l1 td{background:color-mix(in srgb,var(--soft) 55%,var(--surface))}.rt tr.grp.l2 td{background:color-mix(in srgb,var(--soft) 30%,var(--surface))}
+.rt tbody tr.grp:hover td{background:color-mix(in srgb,var(--teal) 10%,var(--soft))}.caret{display:inline-block;width:12px;color:var(--teal)}
+.rt tfoot td{position:sticky;bottom:0;background:var(--surface);border-top:2px solid var(--navy);border-bottom:0;font-weight:600}
 .rt .cnt{font:11px var(--mono);color:var(--muted);margin-left:4px}
 .rt .empty{text-align:center;color:var(--muted);padding:24px}
+.rfoot{font:12px var(--mono);color:var(--muted);margin:0}
 .chip{font:500 11px var(--mono);border-radius:10px;padding:1px 8px;border:1px solid currentColor;white-space:nowrap}
 .chip.s-trimisa{color:var(--navy3)}.chip.s-deschisa{color:var(--navy2)}.chip.s-negociere{color:var(--amber)}.chip.s-acceptata{color:var(--green)}.chip.s-pierduta{color:var(--red)}
 .lk{font-size:12px}.lk.l-activ{color:var(--green)}.lk.l-expirat{color:var(--muted)}.lk.l-revocat{color:var(--red)}
