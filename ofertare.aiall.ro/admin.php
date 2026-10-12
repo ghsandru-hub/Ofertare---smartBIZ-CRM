@@ -91,6 +91,18 @@ function new_password(): string
     return $out;
 }
 
+// Inițialele pentru avatarul din antet: primele litere din primele două cuvinte ale numelui (sau ale utilizatorului).
+function user_initials(array $u): string
+{
+    $src   = trim((string)($u['name'] !== '' ? $u['name'] : $u['username']));
+    $words = preg_split('/[\s._@-]+/u', $src, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+    $ini   = '';
+    foreach (array_slice($words, 0, 2) as $w) {
+        $ini .= mb_substr($w, 0, 1);
+    }
+    return mb_strtoupper($ini !== '' ? $ini : '?');
+}
+
 // ---------------------------------------------------------------------------
 // Autentificare
 // ---------------------------------------------------------------------------
@@ -2027,7 +2039,7 @@ header('Content-Type: text/html; charset=utf-8');
   --navy:#7fa6e6;--navy2:#6f9ad8;--navy3:#5fb0d4;--teal:#5cc0c3;--amber:#f0a94a;--green:#4ade80;--red:#f87171;color-scheme:dark}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 var(--sans)}
-.top{background:linear-gradient(115deg,#1F4788 0%,#24608f 55%,#2D8B8E 100%);color:#fff;box-shadow:0 4px 24px rgba(13,21,32,.22)}
+.top{background:linear-gradient(115deg,#1F4788 0%,#24608f 55%,#2D8B8E 100%);color:#fff;box-shadow:0 4px 24px rgba(13,21,32,.22);position:sticky;top:0;z-index:50}
 .top .in{max-width:1440px;margin:0 auto;padding:10px 20px 0;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .top .logo{display:flex;align-items:center;gap:11px}
 .top .mark{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:linear-gradient(135deg,#2D8B8E,#1F4788);border:1px solid rgba(255,255,255,.28);font:700 13px var(--mono);color:#fff;letter-spacing:-.02em}
@@ -2036,7 +2048,16 @@ body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 var(--sans)}
 .sbc-smart{color:#F2F6FA;font-weight:600}.sbc-biz{color:#3aacb0;font-weight:700}.sbc-copilot{color:#f0a94a;font-weight:600}
 .top h1{font:500 12px var(--sans);margin:1px 0 0;opacity:.85}
 .top .sp{flex:1}
-.top .me{font:500 12px var(--mono);opacity:.85;overflow-wrap:anywhere}
+/* Utilizatorul și ieșirea, într-un pill ca în celelalte aplicații smartBIZ */
+.hd-pill{display:inline-flex;align-items:stretch;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:9px;overflow:hidden;backdrop-filter:blur(6px)}
+.hd-pill .who{display:inline-flex;align-items:center;gap:8px;padding:3px 11px 3px 4px;color:#fff;text-decoration:none;font:500 12px var(--sans);transition:.15s}
+.hd-pill .who:hover{background:rgba(255,255,255,.14)}
+.hd-pill .av{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#2D8B8E,#1F4788);border:1px solid rgba(255,255,255,.28);font:700 11px var(--mono);letter-spacing:-.02em}
+.hd-pill .nm{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hd-pill form{display:flex;margin:0}
+.top .hd-pill button{background:transparent;border:0;border-left:1px solid rgba(255,255,255,.22);border-radius:0;color:rgba(255,255,255,.85);font:600 11px/1 var(--mono);padding:0 12px;cursor:pointer;transition:.15s}
+.top .hd-pill button:hover{color:#fff;background:rgba(255,255,255,.14)}
+@media (max-width:600px){.hd-pill .nm{display:none}.hd-pill .who{padding-right:6px}}
 .foot{border-top:1px solid var(--line);margin-top:8px}
 .foot .in{max-width:1440px;margin:0 auto;padding:14px 20px;display:flex;justify-content:flex-end;font-size:12px;color:var(--muted)}
 .top button{background:transparent;border:1px solid rgba(255,255,255,.5);color:#fff;border-radius:4px;padding:4px 12px;font:500 13px var(--sans);cursor:pointer}
@@ -2280,8 +2301,10 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
     <div class="ttl"><b class="sbc-title"><span class="sbc-smart">smart</span><span class="sbc-biz">BIZ</span> <span class="sbc-copilot">Copilot</span></b><h1>Cockpit e2e OPS Ofertare</h1></div>
   </div>
   <span class="sp"></span>
-  <span class="me" title="<?= h($me['username']) ?>"><?= h($me['name'] !== '' ? $me['name'] : $me['username']) ?></span>
-  <form method="post"><?= csrf_field() ?><input type="hidden" name="action" value="logout"><button type="submit">Ieșire</button></form>
+  <div class="hd-pill user-pill">
+    <a class="who" href="admin.php?v=utilizatori" title="Contul meu: <?= h($me['username']) ?> · parola se schimbă în Utilizatori"><span class="av" aria-hidden="true"><?= h(user_initials($me)) ?></span><span class="nm"><?= h($me['name'] !== '' ? $me['name'] : $me['username']) ?></span></a>
+    <form method="post"><?= csrf_field() ?><input type="hidden" name="action" value="logout"><button type="submit" title="Ieșire din cockpit">Ieșire</button></form>
+  </div>
   <nav aria-label="Secțiuni"><?= $nav ?></nav>
 </div></header>
 <main>
