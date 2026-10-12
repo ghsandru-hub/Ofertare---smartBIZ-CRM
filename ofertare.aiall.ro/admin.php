@@ -1411,8 +1411,10 @@ function view_catalog(): string
         . '<p class="muted">Tipuri: serviciu, licență, serviciu digital, produs, pachet servicii, pachet produse. Lasă „Valid până la” gol pentru valabilitate nelimitată.'
         . ' Pachetele se compun din articole existente în catalog: pachetul de servicii din servicii, servicii digitale și licențe; pachetul de produse din produse și licențe.</p></section>'
         . '<section class="panel"><div class="ph"><h2>Catalog produse și servicii</h2>'
-        . '<div class="rsum catsum"><span><b>' . count($rows) . '</b> articole</span><span><b class="ok">' . $count['valid'] . '</b> valide</span>'
-        . '<span><b>' . $count['viitor'] . '</b> din viitor</span><span><b class="err">' . $count['expirat'] . '</b> expirate</span></div></div>'
+        . '<div class="ksum" aria-label="Rezumat catalog"><span class="kchip"><b>' . count($rows) . '</b> articole</span>'
+        . '<span class="kchip s-valid"><i></i><b>' . $count['valid'] . '</b> valide</span>'
+        . '<span class="kchip s-viitor"><i></i><b>' . $count['viitor'] . '</b> din viitor</span>'
+        . '<span class="kchip s-expirat"><i></i><b>' . $count['expirat'] . '</b> expirate</span></div></div>'
         . '<div class="ktools">'
         . '<div><label for="kQ">Caută</label><input id="kQ" type="search" placeholder="denumire, UM, tip, componentă…"></div>'
         . '<div><label for="kType">Tip</label><select id="kType"><option value="">Toate tipurile</option>' . $typeOpts . '</select></div>'
@@ -2485,7 +2487,10 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 /* Catalog produse și servicii */
 .catf{grid-template-columns:170px minmax(240px,3fr) 120px 150px 150px 190px auto}
 @media (max-width:1100px){.catf{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}.catf .wide{grid-column:1/-1}}
-.catsum{border:0;padding:0 0 8px;margin:0}
+.ksum{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.kchip{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border:1px solid var(--line);border-radius:14px;background:var(--bg);font-size:12px;color:var(--muted);white-space:nowrap}
+.kchip b{color:var(--ink);font-variant-numeric:tabular-nums}.kchip i{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.kchip.s-valid i{background:var(--green)}.kchip.s-viitor i{background:var(--amber)}.kchip.s-expirat i{background:var(--red)}
 .ktools{display:grid;grid-template-columns:minmax(220px,2fr) repeat(2,minmax(160px,1fr));gap:10px;align-items:end;margin-bottom:10px}
 .ktools input,.ktools select{height:36px;box-sizing:border-box}
 @media (max-width:900px){.ktools{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}}
