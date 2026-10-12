@@ -2352,7 +2352,8 @@ ul.items li{display:flex;justify-content:space-between;gap:6px;font-size:12px;co
 ul.items.edit{border-top:0;padding-top:0;margin-top:2px}ul.items.edit .lnk{margin:0;font-size:14px;line-height:1}
 .ditems{margin-top:8px}.ditems .meta{margin:0 0 2px}
 .iadd{display:grid;grid-template-columns:minmax(0,1fr) 72px 36px;gap:6px;align-items:center;margin-top:6px}
-.iadd select,.iadd input{height:36px;box-sizing:border-box;font-size:13px}.iadd select{padding:0 26px 0 8px}
+.iadd select,.iadd input{height:36px;box-sizing:border-box;font-size:13px}.iadd select{padding:0 26px 0 8px;min-width:0}
+.card .iadd{grid-template-columns:1fr 36px}.card .iadd select{grid-column:1/-1} /* în cardul îngust: selectul pe rândul lui */
 .icb.sm-ic{font:600 18px/1 var(--sans)}
 .items-pick{display:block}.iadd.top{margin:0 0 8px}
 .itable{width:100%;border-collapse:collapse;font-size:13px}.itable th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:4px 6px;border-bottom:1px solid var(--line)}
