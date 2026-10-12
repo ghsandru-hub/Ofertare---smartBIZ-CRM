@@ -994,7 +994,7 @@ function view_pipeline(string $csrf): string
           . '<input type="hidden" name="reg_com" id="f_reg_com"><input type="hidden" name="adresa" id="f_adresa"><input type="hidden" name="judet" id="f_judet">'
           . '<input type="hidden" name="caen" id="f_caen"><input type="hidden" name="telefon" id="f_telefon"><input type="hidden" name="tva" id="f_tva" value="0"><input type="hidden" name="inactiv" id="f_inactiv" value="0">'
           . '<fieldset class="mats-pick items-pick"><legend>Livrabile ofertate (din catalog)</legend>'
-          . '<div class="iadd top"><select id="itemPick" aria-label="Livrabil din catalog">' . catalog_offer_options() . '</select>'
+          . '<div class="iadd ifirst"><select id="itemPick" aria-label="Livrabil din catalog">' . catalog_offer_options() . '</select>'
           . '<input id="itemQty" type="number" step="0.01" min="0.01" value="1" aria-label="Cantitate">'
           . '<button type="button" class="icb sm-ic" id="itemAdd" title="Adaugă livrabilul pe ofertă" aria-label="Adaugă livrabilul">+</button></div>'
           . '<table class="itable" id="itemTable" hidden><thead><tr><th>Livrabil</th><th class="n">Cantitate</th><th>UM</th><th class="n">Preț unitar</th><th class="n">Valoare</th><th></th></tr></thead><tbody></tbody>'
@@ -2372,7 +2372,7 @@ ul.items.edit{border-top:0;padding-top:0;margin-top:2px}ul.items.edit .lnk{margi
 .iadd select,.iadd input{height:36px;box-sizing:border-box;font-size:13px}.iadd select{padding:0 26px 0 8px;min-width:0}
 .card .iadd{grid-template-columns:1fr 36px}.card .iadd select{grid-column:1/-1} /* în cardul îngust: selectul pe rândul lui */
 .icb.sm-ic{font:600 18px/1 var(--sans)}
-.items-pick{display:block}.iadd.top{margin:0 0 8px}
+.items-pick{display:block}.iadd.ifirst{margin:0 0 8px}
 .itable{width:100%;border-collapse:collapse;font-size:13px}.itable th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:4px 6px;border-bottom:1px solid var(--line)}
 .itable td{padding:5px 6px;border-bottom:1px dotted var(--line);vertical-align:middle}.itable .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .itable input{height:30px;width:80px;padding:0 6px;font-size:13px;box-sizing:border-box}.itable tfoot td{font-weight:600;border-top:2px solid var(--navy);border-bottom:0}
