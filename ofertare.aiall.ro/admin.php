@@ -2082,6 +2082,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 var(--sans)}
 .acc-btn{display:block;width:100%;margin-top:9px;padding:9px 12px;border-radius:9px;border:1px solid var(--line);background:var(--soft);color:var(--ink);font:500 12px var(--sans);cursor:pointer;text-align:center;text-decoration:none;transition:.15s;box-sizing:border-box}
 .acc-btn:hover{border-color:var(--teal)}
 .acc-btn.primary{background:linear-gradient(135deg,#2D8B8E,#1F4788);color:#fff;border:none}
+.acc-ver{margin-top:10px;font-size:11px;color:var(--muted);text-align:center;line-height:1.5}.acc-ver b{color:var(--ink);font-weight:600}
 /* ---- TABS (ca în ContaCheck: bară sub antet, subliniere teal pe tab-ul activ) ---- */
 nav.tabs{background:var(--hd);border-bottom:1px solid var(--line);backdrop-filter:blur(8px)}
 nav.tabs .in{max-width:1480px;margin:0 auto;padding:0 18px;display:flex;gap:4px;overflow-x:auto}
@@ -2357,6 +2358,7 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
       <hr class="acc-sep">
       <a class="acc-btn primary" href="admin.php?v=utilizatori" role="menuitem">🔑 Schimbă parola</a>
       <form method="post"><?= csrf_field() ?><input type="hidden" name="action" value="logout"><button type="submit" class="acc-btn" role="menuitem">Ieși din cockpit</button></form>
+      <div class="acc-ver">Versiune <b><?= h(date('Y-m-d', (int)filemtime(__FILE__))) ?></b> · PHP <?= h(PHP_VERSION) ?> · <span class="ok">● email prin <?= h(mail_transport()) ?></span></div>
     </div>
   </div>
 </div>
