@@ -102,7 +102,7 @@ Gestiunea catalogului de produse și servicii, tabela `catalog` din `ofertare.db
 
 | Câmp | Conținut |
 | --- | --- |
-| Tip | Serviciu, Licență, Serviciu digital, Produs, Pachet servicii sau Pachet produse |
+| Tip | Serviciu, Licență, Serviciu digital, Produs, Pachet servicii sau Pachet produse (pachetele au o compoziție, vezi mai jos) |
 | Denumire | numele articolului (max. 200 de caractere) |
 | UM | unitatea de măsură (ex. buc, oră, lună, salariat, salariat/lună, pachet); câmpul propune valorile uzuale |
 | Valid de la / Valid până la | perioada de valabilitate; „până la” gol = nelimitat |
@@ -113,6 +113,20 @@ Gestiunea catalogului de produse și servicii, tabela `catalog` din `ofertare.db
 - Căutare liberă și filtre pe tip și valabilitate, fără reîncărcarea paginii.
 - Validări: tipul trebuie să fie unul din listă, denumirea și UM sunt obligatorii, „până la” nu poate fi înaintea lui „de la”.
   Datele se acceptă ca `AAAA-LL-ZZ` sau `ZZ.LL.AAAA` și se păstrează ca `AAAA-LL-ZZ`.
+
+**Pachete.** Un pachet se compune din articole existente în catalog (tabela `catalog_items`: pachet, componentă, cantitate):
+
+| Tip de pachet | Componente acceptate |
+| --- | --- |
+| Pachet servicii | Serviciu, Serviciu digital, Licență |
+| Pachet produse | Produs, Licență |
+
+- Fiecare pachet are în listă o secțiune „Compoziție”: componentele cu cantitatea (în UM-ul componentei), „Salvează” pentru
+  cantitate, „Scoate” pentru eliminare, plus un selector cu articolele din catalog potrivite pentru tipul pachetului și cantitatea.
+- Un pachet nu poate conține alte pachete. Căutarea găsește un pachet și după numele componentelor.
+- Un articol folosit într-un pachet nu poate fi șters și nu își poate schimba tipul într-unul pe care pachetul nu îl acceptă;
+  un pachet cu componente nu își poate schimba tipul decât dacă toate componentele rămân acceptate. Mesajul de eroare spune ce trebuie scos mai întâi.
+- „Copiază” pe un pachet copiază și compoziția. Ștergerea unui pachet șterge doar compoziția lui, nu și articolele componente.
 
 ### 4. Șabloane email
 
