@@ -19,6 +19,16 @@ return [
     'mail_from'       => 'oferte@aiall.ro',
     'mail_from_name'  => 'AiALL S.R.L.',
 
+    // Trimitere prin SMTP autentificat (recomandat pe cPanel). Cu smtp_host gol, emailurile pleacă prin mail()
+    // din PHP, care raportează „trimis” când serverul local a pus mesajul în coadă, nu când a fost livrat.
+    // Pe cPanel: smtp_host = serverul de email al contului (ex. mail.aiall.ro sau localhost), smtp_user = căsuța
+    // din mail_from, smtp_pass = parola ei; portul 465 = SSL, 587 = STARTTLS, 25 pe localhost = necriptat.
+    'smtp_host'       => '',
+    'smtp_port'       => 465,
+    'smtp_secure'     => 'ssl',  // 'ssl' | 'tls' | ''
+    'smtp_user'       => '',
+    'smtp_pass'       => '',
+
     // Unde primești notificarea la prima deschidere a unui link (gol = fără notificare).
     'notify_email'    => '',
 

@@ -45,6 +45,8 @@ Cele două foldere trebuie să fie frați în directorul contului.
    - `admin_pass_hash`: `php -r "echo password_hash('parola-ta', PASSWORD_DEFAULT), PHP_EOL;"` — contul inițial;
      la prima autentificare este copiat în tabela `users`, iar de atunci parola se schimbă din cockpit → Utilizatori
    - `mail_from`: o căsuță existentă pe aiall.ro (ex. `oferte@aiall.ro`), ca emailurile să treacă de SPF/DKIM
+   - `smtp_host`, `smtp_port`, `smtp_secure`, `smtp_user`, `smtp_pass`: trimitere prin SMTP autentificat, recomandată
+     (vezi „Emailuri”); cu `smtp_host` gol, emailurile pleacă prin `mail()`
    - `notify_email`: adresa ta, pentru notificarea la prima deschidere
 5. **Drepturi.** `chmod 700 ofertare_private ofertare_private/data` și `chmod 600 ofertare_private/config.php`.
 6. **Test.** Deschizi `https://ofertare.aiall.ro/admin.php`, te autentifici și creezi un link către propria adresă.
@@ -80,6 +82,11 @@ Cockpitul (`admin.php`) are șapte secțiuni.
   și inactivitatea. Datele se salvează pe ofertă, apar pe card (Detalii) și în Raportare (coloane, căutare, grupare după județ).
   Serverul are nevoie de acces HTTPS către `webservicesp.anaf.ro` (curl sau `allow_url_fopen`).
 - Fiecare card arată materialele trimise și de câte ori a fost deschis fiecare, valoarea, nota internă și jurnalul.
+- Din „Detalii”: „Retrimite emailul (linkuri noi)” generează linkuri noi (cele vechi nu mai merg; valabilitatea se
+  prelungește dacă expirase) și retrimite emailul; „Revocă toate linkurile ofertei” oprește accesul; „Șterge oferta”
+  o elimină definitiv, cu confirmare, împreună cu linkurile, codurile, sesiunile și jurnalul ei.
+- Rezultatul trimiterii apare cu transportul folosit și, la eșec, cu eroarea exactă a serverului; jurnalul ofertei
+  reține „email trimis prin …” sau „email eșuat: motivul”.
 - Pâlnia numără etapa maximă atinsă; o ofertă pierdută rămâne numărată la etapa la care a ajuns.
 - Valorile în RON pornesc de la „Salariați mobili”: onorariu an 1 = 1.649 RON/salariat (implementare 1.037 + licență 612),
   licență din anul 2 = 612 RON/salariat, economie client = 10.368 RON/salariat/an (constante în `lib.php`).
@@ -135,6 +142,8 @@ Gestiunea catalogului de produse și servicii, tabela `catalog` din `ofertare.db
 - Variabile: `{{salut}}`, `{{nume}}`, `{{companie}}`, `{{email}}`, `{{salariati}}`, `{{economie_an}}`, `{{expira}}`;
   `{{materiale}}` pe rând separat inserează butoanele cu linkurile personale.
 - Fiecare șablon are lista lui de materiale, cu ordine. Șabloanele se pot copia și șterge; ofertele deja trimise nu sunt afectate.
+- „Email de test” (panoul Previzualizare): trimite șablonul cu date de exemplu și linkuri fictive la adresa ta și arată
+  rezultatul real al trimiterii; este cel mai simplu mod de a verifica livrarea pe server.
 - Cum ajung materialele în email: materialul este încărcat și activ în „Materiale”; este bifat în șablon, cu ordinea lui
   (ordinea cea mai mică = butonul principal, colorat; următoarele = butoane cu contur); iar textul șablonului conține
   `{{materiale}}` singur pe rând, cu rând gol înainte și după. Fără acest rând emailul pleacă fără linkuri, iar scris în
@@ -192,8 +201,17 @@ nu ce face destinatarul cu fișierul.
 
 ## Emailuri
 
-Trimiterea folosește `mail()` din PHP. Dacă hostingul cere SMTP autentificat sau emailurile ajung în spam,
-funcția `send_mail()` din `ofertare_private/lib.php` este singurul loc de modificat (de exemplu cu PHPMailer).
+Două moduri de trimitere, alese din `config.php`:
+
+| Mod | Când | Ce înseamnă „trimis” |
+| --- | --- | --- |
+| `mail()` din PHP | `smtp_host` gol (implicit) | serverul local de email a pus mesajul în coadă; dacă îl respinge ulterior (expeditor nepermis, SPF/DKIM, limite), cockpitul a afișat deja „trimis” |
+| SMTP autentificat | `smtp_host` completat | serverul de email a acceptat mesajul; orice refuz apare în cockpit cu răspunsul exact al serverului (ex. `535 authentication failed`) |
+
+Pe cPanel, varianta recomandată este SMTP prin căsuța din `mail_from`: `smtp_host` = serverul de email al contului
+(ex. `mail.aiall.ro` sau `localhost`), `smtp_port` 465 cu `smtp_secure` `ssl` (sau 587 cu `tls`, sau 25 pe `localhost`
+fără criptare), `smtp_user` = căsuța, `smtp_pass` = parola ei. Clientul SMTP este în `send_mail()` / `smtp_send()` din
+`ofertare_private/lib.php`, fără dependențe externe. Verifici livrarea cu „Email de test” din Șabloane email.
 
 ## Actualizări ulterioare
 

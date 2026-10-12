@@ -686,14 +686,31 @@ function anaf_lookup(string $raw): array
 // ---------------------------------------------------------------------------
 // Email (mail() din PHP, cu antete UTF-8 corecte)
 // ---------------------------------------------------------------------------
+// Ultima eroare de trimitere (SMTP sau mail()), pentru mesajul din cockpit și jurnalul ofertei.
+function mail_error(): string
+{
+    return $GLOBALS['ofertare_mail_error'] ?? '';
+}
+
+// Cum pleacă emailurile: prin SMTP autentificat (smtp_host în config.php) sau prin mail() din PHP.
+// mail() întoarce „adevărat” când serverul local a pus mesajul în coadă, nu când a fost livrat;
+// SMTP-ul primește răspunsul real al serverului de email, de aceea este varianta recomandată pe cPanel.
+function mail_transport(): string
+{
+    return (string)cfg('smtp_host') !== '' ? 'SMTP ' . cfg('smtp_host') . ':' . (int)(cfg('smtp_port') ?: 465) : 'mail()';
+}
+
 function send_mail(string $to, string $subject, string $html, string $text): bool
 {
+    $GLOBALS['ofertare_mail_error'] = '';
     $boundary = 'b' . bin2hex(random_bytes(12));
+    $from     = (string)cfg('mail_from');
     $fromName = '=?UTF-8?B?' . base64_encode((string)cfg('mail_from_name')) . '?=';
+    $subj     = '=?UTF-8?B?' . base64_encode($subject) . '?=';
     $headers  = [
         'MIME-Version: 1.0',
-        'From: ' . $fromName . ' <' . cfg('mail_from') . '>',
-        'Reply-To: ' . cfg('mail_from'),
+        'From: ' . $fromName . ' <' . $from . '>',
+        'Reply-To: ' . $from,
         'Content-Type: multipart/alternative; boundary="' . $boundary . '"',
     ];
     $body = "--$boundary\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n"
@@ -701,12 +718,90 @@ function send_mail(string $to, string $subject, string $html, string $text): boo
         . "--$boundary\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n"
         . chunk_split(base64_encode($html))
         . "--$boundary--\r\n";
-    $subj = '=?UTF-8?B?' . base64_encode($subject) . '?=';
+
     if (getenv('OFERTE_MAIL_LOG')) { // doar pentru teste locale
         file_put_contents(getenv('OFERTE_MAIL_LOG'), "TO: $to\nSUBJECT: $subject\n$text\n-----\n", FILE_APPEND);
         return true;
     }
-    return mail($to, $subj, $body, implode("\r\n", $headers), '-f' . cfg('mail_from'));
+    if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
+        $GLOBALS['ofertare_mail_error'] = 'Adresă de destinație invalidă.';
+        return false;
+    }
+    if ((string)cfg('smtp_host') !== '') {
+        return smtp_send($from, $to, array_merge(['To: <' . $to . '>', 'Subject: ' . $subj, 'Date: ' . date(DATE_RFC2822),
+            'Message-ID: <' . bin2hex(random_bytes(10)) . '@' . substr(strrchr($from, '@') ?: '@localhost', 1) . '>'], $headers), $body);
+    }
+    $ok = @mail($to, $subj, $body, implode("\r\n", $headers), '-f' . $from);
+    if (!$ok) {
+        $e = error_get_last();
+        $GLOBALS['ofertare_mail_error'] = 'mail() a refuzat mesajul' . ($e && $e['message'] ? ': ' . $e['message'] : '') . '.';
+    }
+    return $ok;
+}
+
+// Client SMTP minimal: SSL (port 465), STARTTLS (587) sau necriptat (25/localhost), AUTH LOGIN opțional.
+// Întoarce false și pune în mail_error() răspunsul serverului la primul pas eșuat.
+function smtp_send(string $from, string $to, array $headers, string $body): bool
+{
+    $host   = (string)cfg('smtp_host');
+    $port   = (int)(cfg('smtp_port') ?: 465);
+    $secure = strtolower((string)(cfg('smtp_secure') ?? ($port === 465 ? 'ssl' : ($port === 587 ? 'tls' : ''))));
+    $user   = (string)cfg('smtp_user');
+    $pass   = (string)cfg('smtp_pass');
+    $fail   = function (string $msg) {
+        $GLOBALS['ofertare_mail_error'] = $msg;
+        return false;
+    };
+    $ctx = stream_context_create(['ssl' => ['verify_peer' => true, 'verify_peer_name' => true, 'SNI_enabled' => true]]);
+    $fp  = @stream_socket_client(($secure === 'ssl' ? 'ssl://' : 'tcp://') . $host . ':' . $port, $errno, $errstr, 15, STREAM_CLIENT_CONNECT, $ctx);
+    if (!$fp) {
+        return $fail("Nu mă pot conecta la $host:$port: $errstr ($errno).");
+    }
+    stream_set_timeout($fp, 15);
+    $read = function () use ($fp): array { // [cod, text]; răspunsurile pe mai multe rânduri au „-” după cod
+        $text = '';
+        while (($line = fgets($fp, 1024)) !== false) {
+            $text .= $line;
+            if (strlen($line) < 4 || $line[3] !== '-') {
+                break;
+            }
+        }
+        return [(int)substr($text, 0, 3), trim($text)];
+    };
+    $cmd = function (string $c, int $expect, string $step) use ($fp, $read, $fail): bool {
+        fwrite($fp, $c . "\r\n");
+        [$code, $text] = $read();
+        if ($code !== $expect) {
+            $fail("$step: " . ($text !== '' ? $text : 'serverul nu răspunde'));
+            return false;
+        }
+        return true;
+    };
+    $ehloHost = substr(strrchr($from, '@') ?: '@localhost', 1);
+    [$code, $text] = $read();
+    if ($code !== 220) {
+        fclose($fp);
+        return $fail('Serverul SMTP nu răspunde: ' . $text);
+    }
+    $ok = $cmd('EHLO ' . $ehloHost, 250, 'EHLO');
+    if ($ok && $secure === 'tls') {
+        $ok = $cmd('STARTTLS', 220, 'STARTTLS')
+            && (@stream_socket_enable_crypto($fp, true, STREAM_CRYPTO_METHOD_TLS_CLIENT) === true || $fail('STARTTLS: criptarea nu a reușit (certificat?).') )
+            && $cmd('EHLO ' . $ehloHost, 250, 'EHLO');
+    }
+    if ($ok && $user !== '') {
+        $ok = $cmd('AUTH LOGIN', 334, 'AUTH LOGIN') && $cmd(base64_encode($user), 334, 'Utilizator SMTP')
+            && $cmd(base64_encode($pass), 235, 'Parolă SMTP');
+    }
+    $ok = $ok && $cmd('MAIL FROM:<' . $from . '>', 250, 'MAIL FROM') && $cmd('RCPT TO:<' . $to . '>', 250, 'RCPT TO')
+        && $cmd('DATA', 354, 'DATA');
+    if ($ok) {
+        $data = implode("\r\n", $headers) . "\r\n\r\n" . preg_replace('/^\./m', '..', $body);
+        $ok   = $cmd(rtrim($data, "\r\n") . "\r\n.", 250, 'Mesaj');
+    }
+    fwrite($fp, "QUIT\r\n");
+    fclose($fp);
+    return $ok;
 }
 
 // ---------------------------------------------------------------------------
