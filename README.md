@@ -122,7 +122,7 @@ Gestiunea catalogului de produse și servicii, tabela `catalog` din `ofertare.db
 | Denumire | numele articolului (max. 200 de caractere) |
 | UM | unitatea de măsură, din listă (srv, buc, oră, zi, lună, an, salariat, salariat/lună, utilizator, pachet) sau „Altă unitate…”, cu text liber; la articol nou se propune după tip: srv la servicii, buc la produs și licență, pachet la pachete |
 | Valid de la / Valid până la | perioada de valabilitate; „până la” gol = nelimitat |
-| Preț unitar | RON fără TVA, pe UM; un pachet fără preț propriu are prețul calculat din compoziție (cantitate × preț pe componentă), iar un preț scris pe pachet are prioritate |
+| Preț unitar și valută | RON sau EUR, fără TVA, pe UM; un pachet fără preț propriu are prețul calculat din compoziție (cantitate × preț pe componentele în aceeași valută cu pachetul), iar un preț scris pe pachet are prioritate. Totalurile ofertelor se calculează separat pe valută |
 
 - „Articol nou în catalog” adaugă un articol; lista de dedesubt editează fiecare articol pe loc (tip, denumire, UM, perioadă),
   cu „Salvează”, „Copiază” (articol nou cu aceleași date, util pentru o nouă perioadă de valabilitate) și „Șterge” (definitiv).
@@ -150,7 +150,7 @@ Gestiunea catalogului de produse și servicii, tabela `catalog` din `ofertare.db
 - Nume intern, subiect și textul emailului, cu previzualizare pe date de exemplu.
 - Format text: rând gol = paragraf nou; rânduri consecutive = listă compactă; `✓ ` la început = bifă colorată; `**text**` = bold.
 - Variabile: `{{salut}}`, `{{nume}}`, `{{companie}}`, `{{email}}`, `{{salariati}}`, `{{economie_an}}`, `{{expira}}`,
-  `{{valoare}}` (totalul livrabilelor); `{{materiale}}` pe rând separat inserează butoanele cu linkurile personale;
+  `{{valoare}}` (totalul livrabilelor, pe valute); `{{materiale}}` pe rând separat inserează butoanele cu linkurile personale;
   `{{livrabile}}` pe rând separat inserează tabelul livrabilelor ofertate (denumire, cantitate, UM, preț unitar, valoare, total).
 - Fiecare șablon are lista lui de materiale, cu ordine. Șabloanele se pot copia și șterge; ofertele deja trimise nu sunt afectate.
 - „Email de test” (panoul Previzualizare): trimite șablonul cu date de exemplu și linkuri fictive la adresa ta și arată

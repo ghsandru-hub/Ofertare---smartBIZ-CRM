@@ -160,6 +160,7 @@ function db(): PDO
             valid_from TEXT NOT NULL DEFAULT '',
             valid_to   TEXT NOT NULL DEFAULT '',
             price      REAL NOT NULL DEFAULT 0,
+            currency   TEXT NOT NULL DEFAULT 'RON',
             created_at INTEGER NOT NULL,
             updated_at INTEGER NOT NULL
         );
@@ -172,6 +173,7 @@ function db(): PDO
             um         TEXT NOT NULL DEFAULT 'buc',
             qty        REAL NOT NULL DEFAULT 1,
             price      REAL NOT NULL DEFAULT 0,
+            currency   TEXT NOT NULL DEFAULT 'RON',
             details    TEXT NOT NULL DEFAULT '',
             ord        INTEGER NOT NULL DEFAULT 0
         );
@@ -196,14 +198,30 @@ function db(): PDO
 // Prețul din catalog și valoarea cache a ofertei au apărut după prima versiune: ALTER TABLE pentru bazele existente.
 function migrate_catalog(PDO $pdo): void
 {
-    $have = array_column($pdo->query('PRAGMA table_info(catalog)')->fetchAll(), 'name');
-    if (!in_array('price', $have, true)) {
-        $pdo->exec("ALTER TABLE catalog ADD COLUMN price REAL NOT NULL DEFAULT 0");
+    $cols = [
+        'catalog'    => ['price' => 'REAL NOT NULL DEFAULT 0', 'currency' => "TEXT NOT NULL DEFAULT 'RON'"],
+        'deal_items' => ['currency' => "TEXT NOT NULL DEFAULT 'RON'"],
+        'deals'      => ['value' => 'REAL NOT NULL DEFAULT 0', 'value_eur' => 'REAL NOT NULL DEFAULT 0'],
+    ];
+    foreach ($cols as $table => $defs) {
+        $have = array_column($pdo->query("PRAGMA table_info($table)")->fetchAll(), 'name');
+        foreach ($defs as $c => $def) {
+            if (!in_array($c, $have, true)) {
+                $pdo->exec("ALTER TABLE $table ADD COLUMN $c $def");
+            }
+        }
     }
-    $have = array_column($pdo->query('PRAGMA table_info(deals)')->fetchAll(), 'name');
-    if (!in_array('value', $have, true)) {
-        $pdo->exec("ALTER TABLE deals ADD COLUMN value REAL NOT NULL DEFAULT 0");
-    }
+}
+
+// Valutele acceptate la prețuri; prima este implicită.
+function currencies(): array
+{
+    return ['RON', 'EUR'];
+}
+
+function currency_ok(string $c): string
+{
+    return in_array($c, currencies(), true) ? $c : 'RON';
 }
 
 // Coloanele cu datele firmei (ANAF) au apărut după prima versiune: bazele existente le primesc prin ALTER TABLE.
@@ -525,7 +543,8 @@ function fmt_money(float $v): string
     return substr($s, -3) === ',00' ? substr($s, 0, -3) : $s;
 }
 
-// Prețul efectiv al unui articol: cel propriu sau, pentru un pachet fără preț propriu, suma componentelor (cantitate × preț).
+// Prețul efectiv al unui articol, în valuta lui: cel propriu sau, pentru un pachet fără preț propriu, suma componentelor
+// (cantitate × preț) care au aceeași valută cu pachetul; componentele în altă valută nu pot fi însumate (vezi catalog_price_note).
 function catalog_price(array $item): float
 {
     if ((float)$item['price'] > 0 || !catalog_is_package((string)$item['type'])) {
@@ -533,9 +552,32 @@ function catalog_price(array $item): float
     }
     $sum = 0.0;
     foreach (catalog_components((int)$item['id']) as $c) {
-        $sum += (float)$c['qty'] * (float)$c['price'];
+        if (($c['currency'] ?? 'RON') === ($item['currency'] ?? 'RON')) {
+            $sum += (float)$c['qty'] * (float)$c['price'];
+        }
     }
     return round($sum, 2);
+}
+
+// Componentele unui pachet aflate în altă valută decât pachetul (neincluse în prețul calculat), ca text.
+function catalog_price_note(array $item): string
+{
+    if ((float)$item['price'] > 0 || !catalog_is_package((string)$item['type'])) {
+        return '';
+    }
+    $other = [];
+    foreach (catalog_components((int)$item['id']) as $c) {
+        if (($c['currency'] ?? 'RON') !== ($item['currency'] ?? 'RON')) {
+            $other[] = $c['name'] . ' (' . $c['currency'] . ')';
+        }
+    }
+    return $other ? 'neincluse, altă valută: ' . implode(', ', $other) : '';
+}
+
+// Sumă cu valută: 1.037,50 RON.
+function fmt_amount(float $v, string $cur): string
+{
+    return fmt_money($v) . ' ' . currency_ok($cur);
 }
 
 // Compoziția unui pachet ca text scurt („2 × Implementare…, 1 × Licență…”), păstrat pe linia ofertei.
@@ -561,29 +603,51 @@ function deal_items(int $dealId): array
     return $q->fetchAll();
 }
 
+// Totalurile livrabilelor pe valută: ['RON' => 12979.5, 'EUR' => 100]; doar valutele cu linii.
+function deal_items_totals(array $items): array
+{
+    $t = [];
+    foreach ($items as $it) {
+        $cur = currency_ok((string)($it['currency'] ?? 'RON'));
+        $t[$cur] = round(($t[$cur] ?? 0) + (float)$it['qty'] * (float)$it['price'], 2);
+    }
+    return $t;
+}
+
+// Totalul în RON (compatibil cu valoarea cache a ofertei).
 function deal_items_total(array $items): float
 {
-    $t = 0.0;
-    foreach ($items as $it) {
-        $t += (float)$it['qty'] * (float)$it['price'];
+    return deal_items_totals($items)['RON'] ?? 0.0;
+}
+
+// „12.979,50 RON + 100 EUR” (sau „0 RON” fără linii).
+function fmt_totals(array $totals): string
+{
+    $parts = [];
+    foreach (currencies() as $cur) {
+        if (isset($totals[$cur])) {
+            $parts[] = fmt_amount($totals[$cur], $cur);
+        }
     }
-    return round($t, 2);
+    return $parts ? implode(' + ', $parts) : '0 RON';
 }
 
 // Adaugă un articol din catalog pe ofertă, copiind denumirea, UM, prețul și compoziția; actualizează valoarea cache a ofertei.
 function deal_item_add(int $dealId, array $item, float $qty): void
 {
     $ord = (int)db()->query('SELECT COALESCE(MAX(ord), 0) + 1 FROM deal_items WHERE deal_id = ' . $dealId)->fetchColumn();
-    db()->prepare('INSERT INTO deal_items (deal_id, catalog_id, type, name, um, qty, price, details, ord) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
-        ->execute([$dealId, (int)$item['id'], (string)$item['type'], (string)$item['name'], (string)$item['um'], $qty, catalog_price($item), catalog_details($item), $ord]);
+    db()->prepare('INSERT INTO deal_items (deal_id, catalog_id, type, name, um, qty, price, currency, details, ord) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        ->execute([$dealId, (int)$item['id'], (string)$item['type'], (string)$item['name'], (string)$item['um'], $qty, catalog_price($item),
+                   currency_ok((string)($item['currency'] ?? 'RON')), catalog_details($item), $ord]);
     deal_value_refresh($dealId);
 }
 
-function deal_value_refresh(int $dealId): float
+// Valorile cache ale ofertei: RON în `value`, EUR în `value_eur`.
+function deal_value_refresh(int $dealId): array
 {
-    $v = deal_items_total(deal_items($dealId));
-    db()->prepare('UPDATE deals SET value = ? WHERE id = ?')->execute([$v, $dealId]);
-    return $v;
+    $t = deal_items_totals(deal_items($dealId));
+    db()->prepare('UPDATE deals SET value = ?, value_eur = ? WHERE id = ?')->execute([$t['RON'] ?? 0, $t['EUR'] ?? 0, $dealId]);
+    return $t;
 }
 
 // Livrabilele ca text, pentru varianta text a emailului și pentru raportare.
@@ -591,7 +655,7 @@ function deal_items_text(array $items): string
 {
     $lines = [];
     foreach ($items as $it) {
-        $lines[] = fmt_qty((float)$it['qty']) . ' ' . $it['um'] . ' × ' . $it['name'] . ' = ' . fmt_money((float)$it['qty'] * (float)$it['price']) . ' RON';
+        $lines[] = fmt_qty((float)$it['qty']) . ' ' . $it['um'] . ' × ' . $it['name'] . ' = ' . fmt_amount((float)$it['qty'] * (float)$it['price'], (string)($it['currency'] ?? 'RON'));
     }
     return implode("\n", $lines);
 }
@@ -642,7 +706,7 @@ function template_vars(array $deal): array
         'salariati'   => (string)$sal,
         'economie_an' => ron($sal * ECONOMIE_AN_PER_SALARIAT) . ' RON',
         'expira'      => date('d.m.Y', (int)$deal['expires_at']),
-        'valoare'     => fmt_money((float)($deal['value'] ?? 0)) . ' RON',
+        'valoare'     => fmt_totals(array_filter(['RON' => (float)($deal['value'] ?? 0), 'EUR' => (float)($deal['value_eur'] ?? 0)], fn($v) => $v > 0)),
     ];
 }
 
@@ -655,7 +719,9 @@ function fill_vars(string $s, array $vars): string
 function render_email(string $subject, string $body, array $deal, array $materials, array $items = []): array
 {
     if (!isset($deal['value'])) {
-        $deal['value'] = deal_items_total($items);
+        $t = deal_items_totals($items);
+        $deal['value']     = $t['RON'] ?? 0;
+        $deal['value_eur'] = $t['EUR'] ?? 0;
     }
     $vars    = template_vars($deal);
     $subject = fill_vars($subject, $vars);
@@ -685,12 +751,12 @@ function render_email(string $subject, string $body, array $deal, array $materia
                 foreach ($items as $it) {
                     $tbl .= '<tr><td style="' . $td . '"><b>' . h($it['name']) . '</b>' . ($it['details'] !== '' ? '<br><span style="font-size:12px;color:#5b6672">' . h($it['details']) . '</span>' : '') . '</td>'
                         . '<td style="' . $td . ';text-align:right">' . h(fmt_qty((float)$it['qty'])) . '</td><td style="' . $td . '">' . h($it['um']) . '</td>'
-                        . '<td style="' . $td . ';text-align:right;white-space:nowrap">' . h(fmt_money((float)$it['price'])) . ' RON</td>'
-                        . '<td style="' . $td . ';text-align:right;white-space:nowrap">' . h(fmt_money((float)$it['qty'] * (float)$it['price'])) . ' RON</td></tr>';
+                        . '<td style="' . $td . ';text-align:right;white-space:nowrap">' . h(fmt_amount((float)$it['price'], (string)($it['currency'] ?? 'RON'))) . '</td>'
+                        . '<td style="' . $td . ';text-align:right;white-space:nowrap">' . h(fmt_amount((float)$it['qty'] * (float)$it['price'], (string)($it['currency'] ?? 'RON'))) . '</td></tr>';
                 }
-                $tbl .= '<tr><td colspan="4" style="padding:8px;text-align:right;font-weight:bold">Total fără TVA</td><td style="padding:8px;text-align:right;font-weight:bold;white-space:nowrap">' . h(fmt_money(deal_items_total($items))) . ' RON</td></tr></table>';
+                $tbl .= '<tr><td colspan="4" style="padding:8px;text-align:right;font-weight:bold">Total fără TVA</td><td style="padding:8px;text-align:right;font-weight:bold;white-space:nowrap">' . h(fmt_totals(deal_items_totals($items))) . '</td></tr></table>';
                 $html .= $p($tbl, 10);
-                $text .= deal_items_text($items) . "\nTotal fără TVA: " . fmt_money(deal_items_total($items)) . " RON\n\n";
+                $text .= deal_items_text($items) . "\nTotal fără TVA: " . fmt_totals(deal_items_totals($items)) . "\n\n";
             }
             continue;
         }
