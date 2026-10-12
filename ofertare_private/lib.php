@@ -686,14 +686,121 @@ function anaf_lookup(string $raw): array
 // ---------------------------------------------------------------------------
 // Email (mail() din PHP, cu antete UTF-8 corecte)
 // ---------------------------------------------------------------------------
+// Ultima eroare de trimitere (SMTP sau mail()), pentru mesajul din cockpit și jurnalul ofertei.
+function mail_error(): string
+{
+    return $GLOBALS['ofertare_mail_error'] ?? '';
+}
+
+// Cum pleacă emailurile, în ordinea priorității:
+//   1. Microsoft 365 prin Graph API (graph_tenant_id / graph_client_id / graph_client_secret în config.php):
+//      emailul pleacă din căsuța mail_from din M365, cu SPF/DKIM/DMARC ale domeniului; răspunsul Graph este real.
+//   2. SMTP autentificat (smtp_host): răspunsul serverului de email.
+//   3. mail() din PHP: „adevărat” înseamnă doar că serverul local a pus mesajul în coadă, nu că a fost livrat;
+//      când domeniul are emailul în M365, SPF-ul respinge mesajele plecate de pe serverul web.
+function graph_configured(): bool
+{
+    return (string)cfg('graph_tenant_id') !== '' && (string)cfg('graph_client_id') !== '' && (string)cfg('graph_client_secret') !== '';
+}
+
+function mail_transport(): string
+{
+    if (graph_configured()) {
+        return 'Microsoft 365 (Graph, ' . cfg('mail_from') . ')';
+    }
+    return (string)cfg('smtp_host') !== '' ? 'SMTP ' . cfg('smtp_host') . ':' . (int)(cfg('smtp_port') ?: 465) : 'mail()';
+}
+
+// Cerere HTTP cu antete proprii (curl sau stream); întoarce [cod HTTP, corp] sau [0, eroare de rețea].
+function http_request(string $method, string $url, array $headers, string $body = '', int $timeout = 30): array
+{
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_CUSTOMREQUEST  => $method,
+            CURLOPT_POSTFIELDS     => $body,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => $timeout,
+            CURLOPT_HTTPHEADER     => $headers,
+        ]);
+        $res  = curl_exec($ch);
+        $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        $err  = curl_error($ch);
+        curl_close($ch);
+        return is_string($res) ? [$code, $res] : [0, $err];
+    }
+    $ctx = stream_context_create(['http' => ['method' => $method, 'header' => implode("\r\n", $headers) . "\r\n",
+        'content' => $body, 'timeout' => $timeout, 'ignore_errors' => true]]);
+    $res  = @file_get_contents($url, false, $ctx);
+    $code = 0;
+    foreach ($http_response_header ?? [] as $h) {
+        if (preg_match('#^HTTP/\S+\s+(\d{3})#', $h, $m)) {
+            $code = (int)$m[1];
+        }
+    }
+    return is_string($res) ? [$code, $res] : [0, 'conexiune eșuată'];
+}
+
+// Token de aplicație (client credentials) pentru Graph; e valabil ~1 oră, dar îl cerem la fiecare trimitere (rar).
+function graph_token(): ?string
+{
+    $login = rtrim((string)(cfg('graph_login_url') ?: 'https://login.microsoftonline.com'), '/');
+    [$code, $res] = http_request('POST', $login . '/' . rawurlencode((string)cfg('graph_tenant_id')) . '/oauth2/v2.0/token',
+        ['Content-Type: application/x-www-form-urlencoded', 'Accept: application/json'],
+        http_build_query(['client_id' => cfg('graph_client_id'), 'client_secret' => cfg('graph_client_secret'),
+                          'scope' => 'https://graph.microsoft.com/.default', 'grant_type' => 'client_credentials']));
+    $j = json_decode((string)$res, true);
+    if ($code !== 200 || empty($j['access_token'])) {
+        $GLOBALS['ofertare_mail_error'] = 'Token Microsoft 365 eșuat' . ($code ? ' (HTTP ' . $code . ')' : '') . ': '
+            . (string)($j['error_description'] ?? $j['error'] ?? ($code ? mb_substr((string)$res, 0, 200) : $res));
+        return null;
+    }
+    return (string)$j['access_token'];
+}
+
+// Trimitere prin Microsoft Graph: POST /users/{mail_from}/sendMail, ca în portalul ContaCheck.
+// Aplicația Azure are nevoie de permisiunea de aplicație Mail.Send (cu consimțământ de administrator).
+function graph_send(string $to, string $subject, string $html, string $text): bool
+{
+    $token = graph_token();
+    if ($token === null) {
+        return false;
+    }
+    $from = (string)cfg('mail_from');
+    $msg  = [
+        'subject'      => $subject,
+        'body'         => ['contentType' => 'HTML', 'content' => $html],
+        'toRecipients' => [['emailAddress' => ['address' => $to]]],
+        'replyTo'      => [['emailAddress' => ['address' => (string)(cfg('mail_reply_to') ?: $from)]]],
+    ];
+    $bcc = array_filter(array_map('trim', explode(',', (string)cfg('mail_bcc'))));
+    if ($bcc) {
+        $msg['bccRecipients'] = array_map(fn($a) => ['emailAddress' => ['address' => $a]], array_values($bcc));
+    }
+    $api = rtrim((string)(cfg('graph_api_url') ?: 'https://graph.microsoft.com/v1.0'), '/');
+    [$code, $res] = http_request('POST', $api . '/users/' . rawurlencode($from) . '/sendMail',
+        ['Authorization: Bearer ' . $token, 'Content-Type: application/json', 'Accept: application/json'],
+        json_encode(['message' => $msg, 'saveToSentItems' => cfg('graph_save_to_sent') === null ? true : (bool)cfg('graph_save_to_sent')], JSON_UNESCAPED_UNICODE), 45);
+    if ($code === 202 || $code === 200) {
+        return true;
+    }
+    $j = json_decode((string)$res, true);
+    $GLOBALS['ofertare_mail_error'] = 'Graph sendMail eșuat' . ($code ? ' (HTTP ' . $code . ')' : '') . ': '
+        . (string)($j['error']['message'] ?? ($code ? mb_substr((string)$res, 0, 200) : $res));
+    return false;
+}
+
 function send_mail(string $to, string $subject, string $html, string $text): bool
 {
+    $GLOBALS['ofertare_mail_error'] = '';
     $boundary = 'b' . bin2hex(random_bytes(12));
+    $from     = (string)cfg('mail_from');
     $fromName = '=?UTF-8?B?' . base64_encode((string)cfg('mail_from_name')) . '?=';
+    $subj     = '=?UTF-8?B?' . base64_encode($subject) . '?=';
     $headers  = [
         'MIME-Version: 1.0',
-        'From: ' . $fromName . ' <' . cfg('mail_from') . '>',
-        'Reply-To: ' . cfg('mail_from'),
+        'From: ' . $fromName . ' <' . $from . '>',
+        'Reply-To: ' . (string)(cfg('mail_reply_to') ?: $from),
         'Content-Type: multipart/alternative; boundary="' . $boundary . '"',
     ];
     $body = "--$boundary\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n"
@@ -701,12 +808,100 @@ function send_mail(string $to, string $subject, string $html, string $text): boo
         . "--$boundary\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n"
         . chunk_split(base64_encode($html))
         . "--$boundary--\r\n";
-    $subj = '=?UTF-8?B?' . base64_encode($subject) . '?=';
+
     if (getenv('OFERTE_MAIL_LOG')) { // doar pentru teste locale
         file_put_contents(getenv('OFERTE_MAIL_LOG'), "TO: $to\nSUBJECT: $subject\n$text\n-----\n", FILE_APPEND);
         return true;
     }
-    return mail($to, $subj, $body, implode("\r\n", $headers), '-f' . cfg('mail_from'));
+    if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
+        $GLOBALS['ofertare_mail_error'] = 'Adresă de destinație invalidă.';
+        return false;
+    }
+    if (graph_configured()) {
+        return graph_send($to, $subject, $html, $text);
+    }
+    $bcc = array_values(array_filter(array_map('trim', explode(',', (string)cfg('mail_bcc')))));
+    if ((string)cfg('smtp_host') !== '') {
+        return smtp_send($from, $to, array_merge(['To: <' . $to . '>', 'Subject: ' . $subj, 'Date: ' . date(DATE_RFC2822),
+            'Message-ID: <' . bin2hex(random_bytes(10)) . '@' . substr(strrchr($from, '@') ?: '@localhost', 1) . '>'], $headers), $body, $bcc);
+    }
+    if ($bcc) {
+        $headers[] = 'Bcc: ' . implode(', ', $bcc);
+    }
+    $ok = @mail($to, $subj, $body, implode("\r\n", $headers), '-f' . $from);
+    if (!$ok) {
+        $e = error_get_last();
+        $GLOBALS['ofertare_mail_error'] = 'mail() a refuzat mesajul' . ($e && $e['message'] ? ': ' . $e['message'] : '') . '.';
+    }
+    return $ok;
+}
+
+// Client SMTP minimal: SSL (port 465), STARTTLS (587) sau necriptat (25/localhost), AUTH LOGIN opțional.
+// Întoarce false și pune în mail_error() răspunsul serverului la primul pas eșuat.
+function smtp_send(string $from, string $to, array $headers, string $body, array $bcc = []): bool
+{
+    $host   = (string)cfg('smtp_host');
+    $port   = (int)(cfg('smtp_port') ?: 465);
+    $secure = strtolower((string)(cfg('smtp_secure') ?? ($port === 465 ? 'ssl' : ($port === 587 ? 'tls' : ''))));
+    $user   = (string)cfg('smtp_user');
+    $pass   = (string)cfg('smtp_pass');
+    $fail   = function (string $msg) {
+        $GLOBALS['ofertare_mail_error'] = $msg;
+        return false;
+    };
+    $ctx = stream_context_create(['ssl' => ['verify_peer' => true, 'verify_peer_name' => true, 'SNI_enabled' => true]]);
+    $fp  = @stream_socket_client(($secure === 'ssl' ? 'ssl://' : 'tcp://') . $host . ':' . $port, $errno, $errstr, 15, STREAM_CLIENT_CONNECT, $ctx);
+    if (!$fp) {
+        return $fail("Nu mă pot conecta la $host:$port: $errstr ($errno).");
+    }
+    stream_set_timeout($fp, 15);
+    $read = function () use ($fp): array { // [cod, text]; răspunsurile pe mai multe rânduri au „-” după cod
+        $text = '';
+        while (($line = fgets($fp, 1024)) !== false) {
+            $text .= $line;
+            if (strlen($line) < 4 || $line[3] !== '-') {
+                break;
+            }
+        }
+        return [(int)substr($text, 0, 3), trim($text)];
+    };
+    $cmd = function (string $c, int $expect, string $step) use ($fp, $read, $fail): bool {
+        fwrite($fp, $c . "\r\n");
+        [$code, $text] = $read();
+        if ($code !== $expect) {
+            $fail("$step: " . ($text !== '' ? $text : 'serverul nu răspunde'));
+            return false;
+        }
+        return true;
+    };
+    $ehloHost = substr(strrchr($from, '@') ?: '@localhost', 1);
+    [$code, $text] = $read();
+    if ($code !== 220) {
+        fclose($fp);
+        return $fail('Serverul SMTP nu răspunde: ' . $text);
+    }
+    $ok = $cmd('EHLO ' . $ehloHost, 250, 'EHLO');
+    if ($ok && $secure === 'tls') {
+        $ok = $cmd('STARTTLS', 220, 'STARTTLS')
+            && (@stream_socket_enable_crypto($fp, true, STREAM_CRYPTO_METHOD_TLS_CLIENT) === true || $fail('STARTTLS: criptarea nu a reușit (certificat?).') )
+            && $cmd('EHLO ' . $ehloHost, 250, 'EHLO');
+    }
+    if ($ok && $user !== '') {
+        $ok = $cmd('AUTH LOGIN', 334, 'AUTH LOGIN') && $cmd(base64_encode($user), 334, 'Utilizator SMTP')
+            && $cmd(base64_encode($pass), 235, 'Parolă SMTP');
+    }
+    $ok = $ok && $cmd('MAIL FROM:<' . $from . '>', 250, 'MAIL FROM') && $cmd('RCPT TO:<' . $to . '>', 250, 'RCPT TO');
+    foreach ($bcc as $b) {
+        $ok = $ok && $cmd('RCPT TO:<' . $b . '>', 250, 'RCPT TO (Bcc)');
+    }
+    $ok = $ok && $cmd('DATA', 354, 'DATA');
+    if ($ok) {
+        $data = implode("\r\n", $headers) . "\r\n\r\n" . preg_replace('/^\./m', '..', $body);
+        $ok   = $cmd(rtrim($data, "\r\n") . "\r\n.", 250, 'Mesaj');
+    }
+    fwrite($fp, "QUIT\r\n");
+    fclose($fp);
+    return $ok;
 }
 
 // ---------------------------------------------------------------------------

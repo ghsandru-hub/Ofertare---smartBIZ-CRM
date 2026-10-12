@@ -158,6 +158,19 @@ if (($_GET['a'] ?? '') === 'anaf') {
     exit(json_encode(anaf_lookup((string)($_GET['cui'] ?? '')), JSON_UNESCAPED_UNICODE));
 }
 
+// Rezultatul unei trimiteri de email, pentru mesajul din cockpit: cu eroarea reală a serverului dacă a eșuat.
+function mail_result_html(bool $ok, string $to): string
+{
+    if ($ok) {
+        $note = mail_transport() === 'mail()'
+            ? ' <span class="muted">mail() confirmă doar predarea către serverul local, nu livrarea. Dacă emailul nu ajunge, configurează SMTP în config.php (vezi Ajutor).</span>'
+            : '';
+        return '<p class="ok">Emailul a fost trimis la ' . h($to) . ' prin ' . h(mail_transport()) . '.</p>' . $note;
+    }
+    return '<p class="err">Trimiterea prin ' . h(mail_transport()) . ' a eșuat: ' . h(mail_error() ?: 'motiv necunoscut') . '</p>'
+        . '<p class="muted">Copiază linkurile și trimite-le manual, sau rezolvă setările de email și folosește „Retrimite emailul” de pe card.</p>';
+}
+
 // ---------------------------------------------------------------------------
 // Acțiuni
 // ---------------------------------------------------------------------------
@@ -170,6 +183,37 @@ if ($method === 'POST' && !csrf_ok()) {
     }
     flash('<div class="note err">Sesiune expirată. Reîncarcă pagina și încearcă din nou.</div>');
     redirect('admin.php?v=' . $view);
+}
+
+// Previzualizarea emailului din „Ofertă nouă”, cu datele completate și materialele bifate (JSON, fără să creeze oferta).
+if ($method === 'POST' && $isAjax && $action === 'preview') {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    $tq = db()->prepare('SELECT * FROM templates WHERE id = ?');
+    $tq->execute([(int)($_POST['template_id'] ?? 0)]);
+    if (!($tpl = $tq->fetch())) {
+        exit(json_encode(['ok' => false, 'error' => 'Alege un șablon de email.']));
+    }
+    $sel   = array_map('intval', (array)($_POST['materials'] ?? []));
+    $order = array_flip(array_map(fn($m) => (int)$m['id'], template_materials((int)$tpl['id'])));
+    usort($sel, fn($a, $b) => ($order[$a] ?? 999) <=> ($order[$b] ?? 999));
+    $mats = [];
+    if ($sel) {
+        $mq = db()->prepare('SELECT id, title FROM materials WHERE active = 1 AND id IN (' . implode(',', array_fill(0, count($sel), '?')) . ')');
+        $mq->execute($sel);
+        $byId = array_column($mq->fetchAll(), 'title', 'id');
+        foreach ($sel as $mid) {
+            if (isset($byId[$mid])) {
+                $mats[] = ['title' => $byId[$mid], 'url' => base_url() . str_repeat('x', 43)];
+            }
+        }
+    }
+    $days = max(1, min(365, (int)($_POST['days'] ?? cfg('default_days'))));
+    $deal = ['company' => trim((string)($_POST['company'] ?? '')), 'recipient' => trim((string)($_POST['recipient'] ?? '')),
+             'email' => trim((string)($_POST['email'] ?? '')), 'angajati' => max(0, (int)($_POST['angajati'] ?? 0)), 'expires_at' => time() + 86400 * $days];
+    [$subject, $html] = render_email((string)$tpl['subject'], (string)$tpl['body'], $deal, $mats);
+    exit(json_encode(['ok' => true, 'to' => ($deal['recipient'] !== '' ? $deal['recipient'] . ' <' . $deal['email'] . '>' : $deal['email']),
+        'subject' => $subject, 'html' => $html, 'materials' => count($mats), 'transport' => mail_transport()], JSON_UNESCAPED_UNICODE));
 }
 
 if ($method === 'POST') {
@@ -244,9 +288,8 @@ if ($method === 'POST') {
                 $sent = '';
                 if ($sendNow) {
                     $ok = send_mail($email, $subject, $html, $text);
-                    log_event($dealId, $ok ? 'email trimis' : 'email eșuat');
-                    $sent = $ok ? '<p class="ok">Emailul a fost trimis la ' . h($email) . '.</p>'
-                                : '<p class="err">Trimiterea a eșuat. Copiază linkurile și trimite-le manual.</p>';
+                    log_event($dealId, $ok ? 'email trimis prin ' . mail_transport() : 'email eșuat: ' . mail_error());
+                    $sent = mail_result_html($ok, $email);
                 }
                 $list = '';
                 foreach ($mlinks as $ml) {
@@ -276,6 +319,63 @@ if ($method === 'POST') {
         case 'nota':
             $id = (int)($_POST['id'] ?? 0);
             db()->prepare('UPDATE deals SET nota = ? WHERE id = ?')->execute([mb_substr(trim((string)($_POST['nota'] ?? '')), 0, 500), $id]);
+            redirect('admin.php?v=pipeline#c' . $id);
+
+        case 'deal_delete':
+            $id = (int)($_POST['id'] ?? 0);
+            $dq = db()->prepare('SELECT company, email FROM deals WHERE id = ?');
+            $dq->execute([$id]);
+            if ($d = $dq->fetch()) {
+                // linkurile, codurile, sesiunile și jurnalul se șterg în cascadă; linkurile trimise nu mai funcționează
+                db()->prepare('DELETE FROM deals WHERE id = ?')->execute([$id]);
+                flash('<div class="note">Oferta pentru „' . h($d['company'] ?: $d['email']) . '” a fost ștearsă, cu tot cu linkurile ei.</div>');
+            }
+            redirect('admin.php?v=pipeline');
+
+        // Retrimite emailul ofertei cu linkuri noi (tokenurile nu se păstrează, deci cele vechi nu pot fi reconstituite).
+        case 'deal_resend':
+            $id = (int)($_POST['id'] ?? 0);
+            $dq = db()->prepare('SELECT * FROM deals WHERE id = ?');
+            $dq->execute([$id]);
+            $deal = $dq->fetch();
+            if (!$deal) {
+                redirect('admin.php?v=pipeline');
+            }
+            $tq = db()->prepare('SELECT * FROM templates WHERE id = ?');
+            $tq->execute([(int)$deal['template_id']]);
+            $tpl = $tq->fetch();
+            $lq  = db()->prepare('SELECT l.id, m.title FROM links l JOIN materials m ON m.id = l.material_id WHERE l.deal_id = ? AND m.active = 1 ORDER BY l.id');
+            $lq->execute([$id]);
+            $links = $lq->fetchAll();
+            if (!$tpl) {
+                flash('<div class="note err">Șablonul acestei oferte a fost șters; creează o ofertă nouă.</div>');
+            } elseif (!$links) {
+                flash('<div class="note err">Oferta nu mai are materiale active de trimis.</div>');
+            } else {
+                $now = time();
+                $exp = (int)$deal['expires_at'] < $now + 86400 ? $now + 86400 * (int)cfg('default_days') : (int)$deal['expires_at'];
+                db()->prepare('UPDATE deals SET revoked = 0, expires_at = ? WHERE id = ?')->execute([$exp, $id]);
+                db()->prepare('DELETE FROM sessions WHERE deal_id = ?')->execute([$id]);
+                $upd    = db()->prepare('UPDATE links SET token_hash = ? WHERE id = ?');
+                $mlinks = [];
+                foreach ($links as $l) {
+                    $tok = new_token();
+                    $upd->execute([khash($tok), (int)$l['id']]);
+                    $mlinks[] = ['title' => $l['title'], 'url' => base_url() . $tok];
+                }
+                $deal['expires_at'] = $exp;
+                [$subject, $html, $text] = render_email((string)$tpl['subject'], (string)$tpl['body'], $deal, $mlinks);
+                db()->prepare('UPDATE deals SET subject = ? WHERE id = ?')->execute([$subject, $id]);
+                $ok = send_mail((string)$deal['email'], $subject, $html, $text);
+                log_event($id, $ok ? 'email retrimis cu linkuri noi prin ' . mail_transport() : 'retrimitere eșuată: ' . mail_error());
+                $list = '';
+                foreach ($mlinks as $ml) {
+                    $list .= '<div class="url"><b>' . h($ml['title']) . '</b><br>' . h($ml['url']) . '</div>';
+                }
+                flash('<div class="note"><strong>Linkuri noi pentru ' . h($deal['company'] ?: $deal['email']) . '.</strong> Linkurile trimise anterior nu mai funcționează; cele noi sunt valabile până la ' . h(fmt_time($exp)) . '.'
+                    . mail_result_html($ok, (string)$deal['email'])
+                    . '<p class="muted">Linkurile se afișează o singură dată.</p>' . $list . '</div>');
+            }
             redirect('admin.php?v=pipeline#c' . $id);
 
         // --- Șabloane -------------------------------------------------------
@@ -322,6 +422,28 @@ if ($method === 'POST') {
             db()->prepare('DELETE FROM templates WHERE id = ?')->execute([(int)($_POST['id'] ?? 0)]);
             flash('<div class="note">Șablonul a fost șters. Ofertele deja trimise nu sunt afectate.</div>');
             redirect('admin.php?v=sabloane');
+
+        // Email de test: șablonul cu date de exemplu, la adresa ta, ca să verifici livrarea pe server.
+        case 'tpl_test':
+            $id = (int)($_POST['id'] ?? 0);
+            $to = trim((string)($_POST['to'] ?? ''));
+            $tq = db()->prepare('SELECT * FROM templates WHERE id = ?');
+            $tq->execute([$id]);
+            if (!($tpl = $tq->fetch())) {
+                flash('<div class="note err">Salvează mai întâi șablonul.</div>');
+                redirect('admin.php?v=sabloane');
+            }
+            if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
+                flash('<div class="note err">Scrie o adresă de email validă pentru test.</div>');
+                redirect('admin.php?v=sabloane&id=' . $id);
+            }
+            $mats = array_map(fn($m) => ['title' => $m['title'], 'url' => base_url() . 'test-' . str_repeat('x', 38)], template_materials($id));
+            $sample = ['company' => 'EXEMPLU CONSTRUCT SRL', 'recipient' => 'Ion Popescu', 'email' => $to, 'angajati' => 10, 'expires_at' => time() + 30 * 86400];
+            [$subject, $html, $text] = render_email('[TEST] ' . $tpl['subject'], (string)$tpl['body'], $sample, $mats);
+            $ok = send_mail($to, $subject, $html, $text);
+            flash('<div class="note' . ($ok ? '' : ' err') . '"><strong>Email de test</strong>' . mail_result_html($ok, $to)
+                . ($ok ? '<p class="muted">Linkurile din emailul de test sunt fictive. Dacă emailul nu ajunge în câteva minute, verifică spam-ul și setările din config.php (vezi Ajutor).</p>' : '') . '</div>');
+            redirect('admin.php?v=sabloane&id=' . $id);
 
         // --- Materiale ------------------------------------------------------
         case 'mat_upload':
@@ -645,6 +767,12 @@ function deal_card(array $d, array $stages, array $links, string $csrf): string
     $hid    = '<input type="hidden" name="csrf" value="' . h($csrf) . '"><input type="hidden" name="id" value="' . $id . '">';
     $revoke = $d['revoked'] ? '' : '<form method="post">' . $hid . '<input type="hidden" name="action" value="revoke">'
         . '<button class="lnk bad" type="submit">Revocă toate linkurile ofertei</button></form>';
+    $acts = '<div class="cardacts">'
+        . '<form method="post">' . $hid . '<input type="hidden" name="action" value="deal_resend">'
+        . '<button class="lnk" type="submit" title="Generează linkuri noi și retrimite emailul la ' . h($d['email']) . '">Retrimite emailul (linkuri noi)</button></form>'
+        . $revoke
+        . '<form method="post" onsubmit="return confirm(\'Ștergi definitiv oferta pentru ' . h(addslashes($d['company'] ?: $d['email'])) . '? Linkurile trimise nu vor mai funcționa.\')">'
+        . $hid . '<input type="hidden" name="action" value="deal_delete"><button class="lnk bad" type="submit">Șterge oferta</button></form></div>';
 
     return '<article class="card" draggable="true" data-id="' . $id . '" id="c' . $id . '">'
         . '<header><strong>' . h($d['company'] ?: $d['email']) . '</strong><small>' . h(ago($d['stage_at'] ? (int)$d['stage_at'] : (int)$d['created_at'])) . '</small></header>'
@@ -666,7 +794,7 @@ function deal_card(array $d, array $stages, array $links, string $csrf): string
         . '<button type="submit" class="sm">Salvează</button></form>'
         . '<p class="meta">Creată ' . h(fmt_time((int)$d['created_at'])) . ' · expiră ' . h(fmt_time((int)$d['expires_at']))
         . ' · ' . ($d['require_otp'] ? 'cu cod de acces' : 'fără cod') . '</p>'
-        . '<ul class="log">' . ($ev ?: '<li>Fără evenimente</li>') . '</ul>' . $revoke
+        . '<ul class="log">' . ($ev ?: '<li>Fără evenimente</li>') . '</ul>' . $acts
         . '</details></article>';
 }
 
@@ -739,9 +867,46 @@ function view_pipeline(string $csrf): string
           . '<fieldset class="mats-pick"><legend>Materiale trimise</legend>' . ($matChecks ?: '<p class="muted">Nu există materiale active.</p>') . '</fieldset>'
           . '<div class="chks"><label><input type="checkbox" name="require_otp" value="1" checked> Cod de acces pe email</label>'
           . '<label><input type="checkbox" name="send" value="1" checked> Trimite acum emailul</label></div>'
-          . '<button type="submit">Creează și trimite oferta</button>'
+          . '<div class="fbtns"><button type="submit">Creează și trimite oferta</button>'
+          . '<button type="button" class="sm" id="prevBtn" title="Vezi emailul exact așa cum îl primește clientul, înainte de trimitere">Previzualizează emailul</button></div>'
           . '<script type="application/json" id="tplMap">' . json_encode($tplMap) . '</script></form>'
+          . '<dialog id="prevDlg" class="pdlg" aria-labelledby="prevTtl"><div class="pdh"><h2 id="prevTtl">Previzualizare email</h2>'
+          . '<p class="muted" id="prevMeta"></p></div><iframe id="prevFrame" title="Emailul care va fi trimis" sandbox></iframe>'
+          . '<div class="pdf"><button type="button" class="sm" id="prevClose">Închide</button><span class="sp"></span>'
+          . '<button type="button" class="pri" id="prevSend">Creează și trimite oferta</button></div></dialog>'
         : '<p class="muted">Creează mai întâi un șablon de email în secțiunea „Șabloane email”.</p>';
+
+    // Tabelul ofertelor: aceeași listă ca în kanban, un rând per ofertă, cu acțiunile de pe card.
+    $trs = '';
+    foreach ($deals as $d) {
+        $id   = (int)$d['id'];
+        $ls   = $links[$id] ?? [];
+        $read = count(array_filter($ls, fn($l) => (int)$l['opens'] > 0));
+        $st   = $d['revoked'] ? 'revocat' : ((int)$d['expires_at'] < time() ? 'expirat' : 'activ');
+        $sal  = (int)$d['angajati'];
+        $hid  = '<input type="hidden" name="csrf" value="' . h($csrf) . '"><input type="hidden" name="id" value="' . $id . '">';
+        $opts = '';
+        foreach ($stages as $k => $sg) {
+            $opts .= '<option value="' . $k . '"' . ($k === $d['stage'] ? ' selected' : '') . '>' . $sg['label'] . '</option>';
+        }
+        $trs .= '<tr id="r' . $id . '"><td><a href="#c' . $id . '" class="tocard" data-id="' . $id . '">' . h($d['company'] ?: $d['email']) . '</a>'
+            . ((string)$d['cui'] !== '' ? '<br><small class="muted">CUI ' . h($d['cui']) . '</small>' : '') . '</td>'
+            . '<td>' . h($d['recipient'] ?: '—') . '<br><small class="muted">' . h($d['email']) . '</small></td>'
+            . '<td><form method="post" class="trow">' . $hid . '<input type="hidden" name="action" value="stage"><select name="stage" aria-label="Etapă" onchange="this.form.submit()">' . $opts . '</select></form></td>'
+            . '<td class="n">' . $read . '/' . count($ls) . '</td>'
+            . '<td class="n">' . $sal . '</td><td class="n">' . ($sal ? ron($sal * ONORARIU_AN1_PER_SALARIAT) : '—') . '</td>'
+            . '<td>' . h(date('d.m.Y', (int)$d['created_at'])) . '</td>'
+            . '<td>' . ($d['first_open'] ? h(date('d.m.Y', (int)$d['first_open'])) : '—') . '</td>'
+            . '<td><span class="lk l-' . $st . '">' . $st . '</span><br><small class="muted">până la ' . h(date('d.m.Y', (int)$d['expires_at'])) . '</small></td>'
+            . '<td class="wrap">' . h($d['nota']) . '</td>'
+            . '<td class="tacts"><form method="post">' . $hid . '<input type="hidden" name="action" value="deal_resend"><button class="lnk" type="submit" title="Linkuri noi + email la ' . h($d['email']) . '">Retrimite</button></form>'
+            . ($d['revoked'] ? '' : '<form method="post">' . $hid . '<input type="hidden" name="action" value="revoke"><button class="lnk bad" type="submit">Revocă</button></form>')
+            . '<form method="post" onsubmit="return confirm(\'Ștergi definitiv oferta pentru ' . h(addslashes($d['company'] ?: $d['email'])) . '? Linkurile trimise nu vor mai funcționa.\')">'
+            . $hid . '<input type="hidden" name="action" value="deal_delete"><button class="lnk bad" type="submit">Șterge</button></form></td></tr>';
+    }
+    $table = '<div class="rtw dtw"><table class="rt dt"><thead><tr><th>Companie</th><th>Persoană / email</th><th>Etapă</th><th class="n">Citite</th><th class="n">Salariați</th><th class="n">Onorariu an 1</th>'
+        . '<th>Creată</th><th>Deschisă</th><th>Linkuri</th><th>Notă</th><th>Acțiuni</th></tr></thead><tbody>'
+        . ($trs ?: '<tr><td colspan="11" class="empty">Nicio ofertă.</td></tr>') . '</tbody></table></div>';
 
     return '<section class="kpis" aria-label="Indicatori">'
         . '<div class="kpi"><span>Oferte în lucru</span><b>' . $active . '</b><small>din ' . $total . ' trimise</small></div>'
@@ -754,8 +919,12 @@ function view_pipeline(string $csrf): string
         . '<div class="row2"><section class="panel"><h2>Pâlnia ofertelor</h2>' . funnel_svg($reached)
         . '<p class="fnote">Etapa maximă atinsă de fiecare ofertă; ofertele pierdute rămân numărate la etapa la care au ajuns. Pierdute: ' . count($byStage['pierduta']) . '.</p></section>'
         . '<section class="panel"><h2>Ofertă nouă</h2>' . $form . '</section></div>'
-        . '<section class="panel"><h2>Pipeline</h2><p class="muted" style="margin:-6px 0 10px">Trage cardurile între coloane. „Deschisă” se setează automat la prima deschidere a unui material.</p>'
-        . '<div class="boardwrap"><div class="board">' . $board . '</div></div></section>';
+        . '<section class="panel" id="pipePanel"><div class="ph"><h2>Pipeline</h2><div class="acts seg" role="group" aria-label="Mod de afișare">'
+        . '<button type="button" class="sm" data-mode="kanban" aria-pressed="true">Kanban</button><button type="button" class="sm" data-mode="table" aria-pressed="false">Tabel</button></div></div>'
+        . '<p class="muted pm-kanban" style="margin:-6px 0 10px">Trage cardurile între coloane. „Deschisă” se setează automat la prima deschidere a unui material.</p>'
+        . '<p class="muted pm-table" style="margin:-6px 0 10px">O ofertă pe rând, cu etapa, materialele citite și acțiunile. Clic pe companie deschide cardul în kanban.</p>'
+        . '<div class="boardwrap pm-kanban"><div class="board">' . $board . '</div></div>'
+        . '<div class="pm-table">' . $table . '</div></section>';
 }
 
 // ===========================================================================
@@ -827,6 +996,9 @@ function view_templates(): string
         . '<fieldset class="mats-pick"><legend>Materiale trimise cu acest șablon (bifă + ordine)</legend>' . ($matRows ?: '<p class="muted">Încarcă materiale în secțiunea „Materiale”.</p>') . '</fieldset>'
         . '<button type="submit" class="pri">Salvează șablonul</button></form></section>'
         . '<section class="panel prev"><h2>Previzualizare</h2><p class="muted">Cu date de exemplu, după ultima salvare.</p>'
+        . ($tpl['id'] ? '<form method="post" class="testf">' . $hid . '<input type="hidden" name="action" value="tpl_test">'
+            . '<label for="testTo">Email de test (șablonul cu date de exemplu, prin ' . h(mail_transport()) . ')</label>'
+            . '<div class="cuirow"><input id="testTo" name="to" type="email" placeholder="adresa ta" required><button type="submit" class="sm">Trimite testul</button></div></form>' : '')
         . '<iframe title="Previzualizare email" sandbox srcdoc="' . h($preview) . '"></iframe></section></div>';
 }
 
@@ -1708,7 +1880,7 @@ function view_help(): string
     $toc = '<nav class="hnav" aria-label="Cuprins">'
         . '<a href="#h-flux">Fluxul pe scurt</a><a href="#h-materiale">Materialele în email</a><a href="#h-pipeline">Pipeline</a>'
         . '<a href="#h-raportare">Raportare</a><a href="#h-catalog">Catalog</a><a href="#h-sabloane">Șabloane email</a>'
-        . '<a href="#h-mat">Materiale</a><a href="#h-utilizatori">Utilizatori</a><a href="#h-probleme">Probleme frecvente</a></nav>';
+        . '<a href="#h-mat">Materiale</a><a href="#h-utilizatori">Utilizatori</a><a href="#h-email">Livrarea emailurilor</a><a href="#h-probleme">Probleme frecvente</a></nav>';
 
     return '<section class="panel hp"><div class="ph"><h2>Ajutor</h2></div>' . $toc
 
@@ -1748,14 +1920,26 @@ function view_help(): string
         . '<li><b>Ce vezi tu după trimitere.</b> Pe card, fiecare material cu numărul de deschideri („necitit” / „2×”); cardul trece automat în „Deschisă”. ' . $notifyTxt
         . ' În Materiale vezi, per material, în câte șabloane apare, de câte ori a fost trimis și deschis.</li>'
         . '<li><b>Întreținere.</b> „Înlocuiește fișierul” <b>păstrează linkurile deja trimise</b>: clienții deschid noua versiune. Debifarea „Activ” oprește deschiderea materialului și îl scoate din șabloane. '
-        . '„Revocă toate linkurile ofertei” (din Detalii, pe card) oprește imediat accesul la o ofertă anume.</li>'
+        . 'Pe card, în Detalii: „Retrimite emailul (linkuri noi)” generează linkuri noi și retrimite emailul (cele vechi nu mai merg), „Revocă toate linkurile ofertei” oprește imediat accesul, „Șterge oferta” o elimină definitiv, cu tot cu linkuri și jurnal.</li>'
         . '</ol>'
+
+        . '<h3 id="h-email">Livrarea emailurilor: Microsoft 365, SMTP sau mail()</h3>'
+        . '<p>Acum emailurile pleacă prin <b>' . h(mail_transport()) . '</b>. Expeditorul este <code>' . h((string)cfg('mail_from')) . '</code>.</p>'
+        . '<ul><li><b>Microsoft 365 prin Graph API</b> (recomandat, emailul aiall.ro este în M365): emailul pleacă din căsuța <code>mail_from</code> din M365, cu SPF/DKIM/DMARC ale domeniului, exact ca în portalul ContaCheck. '
+        . 'Cockpitul primește răspunsul Graph: „trimis” = acceptat de Microsoft, o eroare = textul ei exact. Se configurează în <code>ofertare_private/config.php</code>: <code>graph_tenant_id</code>, <code>graph_client_id</code>, <code>graph_client_secret</code> '
+        . '(Entra ID → App registrations → aplicația folosită și de ContaCheck → Tenant ID, Client ID, un Client secret) și permisiunea de aplicație Graph <b>Mail.Send</b> cu consimțământ de administrator. Căsuța <code>mail_from</code> trebuie să existe în M365.</li>'
+        . '<li><b>SMTP autentificat</b> (dacă Graph nu este configurat): <code>smtp_host</code>, <code>smtp_port</code>, <code>smtp_secure</code>, <code>smtp_user</code>, <code>smtp_pass</code>. Pentru M365: <code>smtp.office365.com</code>, 587, <code>tls</code>, căsuța și parola ei, cu „Authenticated SMTP” activ pe căsuță (Microsoft dezactivează treptat autentificarea de bază, de aceea Graph este varianta sigură).</li>'
+        . '<li><b>mail()</b> (dacă nimic nu este configurat) predă mesajul serverului local al hostingului și raportează „trimis” când acesta l-a <b>pus în coadă</b>, nu când a fost livrat. '
+        . 'Cu emailul domeniului în M365, SPF-ul domeniului nu autorizează serverul web, deci destinatarii resping sau marchează ca spam mesajele, deși cockpitul a afișat „trimis”.</li>'
+        . '<li><code>mail_reply_to</code> (unde ajung răspunsurile clienților) și <code>mail_bcc</code> (copie ascunsă a fiecărui email trimis) sunt opționale și merg cu toate cele trei moduri.</li>'
+        . '<li><b>Verifică livrarea</b> cu „Email de test” din <a href="admin.php?v=sabloane">Șabloane email</a> (panoul Previzualizare): trimite șablonul cu date de exemplu la adresa ta și arată rezultatul real.</li>'
+        . '<li>Jurnalul fiecărei oferte (card → Detalii) reține „email trimis prin …” sau „email eșuat: motivul”.</li></ul>'
 
         . '<h3 id="h-pipeline">Pipeline</h3>'
         . '<ul><li><b>Indicatorii</b> de sus: oferte în lucru, rată de deschidere, conversie, pipeline și câștigat (onorariu an 1), economie generată clienților. Valorile pornesc de la „Salariați mobili”: ' . ron(ONORARIU_AN1_PER_SALARIAT) . ' RON onorariu an 1, ' . ron(LICENTA_AN_PER_SALARIAT) . ' RON licență din anul 2, ' . ron(ECONOMIE_AN_PER_SALARIAT) . ' RON economie client, per salariat.</li>'
         . '<li><b>Pâlnia</b> numără etapa maximă atinsă; o ofertă pierdută rămâne numărată la etapa la care a ajuns.</li>'
         . '<li><b>Ofertă nouă</b>: scrii CUI-ul și apeși „ANAF” (sau Enter): se completează denumirea, Reg. Com., adresa, județul, CAEN, telefonul, TVA și inactivitatea. Datele apar pe card și în Raportare.</li>'
-        . '<li><b>Kanban</b>: tragi cardul între coloane sau alegi etapa din „Detalii”. „Trimisă” și „Deschisă” se setează automat. În „Detalii” ai și nota internă, jurnalul evenimentelor și revocarea linkurilor.</li></ul>'
+        . '<li><b>Kanban</b>: tragi cardul între coloane sau alegi etapa din „Detalii”. „Trimisă” și „Deschisă” se setează automat. În „Detalii” ai nota internă, jurnalul evenimentelor, retrimiterea emailului cu linkuri noi, revocarea linkurilor și ștergerea ofertei (cu confirmare).</li></ul>'
 
         . '<h3 id="h-raportare">Raportare</h3>'
         . '<ul><li>Tabel cu toate ofertele: căutare liberă, filtre pe etapă, șablon, stare link și perioada creării; sortare pe orice coloană (clic pe antet); grupare cu subtotaluri; alegerea coloanelor.</li>'
@@ -1784,6 +1968,7 @@ function view_help(): string
 
         . '<h3 id="h-probleme">Probleme frecvente</h3>'
         . '<ul>'
+        . '<li><b>Cockpitul arată „trimis”, dar emailul nu ajunge.</b> Cu mail(), „trimis” înseamnă doar pus în coada serverului local, iar cu emailul domeniului în Microsoft 365 mesajele plecate de pe serverul web pică la SPF. Configurează Microsoft 365 prin Graph (secțiunea „Livrarea emailurilor”), trimite un „Email de test” din Șabloane email, apoi retrimite ofertele de pe card cu „Retrimite emailul (linkuri noi)”.</li>'
         . '<li><b>Emailul a plecat fără butoane.</b> Șablonul nu are <code>{{materiale}}</code> singur pe rând, sau niciun material nu era bifat la trimitere. Verifică în Previzualizare și pe card (lista materialelor).</li>'
         . '<li><b>Un material nu apare în șablon sau la „Ofertă nouă”.</b> Este dezactivat. Bifează „Activ” în Materiale și salvează.</li>'
         . '<li><b>Clientul spune că linkul nu merge.</b> Linkurile sunt expirate (data de expirare de pe card), revocate, sau materialul a fost dezactivat. Trimite o ofertă nouă sau reactivează materialul.</li>'
@@ -1855,8 +2040,12 @@ body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 var(--sans)}
 .top nav{flex-basis:100%;display:flex;gap:4px;margin-top:8px;overflow-x:auto}
 .top nav a{color:#fff;opacity:.75;text-decoration:none;padding:8px 14px;border-radius:4px 4px 0 0;font-weight:500;white-space:nowrap}
 .top nav a:hover{opacity:1}
-.top nav a[aria-current]{opacity:1;background:var(--bg);color:var(--ink)}
-main{max-width:1440px;margin:0 auto;padding:20px;display:grid;gap:18px}
+.top nav a[aria-current]{opacity:1;background:var(--soft);color:var(--navy);font-weight:600;box-shadow:inset 0 3px 0 var(--teal)}
+main{max-width:1440px;margin:0 auto;padding:0 20px 20px}
+/* Conținutul secțiunii alese stă într-un container distinct, legat vizual de tab-ul activ din meniu */
+.tabpanel{background:var(--soft);border:1px solid var(--line);border-top:0;border-radius:0 0 8px 8px;padding:14px 18px 18px;display:grid;gap:18px}
+.tabtitle{font-size:13px;font-weight:600;color:var(--navy);margin:0;padding-bottom:10px;border-bottom:1px solid var(--line);letter-spacing:.02em;text-transform:uppercase}
+@media (max-width:980px){.tabpanel{padding:12px 12px 14px}}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
 .kpi{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px}
 .kpi span{display:block;font-size:12px;color:var(--muted)}
@@ -1895,7 +2084,21 @@ fieldset legend{font-size:12px;color:var(--muted);padding:0 4px}
 .kind{font:500 10px var(--mono);text-transform:uppercase;letter-spacing:.04em;border-radius:8px;padding:0 6px;border:1px solid currentColor}
 .k-oferta{color:var(--teal)}.k-suport{color:var(--navy3)}
 button{font:600 13px var(--sans);cursor:pointer}
-.newf>button,.pri{margin-top:12px;background:var(--teal);color:var(--surface);border:0;border-radius:4px;padding:8px 16px}
+.newf .fbtns>button:first-child,.pri{margin-top:12px;background:var(--teal);color:var(--surface);border:0;border-radius:4px;padding:8px 16px}
+.fbtns{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.fbtns .sm{margin-top:12px;padding:8px 14px}
+/* Previzualizarea emailului înainte de trimitere */
+.pdlg{width:min(760px,96vw);border:1px solid var(--line);border-radius:8px;padding:0;background:var(--surface);color:var(--ink);box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.pdlg::backdrop{background:rgba(13,21,32,.55)}
+.pdh{padding:14px 18px 10px;border-bottom:1px solid var(--line)}.pdh h2{margin:0 0 4px;font-size:15px;color:var(--navy)}.pdh p{margin:0;overflow-wrap:anywhere}
+.pdlg iframe{display:block;width:100%;height:min(62vh,760px);border:0;background:#fff}
+.pdf{display:flex;gap:10px;align-items:center;padding:10px 18px;border-top:1px solid var(--line)}.pdf .sp{flex:1}.pdf .pri{margin:0}
+/* Pipeline: kanban sau tabel */
+.seg{gap:0}.seg .sm{border-radius:0;margin:0}.seg .sm:first-child{border-radius:4px 0 0 4px}.seg .sm:last-child{border-radius:0 4px 4px 0;border-left:0}
+.seg .sm[aria-pressed="true"]{background:var(--teal);color:var(--surface)}
+#pipePanel.mode-table .pm-kanban,#pipePanel:not(.mode-table) .pm-table{display:none}
+.dtw{max-height:none}.dt td{white-space:normal;vertical-align:middle}.dt td.wrap{min-width:160px}
+.dt .trow select{padding:4px 26px 4px 8px;font-size:12px;min-width:130px}
+.dt .tacts{white-space:nowrap}.dt .tacts form{display:inline-block;margin-right:10px}.dt .tacts .lnk{margin:0}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var(--navy);outline-offset:2px}
 .note{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--teal);border-radius:4px;padding:12px 14px}
 .note.err{border-left-color:var(--red)}.note p{margin:6px 0 0}
@@ -1933,7 +2136,9 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .sm.bad{border-color:var(--red);color:var(--red)}
 .meta{font-size:11px;color:var(--muted);margin:8px 0 4px;overflow-wrap:anywhere}
 .log{list-style:none;padding:0;margin:0;font-size:11px;color:var(--muted)}.log span{font-family:var(--mono)}
-.lnk{background:none;border:0;padding:0;margin-top:6px;font-size:12px}.lnk.bad{color:var(--red)}
+.lnk{background:none;border:0;padding:0;margin-top:6px;font-size:12px;color:var(--teal)}.lnk.bad{color:var(--red)}
+.cardacts{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:4px;padding-top:6px;border-top:1px dashed var(--line)}
+.testf{margin:0 0 10px}.testf label{margin-bottom:3px}
 /* Șabloane */
 .tplgrid{display:grid;grid-template-columns:260px minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
 @media (max-width:1200px){.tplgrid{grid-template-columns:1fr}}
@@ -2073,8 +2278,11 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
   <nav aria-label="Secțiuni"><?= $nav ?></nav>
 </div></header>
 <main>
+<section class="tabpanel" aria-label="<?= h($tabs[$view]) ?>">
+<h2 class="tabtitle"><?= h($tabs[$view]) ?></h2>
 <?= $flashMsg ?>
 <?= $content ?>
+</section>
 </main>
 <footer class="foot"><div class="in">
   <span>AiALL S.R.L. · ofertare.aiall.ro · <?= date('Y') ?></span>
@@ -2114,6 +2322,52 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
     };
     sel.addEventListener('change', sync);
     sync();
+  }
+
+  // Ofertă nouă: previzualizarea emailului cu datele completate și materialele bifate, înainte de trimitere
+  var form = document.getElementById('newDeal'), dlg = document.getElementById('prevDlg');
+  if (form && dlg && typeof dlg.showModal === 'function') {
+    var frame = document.getElementById('prevFrame'), meta = document.getElementById('prevMeta');
+    document.getElementById('prevBtn').addEventListener('click', function () {
+      if (!form.reportValidity()) { return; }
+      var fd = new FormData(form);
+      fd.set('action', 'preview');
+      fetch('admin.php', { method: 'POST', body: fd, headers: { 'X-Requested-With': 'fetch' }, credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (!j.ok) { alert(j.error); return; }
+          meta.textContent = 'Către: ' + j.to + ' · Subiect: ' + j.subject + ' · ' + j.materials + (j.materials === 1 ? ' material' : ' materiale') + ' · prin ' + j.transport
+            + (j.materials ? '' : ' · ATENȚIE: niciun material bifat');
+          frame.srcdoc = '<!doctype html><meta charset="utf-8"><body style="margin:0;padding:18px;background:#fff">' + j.html + '</body>';
+          dlg.showModal();
+        })
+        .catch(function () { alert('Previzualizarea nu a reușit. Reîncarcă pagina.'); });
+    });
+    document.getElementById('prevClose').addEventListener('click', function () { dlg.close(); });
+    document.getElementById('prevSend').addEventListener('click', function () { dlg.close(); form.requestSubmit ? form.requestSubmit() : form.submit(); });
+  }
+
+  // Pipeline: kanban sau tabel, cu alegerea păstrată în browser
+  var pipe = document.getElementById('pipePanel');
+  if (pipe) {
+    var KEY = 'ofertare_pipeline_view';
+    var setMode = function (m) {
+      pipe.classList.toggle('mode-table', m === 'table');
+      pipe.querySelectorAll('.seg .sm').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.mode === m ? 'true' : 'false'); });
+      try { localStorage.setItem(KEY, m); } catch (e) {}
+    };
+    var saved = 'kanban';
+    try { saved = localStorage.getItem(KEY) || 'kanban'; } catch (e) {}
+    if (location.hash && /^#c\d+$/.test(location.hash)) { saved = 'kanban'; } // un link către card deschide kanban-ul
+    setMode(saved);
+    pipe.querySelectorAll('.seg .sm').forEach(function (b) { b.addEventListener('click', function () { setMode(b.dataset.mode); }); });
+    pipe.querySelectorAll('a.tocard').forEach(function (a) {
+      a.addEventListener('click', function () {
+        setMode('kanban');
+        var c = document.getElementById('c' + a.dataset.id);
+        if (c) { var d = c.querySelector('details'); if (d) { d.open = true; } }
+      });
+    });
   }
 
   // Ofertă nouă: datele firmei de la ANAF după CUI (buton, Enter sau la părăsirea câmpului)

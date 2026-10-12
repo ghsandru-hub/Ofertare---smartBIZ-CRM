@@ -45,6 +45,8 @@ Cele două foldere trebuie să fie frați în directorul contului.
    - `admin_pass_hash`: `php -r "echo password_hash('parola-ta', PASSWORD_DEFAULT), PHP_EOL;"` — contul inițial;
      la prima autentificare este copiat în tabela `users`, iar de atunci parola se schimbă din cockpit → Utilizatori
    - `mail_from`: o căsuță existentă pe aiall.ro (ex. `oferte@aiall.ro`), ca emailurile să treacă de SPF/DKIM
+   - `graph_tenant_id`, `graph_client_id`, `graph_client_secret`: trimitere prin Microsoft 365 (Graph API), recomandată,
+     emailul aiall.ro fiind în M365 (vezi „Emailuri”); alternativ `smtp_*`; cu ambele goale, emailurile pleacă prin `mail()`
    - `notify_email`: adresa ta, pentru notificarea la prima deschidere
 5. **Drepturi.** `chmod 700 ofertare_private ofertare_private/data` și `chmod 600 ofertare_private/config.php`.
 6. **Test.** Deschizi `https://ofertare.aiall.ro/admin.php`, te autentifici și creezi un link către propria adresă.
@@ -80,6 +82,11 @@ Cockpitul (`admin.php`) are șapte secțiuni.
   și inactivitatea. Datele se salvează pe ofertă, apar pe card (Detalii) și în Raportare (coloane, căutare, grupare după județ).
   Serverul are nevoie de acces HTTPS către `webservicesp.anaf.ro` (curl sau `allow_url_fopen`).
 - Fiecare card arată materialele trimise și de câte ori a fost deschis fiecare, valoarea, nota internă și jurnalul.
+- Din „Detalii”: „Retrimite emailul (linkuri noi)” generează linkuri noi (cele vechi nu mai merg; valabilitatea se
+  prelungește dacă expirase) și retrimite emailul; „Revocă toate linkurile ofertei” oprește accesul; „Șterge oferta”
+  o elimină definitiv, cu confirmare, împreună cu linkurile, codurile, sesiunile și jurnalul ei.
+- Rezultatul trimiterii apare cu transportul folosit și, la eșec, cu eroarea exactă a serverului; jurnalul ofertei
+  reține „email trimis prin …” sau „email eșuat: motivul”.
 - Pâlnia numără etapa maximă atinsă; o ofertă pierdută rămâne numărată la etapa la care a ajuns.
 - Valorile în RON pornesc de la „Salariați mobili”: onorariu an 1 = 1.649 RON/salariat (implementare 1.037 + licență 612),
   licență din anul 2 = 612 RON/salariat, economie client = 10.368 RON/salariat/an (constante în `lib.php`).
@@ -142,6 +149,8 @@ Gestiunea catalogului de produse și servicii, tabela `catalog` din `ofertare.db
 - Variabile: `{{salut}}`, `{{nume}}`, `{{companie}}`, `{{email}}`, `{{salariati}}`, `{{economie_an}}`, `{{expira}}`;
   `{{materiale}}` pe rând separat inserează butoanele cu linkurile personale.
 - Fiecare șablon are lista lui de materiale, cu ordine. Șabloanele se pot copia și șterge; ofertele deja trimise nu sunt afectate.
+- „Email de test” (panoul Previzualizare): trimite șablonul cu date de exemplu și linkuri fictive la adresa ta și arată
+  rezultatul real al trimiterii; este cel mai simplu mod de a verifica livrarea pe server.
 - Cum ajung materialele în email: materialul este încărcat și activ în „Materiale”; este bifat în șablon, cu ordinea lui
   (ordinea cea mai mică = butonul principal, colorat; următoarele = butoane cu contur); iar textul șablonului conține
   `{{materiale}}` singur pe rând, cu rând gol înainte și după. Fără acest rând emailul pleacă fără linkuri, iar scris în
@@ -198,8 +207,28 @@ nu ce face destinatarul cu fișierul.
 
 ## Emailuri
 
-Trimiterea folosește `mail()` din PHP. Dacă hostingul cere SMTP autentificat sau emailurile ajung în spam,
-funcția `send_mail()` din `ofertare_private/lib.php` este singurul loc de modificat (de exemplu cu PHPMailer).
+Trei moduri de trimitere, alese din `config.php`, în această ordine de prioritate:
+
+| Mod | Când | Ce înseamnă „trimis” |
+| --- | --- | --- |
+| Microsoft 365 prin Graph API | `graph_tenant_id`, `graph_client_id`, `graph_client_secret` completate | Microsoft a acceptat mesajul; emailul pleacă din căsuța `mail_from` din M365, cu SPF/DKIM/DMARC ale domeniului; orice eroare apare cu mesajul Graph |
+| SMTP autentificat | `smtp_host` completat | serverul de email a acceptat mesajul; un refuz apare cu răspunsul lui exact (ex. `535 authentication failed`) |
+| `mail()` din PHP | nimic configurat | serverul local a pus mesajul în coadă; dacă îl respinge ulterior sau destinatarul îl refuză la SPF (domeniul are emailul în M365, nu pe serverul web), cockpitul a afișat deja „trimis” |
+
+**Microsoft 365 (recomandat).** Același mecanism ca în portalul ContaCheck: o aplicație în Entra ID (App registrations)
+cu permisiunea de aplicație Microsoft Graph `Mail.Send` și consimțământ de administrator; în `config.php` pui Tenant ID,
+Client ID și un Client secret, iar `mail_from` este o căsuță existentă în M365 (poate fi un shared mailbox). Trimiterea
+face `POST https://graph.microsoft.com/v1.0/users/{mail_from}/sendMail` cu un token de aplicație; `graph_save_to_sent`
+păstrează o copie în „Sent Items”. Serverul are nevoie de acces HTTPS către `login.microsoftonline.com` și
+`graph.microsoft.com` (curl sau `allow_url_fopen`). Dacă vrei ca aplicația să poată trimite doar din anumite căsuțe,
+limitezi în Exchange Online cu o *application access policy*.
+
+**SMTP.** Pentru M365: `smtp.office365.com`, port 587, `smtp_secure` `tls`, căsuța și parola ei, cu „Authenticated SMTP”
+activ pe căsuță (Microsoft dezactivează treptat autentificarea de bază). Pentru căsuțe pe cPanel: serverul de email al
+contului, 465 cu `ssl`. Clientul SMTP este în `smtp_send()` din `ofertare_private/lib.php`, fără dependențe externe.
+
+Opțional, pentru toate modurile: `mail_reply_to` (unde ajung răspunsurile; gol = `mail_from`) și `mail_bcc`
+(copie ascunsă a fiecărui email trimis). Verifici livrarea cu „Email de test” din Șabloane email.
 
 ## Actualizări ulterioare
 
