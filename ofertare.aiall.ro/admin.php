@@ -1042,7 +1042,7 @@ function view_materials(): string
             . '<select name="kind" aria-label="Tip"><option value="oferta"' . ($m['kind'] === 'oferta' ? ' selected' : '') . '>Ofertă</option>'
             . '<option value="suport"' . ($m['kind'] === 'suport' ? ' selected' : '') . '>Material suport</option></select>'
             . '<div class="stats"><b>' . (int)$m['in_tpl'] . '</b> șabloane<br><b>' . (int)$m['sent'] . '</b> trimiteri · <b>' . (int)$m['opened'] . '</b> deschideri</div>'
-            . '<label class="rep">Înlocuiește fișierul<input type="file" name="file"></label>'
+            . '<label class="fl"><input type="file" name="file" aria-label="Înlocuiește fișierul"><small>Înlocuiește fișierul; linkurile trimise deschid noua versiune</small></label>'
             . '<label class="act"><input type="checkbox" name="active" value="1"' . ($m['active'] ? ' checked' : '') . '> Activ</label>'
             . '<button type="submit" class="sm">Salvează</button></form>';
     }
@@ -1051,8 +1051,9 @@ function view_materials(): string
         . '<form method="post" enctype="multipart/form-data" class="up">' . csrf_field() . '<input type="hidden" name="action" value="mat_upload">'
         . '<div><label for="mtitle">Titlu afișat în email</label><input id="mtitle" name="title" placeholder="ex. Studiu de caz construcții"></div>'
         . '<div><label for="mkind">Tip</label><select id="mkind" name="kind"><option value="suport">Material suport</option><option value="oferta">Ofertă</option></select></div>'
-        . '<div><label for="mfile">Fișier (max. ' . $maxMb . ' MB)</label><input id="mfile" type="file" name="file" required accept=".pdf,.html,.htm,.docx,.xlsx,.pptx,.png,.jpg,.jpeg,.mp4"></div>'
-        . '<button type="submit" class="pri">Încarcă</button></form>'
+        . '<div><label for="mfile">Fișier (max. ' . $maxMb . ' MB)</label><div class="cuirow"><input id="mfile" type="file" name="file" required accept=".pdf,.html,.htm,.docx,.xlsx,.pptx,.png,.jpg,.jpeg,.mp4">'
+        . '<button type="submit" class="icb" title="Încarcă materialul" aria-label="Încarcă materialul">'
+        . '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13V4M6 8l4-4 4 4M3 14v2.5h14V14"/></svg></button></div></div></form>'
         . '<p class="muted">Fișierele se salvează în ofertare_private/fisiere și sunt servite doar prin linkurile personale.</p></section>'
         . '<section class="panel"><h2>Materiale</h2>'
         . '<p class="muted" style="margin:-6px 0 12px">Înlocuirea fișierului păstrează linkurile deja trimise: clienții deschid noua versiune. Un material dezactivat nu mai poate fi deschis și nu mai apare în șabloane.</p>'
@@ -2183,7 +2184,15 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .up{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;align-items:end}
 .up .pri{margin:0}
 .matlist{display:grid;gap:8px}
-.mat{display:grid;grid-template-columns:minmax(220px,3fr) 150px 150px minmax(170px,2fr) auto auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:5px;padding:10px 12px}
+.mat{display:grid;grid-template-columns:minmax(220px,3fr) 150px 175px minmax(170px,2fr) auto auto;gap:10px;align-items:start;border:1px solid var(--line);border-radius:5px;padding:10px 12px}
+/* Rânduri de listă (materiale, utilizatori): toate controalele pe aceeași linie, la aceeași înălțime; textul secundar dedesubt */
+.mat>select,.mat>input,.mat .mt input,.mat .fl input,.usr>select,.usr>input,.usr .mt input{height:36px;box-sizing:border-box}
+.mat>.sm,.usr>.sm,.mat .act,.usr .act{height:36px;display:inline-flex;align-items:center}
+.mat .stats{padding-top:1px;line-height:1.45;white-space:nowrap}
+.fl{display:grid;gap:3px;margin:0}.fl input{font-size:12px;padding:3px 6px}.fl small{font-size:11px;color:var(--muted)}
+.up input[type=file]{height:36px;padding:3px 6px}
+.icb{width:36px;height:36px;padding:0;display:inline-grid;place-items:center;background:var(--teal);color:#fff;border:0;border-radius:4px;cursor:pointer;flex:none}
+.icb:hover{filter:brightness(1.08)}
 .mat.off{opacity:.6}
 @media (max-width:1100px){.mat{grid-template-columns:1fr 1fr}}
 .mt{display:grid;gap:3px;min-width:0}.mt small{font-size:11px;color:var(--muted);overflow-wrap:anywhere}
@@ -2193,7 +2202,7 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .act{display:flex;gap:6px;align-items:center;margin:0;font-size:13px;color:var(--ink)}
 /* Utilizatori */
 .pwf{display:grid;gap:10px}.pwf .pri{margin:0;justify-self:start}
-.usr{display:grid;grid-template-columns:minmax(200px,2fr) minmax(160px,2fr) minmax(170px,2fr) auto auto minmax(64px,auto);gap:10px;align-items:center;border:1px solid var(--line);border-radius:5px;padding:10px 12px}
+.usr{display:grid;grid-template-columns:minmax(200px,2fr) minmax(160px,2fr) minmax(170px,2fr) auto auto minmax(64px,auto);gap:10px;align-items:start;border:1px solid var(--line);border-radius:5px;padding:10px 12px}
 .usr.off{opacity:.6}
 @media (max-width:1100px){.usr{grid-template-columns:1fr 1fr}}
 .un{font:600 13px var(--mono);overflow-wrap:anywhere}.un .tag{font-size:10px;vertical-align:middle}
