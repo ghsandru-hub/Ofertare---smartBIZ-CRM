@@ -1203,16 +1203,16 @@ function view_materials(): string
         $ext  = strtoupper(pathinfo((string)$m['file'], PATHINFO_EXTENSION));
         $tbl .= '<form method="post" enctype="multipart/form-data" class="mat' . ($m['active'] ? '' : ' off') . '">' . csrf_field()
             . '<input type="hidden" name="action" value="mat_update"><input type="hidden" name="id" value="' . $id . '">'
-            . '<div class="mt"><input name="title" value="' . h($m['title']) . '" aria-label="Titlu">'
-            . '<small><span class="ext">' . h($ext) . '</span> ' . h($m['orig_name'] ?: $m['file']) . ' · '
-            . ($path ? h(human_size((int)filesize($path))) : '<span class="err">fișier lipsă</span>')
-            . ' · actualizat ' . h(fmt_time((int)$m['updated_at'])) . '</small></div>'
+            . '<div class="mt"><input name="title" value="' . h($m['title']) . '" aria-label="Titlu"></div>'
             . '<select name="kind" aria-label="Tip"><option value="oferta"' . ($m['kind'] === 'oferta' ? ' selected' : '') . '>Ofertă</option>'
             . '<option value="suport"' . ($m['kind'] === 'suport' ? ' selected' : '') . '>Material suport</option></select>'
             . '<div class="stats"><b>' . (int)$m['in_tpl'] . '</b> șabloane<br><b>' . (int)$m['sent'] . '</b> trimiteri · <b>' . (int)$m['opened'] . '</b> deschideri</div>'
             . '<label class="fl"><input type="file" name="file" aria-label="Înlocuiește fișierul"><small>Înlocuiește fișierul; linkurile trimise deschid noua versiune</small></label>'
             . '<label class="act"><input type="checkbox" name="active" value="1"' . ($m['active'] ? ' checked' : '') . '> Activ</label>'
-            . ui_btn('save', 'Salvează materialul', 'main') . '</form>';
+            . ui_btn('save', 'Salvează materialul', 'main')
+            . '<div class="rmeta"><span class="ext">' . h($ext) . '</span> ' . h($m['orig_name'] ?: $m['file']) . ' · '
+            . ($path ? h(human_size((int)filesize($path))) : '<span class="err">fișier lipsă</span>')
+            . ' · actualizat ' . h(fmt_time((int)$m['updated_at'])) . '</div></form>';
     }
 
     return '<section class="panel"><h2>Încarcă material</h2>'
@@ -1363,10 +1363,7 @@ function view_catalog(): string
         $list .= '<div class="catrow st-' . $st . ($isPk ? ' pkg' : '') . '" id="k' . $id . '" data-type="' . h($c['type']) . '" data-status="' . $st . '" data-q="' . h(mb_strtolower($q)) . '">'
             . '<form method="post" class="cat">' . csrf_field() . '<input type="hidden" name="id" value="' . $id . '">'
             . '<select name="type" aria-label="Tip">' . catalog_type_options((string)$c['type']) . '</select>'
-            . '<div class="mt"><input name="name" value="' . h($c['name']) . '" aria-label="Denumire" maxlength="200" required>'
-            . '<small><span class="lk l-' . $st . '">' . $labels[$st] . '</span> · ' . h($fmtD((string)$c['valid_from'])) . ' → ' . h($fmtD((string)$c['valid_to']))
-            . h($extra) . ' · ' . h(fmt_amount(catalog_price($c), (string)$c['currency'])) . '/' . h($c['um']) . ($isPk && (float)$c['price'] <= 0 ? ' (din compoziție' . (catalog_price_note($c) !== '' ? '; ' . h(catalog_price_note($c)) : '') . ')' : '')
-            . ' · actualizat ' . h(fmt_time((int)$c['updated_at'])) . '</small></div>'
+            . '<div class="mt"><input name="name" value="' . h($c['name']) . '" aria-label="Denumire" maxlength="200" required></div>'
             . um_select((string)$c['um'])
             . '<input name="valid_from" type="date" value="' . h($c['valid_from']) . '" aria-label="Valid de la">'
             . '<input name="valid_to" type="date" value="' . h($c['valid_to']) . '" aria-label="Valid până la">'
@@ -1376,6 +1373,9 @@ function view_catalog(): string
             . ui_btn('save', 'Salvează articolul', 'main', 'name="action" value="cat_save"')
             . ui_btn('copy', 'Copiază articolul', '', 'name="action" value="cat_copy"')
             . ui_btn('trash', 'Șterge articolul', 'bad', 'name="action" value="cat_delete"')
+            . '<div class="rmeta"><span class="lk l-' . $st . '">' . $labels[$st] . '</span>' . h($extra)
+            . ($isPk && (float)$c['price'] <= 0 ? ' · preț ' . h(fmt_amount(catalog_price($c), (string)$c['currency'])) . ' din compoziție' . (catalog_price_note($c) !== '' ? ' (' . h(catalog_price_note($c)) . ')' : '') : '')
+            . ' · actualizat ' . h(fmt_time((int)$c['updated_at'])) . '</div>'
             . '</form>'
             . ($isPk ? catalog_composition($c, $comps[$id] ?? [], $all, $today) : '')
             . '</div>';
@@ -1427,15 +1427,14 @@ function view_users(array $me): string
         $self = $id === (int)$me['id'];
         $list .= '<form method="post" class="usr' . ($u['active'] ? '' : ' off') . '">' . csrf_field()
             . '<input type="hidden" name="id" value="' . $id . '">'
-            . '<div class="mt"><b class="un">' . h($u['username']) . ($self ? ' <span class="tag">eu</span>' : '') . '</b>'
-            . '<small>creat ' . h(fmt_time((int)$u['created_at'])) . ' · ultima autentificare '
-            . h(fmt_time($u['last_login'] !== null ? (int)$u['last_login'] : null)) . '</small></div>'
+            . '<div class="mt"><b class="un">' . h($u['username']) . ($self ? ' <span class="tag">eu</span>' : '') . '</b></div>'
             . '<input name="name" value="' . h($u['name']) . '" aria-label="Nume" placeholder="Nume">'
             . '<input name="pass" type="password" autocomplete="new-password" minlength="10" aria-label="Parolă nouă" placeholder="Parolă nouă (opțional)">'
             . '<label class="act"><input type="checkbox" name="active" value="1"' . ($u['active'] ? ' checked' : '') . ($self ? ' disabled' : '') . '> Activ</label>'
             . ui_btn('save', 'Salvează utilizatorul', 'main', 'name="action" value="user_update"')
             . ($self ? '<span></span>' : ui_btn('trash', 'Șterge utilizatorul', 'bad', 'name="action" value="user_delete"'))
-            . '</form>';
+            . '<div class="rmeta">creat ' . h(fmt_time((int)$u['created_at'])) . ' · ultima autentificare '
+            . h(fmt_time($u['last_login'] !== null ? (int)$u['last_login'] : null)) . '</div></form>';
     }
 
     return '<div class="row2">'
@@ -2459,6 +2458,9 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .mat.off{opacity:.6}
 @media (max-width:1100px){.mat{grid-template-columns:1fr 1fr}}
 .mt{display:grid;gap:3px;min-width:0}.mt small{font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+/* Linia de informații a unui rând: un singur rând, aliniat la stânga, întins pe toate coloanele; fără date deja prezente în câmpuri */
+.rmeta{grid-column:1/-1;font-size:11px;color:var(--muted);line-height:1.5;overflow-wrap:anywhere;margin-top:-2px}
+.usr .un{line-height:36px}
 .ext{font:600 10px var(--mono);border:1px solid var(--line);border-radius:3px;padding:0 4px}
 .stats{font-size:12px;color:var(--muted)}.stats b{color:var(--ink)}
 .rep{font-size:12px;margin:0}.rep input{margin-top:3px;font-size:12px;padding:4px}
