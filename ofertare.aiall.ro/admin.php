@@ -1263,7 +1263,7 @@ function catalog_composition(array $pk, array $comps, array $all, string $today)
 // Unitatea de măsură ca dropdown: unitățile uzuale, valoarea curentă (dacă e alta) și „Altă unitate…”, care deschide un câmp text.
 function um_select(string $current, string $id = ''): string
 {
-    $units = ['buc', 'ora', 'zi', 'luna', 'an', 'salariat', 'salariat/luna', 'utilizator', 'pachet'];
+    $units = ['srv', 'buc', 'ora', 'zi', 'luna', 'an', 'salariat', 'salariat/luna', 'utilizator', 'pachet'];
     if ($current !== '' && !in_array($current, $units, true)) {
         array_unshift($units, $current);
     }
@@ -1347,7 +1347,7 @@ function view_catalog(): string
         . '<form method="post" class="up catf">' . csrf_field() . '<input type="hidden" name="action" value="cat_save">'
         . '<div><label for="ctype">Tip</label><select id="ctype" name="type">' . catalog_type_options('serviciu') . '</select></div>'
         . '<div class="wide"><label for="cname">Denumire</label><input id="cname" name="name" maxlength="200" placeholder="ex. Implementare e2e OPS Salarizare" required></div>'
-        . '<div><label for="cum">UM</label>' . um_select('buc', 'cum')
+        . '<div><label for="cum">UM</label>' . um_select('srv', 'cum')
         . '</div>'
         . '<div><label for="cfrom">Valid de la</label><input id="cfrom" name="valid_from" type="date" value="' . $today . '"></div>'
         . '<div><label for="cto">Valid până la</label><input id="cto" name="valid_to" type="date"></div>'
@@ -2660,6 +2660,14 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
     });
     document.getElementById('prevClose').addEventListener('click', function () { dlg.close(); });
     document.getElementById('prevSend').addEventListener('click', function () { dlg.close(); form.requestSubmit ? form.requestSubmit() : form.submit(); });
+  }
+
+  // Catalog, articol nou: UM propus după tip (srv la servicii, buc la produs, pachet la pachete), cât timp nu a fost schimbat manual
+  var ctype = document.getElementById('ctype'), cum = document.getElementById('cum');
+  if (ctype && cum) {
+    var umFor = { serviciu: 'srv', serviciu_digital: 'srv', licenta: 'buc', produs: 'buc', pachet_servicii: 'pachet', pachet_produse: 'pachet' }, umTouched = false;
+    cum.addEventListener('change', function () { umTouched = cum.value !== umFor[ctype.value]; });
+    ctype.addEventListener('change', function () { if (!umTouched && umFor[ctype.value]) { cum.value = umFor[ctype.value]; cum.dispatchEvent(new Event('change', { bubbles: true })); umTouched = false; } });
   }
 
   // Catalog: UM „Altă unitate…” deschide câmpul text și îl face obligatoriu
