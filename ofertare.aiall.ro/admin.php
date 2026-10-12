@@ -920,9 +920,9 @@ function view_pipeline(string $csrf): string
         . '<p class="fnote">Etapa maximă atinsă de fiecare ofertă; ofertele pierdute rămân numărate la etapa la care au ajuns. Pierdute: ' . count($byStage['pierduta']) . '.</p></section>'
         . '<section class="panel"><h2>Ofertă nouă</h2>' . $form . '</section></div>'
         . '<section class="panel" id="pipePanel"><div class="ph"><h2>Pipeline</h2><div class="acts seg" role="group" aria-label="Mod de afișare">'
-        . '<button type="button" class="sm ico" data-mode="kanban" aria-pressed="true" aria-label="Kanban" title="Kanban: carduri pe etape">'
+        . '<button type="button" class="sm tgl" data-mode="kanban" aria-pressed="true" aria-label="Kanban" title="Kanban: carduri pe etape">'
         . '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><rect x="2" y="3" width="4.5" height="14" rx="1"/><rect x="7.75" y="3" width="4.5" height="9" rx="1"/><rect x="13.5" y="3" width="4.5" height="11" rx="1"/></svg></button>'
-        . '<button type="button" class="sm ico" data-mode="table" aria-pressed="false" aria-label="Tabel" title="Tabel: o ofertă pe rând">'
+        . '<button type="button" class="sm tgl" data-mode="table" aria-pressed="false" aria-label="Tabel" title="Tabel: o ofertă pe rând">'
         . '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><rect x="2" y="3" width="16" height="3" rx="1"/><rect x="2" y="8.5" width="16" height="3" rx="1"/><rect x="2" y="14" width="16" height="3" rx="1"/></svg></button></div></div>'
         . '<p class="muted pm-kanban" style="margin:-6px 0 10px">Trage cardurile între coloane. „Deschisă” se setează automat la prima deschidere a unui material.</p>'
         . '<p class="muted pm-table" style="margin:-6px 0 10px">O ofertă pe rând, cu etapa, materialele citite și acțiunile. Clic pe companie deschide cardul în kanban.</p>'
@@ -1506,7 +1506,7 @@ function report_js(): string
   }
 
   // --- antet: sortare, fixare, redimensionare, reordonare prin tragere
-  var PIN = '<svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M7.5 1l3.5 3.5-2.2.4L6.6 7.1 6.4 11 3.8 8.4 1.2 11 1 10.8l2.6-2.6L1 5.6l3.9-.2 2.2-2.2z"/></svg>';
+  var PIN = '<svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path class="ph" d="M10 1.5l4.5 4.5-2.6.5L9.6 8.8 9 13 3 7l4.2-.6 2.3-2.3z"/><path class="pn" d="M5.8 10.2L1.5 14.5"/></svg>';
   var sortIcon = function (dir) {
     return '<svg class="si' + (dir ? ' on' : '') + '" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">'
       + (dir > 0 ? '<path d="M6 10V2M3 5l3-3 3 3"/>' : dir < 0 ? '<path d="M6 2v8M3 7l3 3 3-3"/>' : '<path d="M4 1v10M2 3l2-2 2 2M8 11V1M6 9l2 2 2-2"/>') + '</svg>';
@@ -2097,7 +2097,7 @@ button{font:600 13px var(--sans);cursor:pointer}
 .pdf{display:flex;gap:10px;align-items:center;padding:10px 18px;border-top:1px solid var(--line)}.pdf .sp{flex:1}.pdf .pri{margin:0}
 /* Pipeline: kanban sau tabel */
 .seg{gap:0}.seg .sm{border-radius:0;margin:0}.seg .sm:first-child{border-radius:4px 0 0 4px}.seg .sm:last-child{border-radius:0 4px 4px 0;border-left:0}
-.seg .sm.ico{padding:5px 9px;display:inline-flex;align-items:center;line-height:0}.seg .sm.ico svg{fill:currentColor}
+.seg .sm.tgl{padding:5px 9px;display:inline-flex;align-items:center;line-height:0;color:var(--navy)}.seg .sm.tgl svg{width:18px;height:18px;flex:none;fill:currentColor}
 .seg .sm[aria-pressed="true"]{background:var(--teal);color:var(--surface)}
 #pipePanel.mode-table .pm-kanban,#pipePanel:not(.mode-table) .pm-table{display:none}
 .dtw{max-height:none}.dt td{white-space:normal;vertical-align:middle}.dt td.wrap{min-width:160px}
@@ -2250,7 +2250,9 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .rt th.drag{opacity:.5}.rt th.over{box-shadow:inset 3px 0 0 var(--teal)}
 .rt th .tht{display:inline-flex;align-items:center;gap:4px;max-width:100%}.thl{overflow:hidden;text-overflow:ellipsis}
 .si{color:var(--muted);opacity:.45;flex:none}.si.on{opacity:1;color:var(--teal)}.si path{fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
-.pinb{background:none;border:0;padding:0 2px;color:var(--muted);opacity:0;cursor:pointer;line-height:0}.pinb svg path{fill:currentColor}.rt th:hover .pinb,.rt th:focus-within .pinb,.pinb.on{opacity:1}.pinb.on{color:var(--teal)}
+.pinb{background:none;border:0;padding:0 2px;color:var(--muted);opacity:0;cursor:pointer;line-height:0}.pinb svg{display:block}
+.pinb svg .ph{fill:currentColor;stroke:currentColor;stroke-width:.8;stroke-linejoin:round}.pinb svg .pn{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
+.rt th:hover .pinb,.rt th:focus-within .pinb,.pinb.on{opacity:1}.pinb.on{color:var(--teal)}
 .rz{position:absolute;right:0;top:0;width:6px;height:100%;cursor:col-resize}.rz:hover{background:color-mix(in srgb,var(--teal) 30%,transparent)}
 .rt td{padding:7px 10px;border-bottom:1px dotted var(--line);vertical-align:top;white-space:nowrap;background:var(--surface)}
 .rt td.wrap{white-space:normal;min-width:220px}
