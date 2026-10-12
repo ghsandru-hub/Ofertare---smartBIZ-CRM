@@ -118,7 +118,7 @@ Gestiunea catalogului de produse și servicii, tabela `catalog` din `ofertare.db
 | --- | --- |
 | Tip | Serviciu, Licență, Serviciu digital, Produs, Pachet servicii sau Pachet produse (pachetele au o compoziție, vezi mai jos) |
 | Denumire | numele articolului (max. 200 de caractere) |
-| UM | unitatea de măsură (ex. buc, oră, lună, salariat, salariat/lună, pachet); câmpul propune valorile uzuale |
+| UM | unitatea de măsură, din listă (buc, oră, zi, lună, an, salariat, salariat/lună, utilizator, pachet) sau „Altă unitate…”, cu text liber |
 | Valid de la / Valid până la | perioada de valabilitate; „până la” gol = nelimitat |
 
 - „Articol nou în catalog” adaugă un articol; lista de dedesubt editează fiecare articol pe loc (tip, denumire, UM, perioadă),

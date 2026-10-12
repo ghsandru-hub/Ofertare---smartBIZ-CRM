@@ -506,7 +506,7 @@ if ($method === 'POST') {
             $types = catalog_types();
             $type  = (string)($_POST['type'] ?? '');
             $name  = mb_substr(trim((string)($_POST['name'] ?? '')), 0, 200);
-            $um    = mb_substr(trim((string)($_POST['um'] ?? '')), 0, 20);
+            $um    = mb_substr(trim((string)(($_POST['um'] ?? '') === '__alt' ? ($_POST['um_alt'] ?? '') : ($_POST['um'] ?? ''))), 0, 20);
             $from  = catalog_date((string)($_POST['valid_from'] ?? ''));
             $to    = catalog_date((string)($_POST['valid_to'] ?? ''));
             $back  = 'admin.php?v=catalog' . ($id ? '#k' . $id : '');
@@ -1121,6 +1121,22 @@ function catalog_composition(array $pk, array $comps, array $all, string $today)
         . '<div class="complist">' . ($rows ?: '<p class="muted">Pachetul nu are încă nicio componentă.</p>') . '</div>' . $add . '</details>';
 }
 
+// Unitatea de măsură ca dropdown: unitățile uzuale, valoarea curentă (dacă e alta) și „Altă unitate…”, care deschide un câmp text.
+function um_select(string $current, string $id = ''): string
+{
+    $units = ['buc', 'ora', 'zi', 'luna', 'an', 'salariat', 'salariat/luna', 'utilizator', 'pachet'];
+    if ($current !== '' && !in_array($current, $units, true)) {
+        array_unshift($units, $current);
+    }
+    $opts = '';
+    foreach ($units as $u) {
+        $opts .= '<option value="' . h($u) . '"' . ($u === $current ? ' selected' : '') . '>' . h($u) . '</option>';
+    }
+    return '<div class="umw"><select name="um" class="ums"' . ($id !== '' ? ' id="' . $id . '"' : ' aria-label="UM"') . '>' . $opts
+        . '<option value="__alt">Altă unitate…</option></select>'
+        . '<input name="um_alt" type="text" maxlength="20" placeholder="UM" aria-label="Altă unitate de măsură" hidden></div>';
+}
+
 function view_catalog(): string
 {
     $types  = catalog_types();
@@ -1169,7 +1185,7 @@ function view_catalog(): string
             . '<div class="mt"><input name="name" value="' . h($c['name']) . '" aria-label="Denumire" maxlength="200" required>'
             . '<small><span class="lk l-' . $st . '">' . $labels[$st] . '</span> · ' . h($fmtD((string)$c['valid_from'])) . ' → ' . h($fmtD((string)$c['valid_to']))
             . h($extra) . ' · actualizat ' . h(fmt_time((int)$c['updated_at'])) . '</small></div>'
-            . '<input name="um" value="' . h($c['um']) . '" aria-label="UM" maxlength="20" required>'
+            . um_select((string)$c['um'])
             . '<input name="valid_from" type="date" value="' . h($c['valid_from']) . '" aria-label="Valid de la">'
             . '<input name="valid_to" type="date" value="' . h($c['valid_to']) . '" aria-label="Valid până la">'
             . '<button type="submit" class="sm" name="action" value="cat_save">Salvează</button>'
@@ -1189,8 +1205,8 @@ function view_catalog(): string
         . '<form method="post" class="up catf">' . csrf_field() . '<input type="hidden" name="action" value="cat_save">'
         . '<div><label for="ctype">Tip</label><select id="ctype" name="type">' . catalog_type_options('serviciu') . '</select></div>'
         . '<div class="wide"><label for="cname">Denumire</label><input id="cname" name="name" maxlength="200" placeholder="ex. Implementare e2e OPS Salarizare" required></div>'
-        . '<div><label for="cum">UM</label><input id="cum" name="um" maxlength="20" value="buc" list="umList" required>'
-        . '<datalist id="umList"><option value="buc"><option value="ora"><option value="zi"><option value="luna"><option value="an"><option value="salariat"><option value="salariat/luna"><option value="utilizator"><option value="pachet"></datalist></div>'
+        . '<div><label for="cum">UM</label>' . um_select('buc', 'cum')
+        . '</div>'
         . '<div><label for="cfrom">Valid de la</label><input id="cfrom" name="valid_from" type="date" value="' . $today . '"></div>'
         . '<div><label for="cto">Valid până la</label><input id="cto" name="valid_to" type="date"></div>'
         . '<button type="submit" class="pri">Adaugă în catalog</button></form>'
@@ -2240,7 +2256,8 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 @media (max-width:1200px){.cattools{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}}
 .cathead,.cat{display:grid;grid-template-columns:170px minmax(220px,3fr) 110px 150px 150px auto auto auto;gap:10px;align-items:start}
 /* Rândurile din catalog și componentele pachetelor: o linie de controale la 36px, textul secundar dedesubt */
-.cat>select,.cat>input,.cat .mt input,.ci>input,.ci>select,.ci .mt input{height:36px;box-sizing:border-box}
+.cat>select,.cat>input,.cat .mt input,.ci>input,.ci>select,.ci .mt input,.umw select,.umw input{height:36px;box-sizing:border-box}
+.umw{display:grid;gap:4px}.umw input[hidden]{display:none}
 .cat>.sm,.ci>.sm{height:36px;display:inline-flex;align-items:center;box-sizing:border-box}
 .cathead{font-size:12px;color:var(--navy);font-weight:600;padding:0 12px 4px}
 .catrow{border:1px solid var(--line);border-radius:5px}
@@ -2443,6 +2460,15 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
     document.getElementById('prevClose').addEventListener('click', function () { dlg.close(); });
     document.getElementById('prevSend').addEventListener('click', function () { dlg.close(); form.requestSubmit ? form.requestSubmit() : form.submit(); });
   }
+
+  // Catalog: UM „Altă unitate…” deschide câmpul text și îl face obligatoriu
+  document.addEventListener('change', function (e) {
+    var sel = e.target;
+    if (!sel.classList || !sel.classList.contains('ums')) { return; }
+    var alt = sel.parentNode.querySelector('input[name="um_alt"]'), other = sel.value === '__alt';
+    alt.hidden = !other; alt.required = other;
+    if (other) { alt.focus(); }
+  });
 
   // Antet: tema (☀ / 🌙, reținută în browser) și panoul contului
   var sw = document.getElementById('themeSwitch');
