@@ -1880,14 +1880,14 @@ function view_help(): string
     $notifyTxt = $notify !== '' ? 'Prima deschidere a unei oferte trimite o notificare la <b>' . h($notify) . '</b>.'
                                 : 'Notificarea la prima deschidere este oprită (<code>notify_email</code> gol în <code>config.php</code>).';
 
-    $toc = '<nav class="hnav" aria-label="Cuprins">'
+    $toc = '<nav class="hnav" aria-label="Secțiuni ajutor" id="hNav">'
         . '<a href="#h-flux">Fluxul pe scurt</a><a href="#h-materiale">Materialele în email</a><a href="#h-pipeline">Pipeline</a>'
         . '<a href="#h-raportare">Raportare</a><a href="#h-catalog">Catalog</a><a href="#h-sabloane">Șabloane email</a>'
         . '<a href="#h-mat">Materiale</a><a href="#h-utilizatori">Utilizatori</a><a href="#h-email">Livrarea emailurilor</a><a href="#h-probleme">Probleme frecvente</a></nav>';
 
     return '<section class="panel hp"><div class="ph"><h2>Ajutor</h2></div>' . $toc
 
-        . '<h3 id="h-flux">Fluxul pe scurt</h3>'
+        . '<div class="hsecs"><section class="hsec" id="h-flux"><h3>Fluxul pe scurt</h3>'
         . '<ol class="steps">'
         . '<li><b>Materiale</b>: încarci oferta și materialele suport (PDF, HTML, DOCX, XLSX, PPTX, PNG, JPG, MP4).</li>'
         . '<li><b>Șabloane email</b>: scrii textul emailului, pui <code>{{materiale}}</code> pe un rând separat și bifezi materialele trimise cu șablonul, în ordine.</li>'
@@ -1896,7 +1896,7 @@ function view_help(): string
         . '<li>Cardul trece automat în <b>Deschisă</b> la prima deschidere; negocierea, acceptarea sau pierderea le setezi tu, din kanban sau din „Detalii”.</li>'
         . '</ol>'
 
-        . '<h3 id="h-materiale">Cum ajung materialele suport în email, pas cu pas</h3>'
+        . '</section><section class="hsec" id="h-materiale"><h3>Cum ajung materialele suport în email, pas cu pas</h3>'
         . '<p>Un material ajunge în email numai dacă trece prin toate cele trei locuri: este <b>încărcat și activ</b> în Materiale, este <b>bifat în șablon</b> (sau bifat manual la oferta nouă) și șablonul conține <b>rândul <code>{{materiale}}</code></b>, care spune unde se pun butoanele.</p>'
         . '<ol class="steps">'
         . '<li><b>Încarcă materialul</b> în secțiunea <a href="admin.php?v=materiale">Materiale</a> → „Încarcă material”.'
@@ -1926,7 +1926,7 @@ function view_help(): string
         . 'Pe card, în Detalii: „Retrimite emailul (linkuri noi)” generează linkuri noi și retrimite emailul (cele vechi nu mai merg), „Revocă toate linkurile ofertei” oprește imediat accesul, „Șterge oferta” o elimină definitiv, cu tot cu linkuri și jurnal.</li>'
         . '</ol>'
 
-        . '<h3 id="h-email">Livrarea emailurilor: Microsoft 365, SMTP sau mail()</h3>'
+        . '</section><section class="hsec" id="h-email"><h3>Livrarea emailurilor: Microsoft 365, SMTP sau mail()</h3>'
         . '<p>Acum emailurile pleacă prin <b>' . h(mail_transport()) . '</b>. Expeditorul este <code>' . h((string)cfg('mail_from')) . '</code>.</p>'
         . '<ul><li><b>Microsoft 365 prin Graph API</b> (recomandat, emailul aiall.ro este în M365): emailul pleacă din căsuța <code>mail_from</code> din M365, cu SPF/DKIM/DMARC ale domeniului, exact ca în portalul ContaCheck. '
         . 'Cockpitul primește răspunsul Graph: „trimis” = acceptat de Microsoft, o eroare = textul ei exact. Se configurează în <code>ofertare_private/config.php</code>: <code>graph_tenant_id</code>, <code>graph_client_id</code>, <code>graph_client_secret</code> '
@@ -1938,38 +1938,38 @@ function view_help(): string
         . '<li><b>Verifică livrarea</b> cu „Email de test” din <a href="admin.php?v=sabloane">Șabloane email</a> (panoul Previzualizare): trimite șablonul cu date de exemplu la adresa ta și arată rezultatul real.</li>'
         . '<li>Jurnalul fiecărei oferte (card → Detalii) reține „email trimis prin …” sau „email eșuat: motivul”.</li></ul>'
 
-        . '<h3 id="h-pipeline">Pipeline</h3>'
+        . '</section><section class="hsec" id="h-pipeline"><h3>Pipeline</h3>'
         . '<ul><li><b>Indicatorii</b> de sus: oferte în lucru, rată de deschidere, conversie, pipeline și câștigat (onorariu an 1), economie generată clienților. Valorile pornesc de la „Salariați mobili”: ' . ron(ONORARIU_AN1_PER_SALARIAT) . ' RON onorariu an 1, ' . ron(LICENTA_AN_PER_SALARIAT) . ' RON licență din anul 2, ' . ron(ECONOMIE_AN_PER_SALARIAT) . ' RON economie client, per salariat.</li>'
         . '<li><b>Pâlnia</b> numără etapa maximă atinsă; o ofertă pierdută rămâne numărată la etapa la care a ajuns.</li>'
         . '<li><b>Ofertă nouă</b>: scrii CUI-ul și apeși „ANAF” (sau Enter): se completează denumirea, Reg. Com., adresa, județul, CAEN, telefonul, TVA și inactivitatea. Datele apar pe card și în Raportare.</li>'
         . '<li><b>Kanban</b>: tragi cardul între coloane sau alegi etapa din „Detalii”. „Trimisă” și „Deschisă” se setează automat. În „Detalii” ai nota internă, jurnalul evenimentelor, retrimiterea emailului cu linkuri noi, revocarea linkurilor și ștergerea ofertei (cu confirmare).</li></ul>'
 
-        . '<h3 id="h-raportare">Raportare</h3>'
+        . '</section><section class="hsec" id="h-raportare"><h3>Raportare</h3>'
         . '<ul><li>Tabel cu toate ofertele: căutare liberă, filtre pe etapă, șablon, stare link și perioada creării; sortare pe orice coloană (clic pe antet); grupare cu subtotaluri; alegerea coloanelor.</li>'
         . '<li>Vederea (filtre, sortare, grupare, coloane) se păstrează în browser; „Resetează vederea” o aduce la implicit.</li>'
         . '<li>„Export CSV (Excel)” exportă rândurile filtrate, în ordinea și cu coloanele afișate (UTF-8, separator „;”).</li></ul>'
 
-        . '<h3 id="h-catalog">Catalog</h3>'
+        . '</section><section class="hsec" id="h-catalog"><h3>Catalog</h3>'
         . '<ul><li>Articole cu tip (serviciu, licență, serviciu digital, produs, pachet servicii, pachet produse), denumire, UM și perioadă de valabilitate; „Valid până la” gol = nelimitat.</li>'
         . '<li>Starea față de azi: valid, din viitor, expirat. Căutare și filtre pe tip și valabilitate.</li>'
         . '<li><b>Pachetele</b> se compun din articole existente: pachetul de servicii din servicii, servicii digitale și licențe; pachetul de produse din produse și licențe. În secțiunea „Compoziție” a pachetului adaugi componente cu cantitate.</li>'
         . '<li>Un articol folosit într-un pachet nu poate fi șters și nu își poate schimba tipul într-unul neacceptat; mesajul de eroare spune ce trebuie scos mai întâi. „Copiază” pe un pachet copiază și compoziția.</li></ul>'
 
-        . '<h3 id="h-sabloane">Șabloane email</h3>'
+        . '</section><section class="hsec" id="h-sabloane"><h3>Șabloane email</h3>'
         . '<ul><li><b>Format text</b>: rând gol = paragraf nou; rânduri consecutive = listă compactă; <code>✓ </code> la începutul rândului = bifă colorată; <code>**text**</code> = bold.</li>'
         . '<li><b>Variabile</b>: <code>{{salut}}</code> („Bună ziua, Nume,”), <code>{{nume}}</code>, <code>{{companie}}</code>, <code>{{email}}</code>, <code>{{salariati}}</code>, <code>{{economie_an}}</code> (salariați × ' . ron(ECONOMIE_AN_PER_SALARIAT) . ' RON), <code>{{expira}}</code> (data expirării linkurilor); <code>{{materiale}}</code> pe rând separat = butoanele cu linkurile personale. Variabilele merg și în subiect.</li>'
         . '<li>Șabloanele se pot copia și șterge; ofertele deja trimise păstrează emailul și linkurile lor.</li></ul>'
 
-        . '<h3 id="h-mat">Materiale</h3>'
+        . '</section><section class="hsec" id="h-mat"><h3>Materiale</h3>'
         . '<ul><li>Încărcare: PDF, HTML, DOCX, XLSX, PPTX, PNG, JPG, MP4, maximum ' . $maxMb . ' MB. Fișierele stau în <code>ofertare_private/fisiere</code>, în afara folderului public, și se servesc doar prin linkurile personale.</li>'
         . '<li>Pentru fiecare material: titlu, tip, statistici (șabloane, trimiteri, deschideri), „Înlocuiește fișierul”, „Activ”. Un fișier lipsă de pe server este marcat cu roșu.</li></ul>'
 
-        . '<h3 id="h-utilizatori">Utilizatori</h3>'
+        . '</section><section class="hsec" id="h-utilizatori"><h3>Utilizatori</h3>'
         . '<ul><li>„Parola mea”: parola actuală + parola nouă (minimum 10 caractere), repetată.</li>'
         . '<li>„Utilizator nou”: nume de utilizator (litere mici, cifre, . _ @ -), nume afișat, parolă; lăsată goală, parola se generează și se afișează o singură dată.</li>'
         . '<li>Un utilizator dezactivat nu se mai poate autentifica. Propriul cont nu poate fi dezactivat sau șters. Contul din <code>config.php</code> rămâne cale de recuperare cât timp nu există în listă un utilizator cu același nume.</li></ul>'
 
-        . '<h3 id="h-probleme">Probleme frecvente</h3>'
+        . '</section><section class="hsec" id="h-probleme"><h3>Probleme frecvente</h3>'
         . '<ul>'
         . '<li><b>Cockpitul arată „trimis”, dar emailul nu ajunge.</b> Cu mail(), „trimis” înseamnă doar pus în coada serverului local, iar cu emailul domeniului în Microsoft 365 mesajele plecate de pe serverul web pică la SPF. Configurează Microsoft 365 prin Graph (secțiunea „Livrarea emailurilor”), trimite un „Email de test” din Șabloane email, apoi retrimite ofertele de pe card cu „Retrimite emailul (linkuri noi)”.</li>'
         . '<li><b>Emailul a plecat fără butoane.</b> Șablonul nu are <code>{{materiale}}</code> singur pe rând, sau niciun material nu era bifat la trimitere. Verifică în Previzualizare și pe card (lista materialelor).</li>'
@@ -1979,7 +1979,7 @@ function view_help(): string
         . '<li><b>Vreau să schimb documentul fără să retrimit emailul.</b> „Înlocuiește fișierul” la material: linkurile deja trimise deschid noua versiune.</li>'
         . '<li><b>Vreau să opresc accesul la o ofertă.</b> Pe card, Detalii → „Revocă toate linkurile ofertei”.</li>'
         . '</ul>'
-        . '<p class="muted">Documentația completă, inclusiv instalarea și structura pe server, este în README-ul proiectului.</p>'
+        . '</section></div><p class="muted">Documentația completă, inclusiv instalarea și structura pe server, este în README-ul proiectului.</p>'
         . '</section>';
 }
 
@@ -2201,9 +2201,10 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .hp{max-width:980px;line-height:1.6}
 .hnav{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 14px}
 .hnav a{font-size:12px;font-weight:600;color:var(--teal);text-decoration:none;border:1px solid var(--line);border-radius:12px;padding:3px 10px;background:var(--bg)}
-.hnav a:hover{border-color:var(--teal)}
-.hp h3{font-size:14px;color:var(--navy);margin:22px 0 8px;padding-top:12px;border-top:1px solid var(--line);scroll-margin-top:12px}
-.hp h3:first-of-type{border-top:0;padding-top:0;margin-top:4px}
+.hnav a:hover{border-color:var(--teal)}.hnav a[aria-current]{background:var(--teal);color:var(--surface);border-color:var(--teal)}
+/* Fiecare secțiune de ajutor stă în containerul ei și se vede doar când este aleasă din bara de mai sus */
+.hsec{display:none;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:12px 18px 6px}.hsec.on{display:block}
+.hp h3{font-size:15px;color:var(--navy);margin:0 0 10px;scroll-margin-top:12px}
 .hp p{margin:0 0 10px}
 .hp ul,.hp ol{margin:0 0 10px;padding-left:22px}.hp li{margin:0 0 6px}.hp li ul{margin:4px 0 0}.hp li ul li{margin:0 0 3px;color:var(--muted)}
 .hp li ul li b,.hp li ul li code{color:var(--ink)}
@@ -2351,6 +2352,30 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
     });
     document.getElementById('prevClose').addEventListener('click', function () { dlg.close(); });
     document.getElementById('prevSend').addEventListener('click', function () { dlg.close(); form.requestSubmit ? form.requestSubmit() : form.submit(); });
+  }
+
+  // Ajutor: o singură secțiune vizibilă, aleasă din bară (sau din #hash / ultima alegere)
+  var hNav = document.getElementById('hNav');
+  if (hNav) {
+    var HKEY = 'ofertare_help_sec';
+    var showSec = function (id, push) {
+      var sec = document.getElementById(id);
+      if (!sec) { return false; }
+      document.querySelectorAll('.hsec').forEach(function (x) { x.classList.toggle('on', x === sec); });
+      hNav.querySelectorAll('a').forEach(function (a) { if (a.getAttribute('href') === '#' + id) { a.setAttribute('aria-current', 'true'); } else { a.removeAttribute('aria-current'); } });
+      try { localStorage.setItem(HKEY, id); } catch (e) {}
+      if (push) { history.replaceState(null, '', '#' + id); }
+      return true;
+    };
+    document.querySelector('.hp').addEventListener('click', function (e) {
+      var a = e.target.closest('a[href^="#h-"]');
+      if (a && showSec(a.getAttribute('href').slice(1), true)) { e.preventDefault(); if (!hNav.contains(a)) { hNav.scrollIntoView({ block: 'nearest' }); } }
+    });
+    var first = hNav.querySelector('a').getAttribute('href').slice(1), want = '';
+    if (location.hash && /^#h-[a-z]+$/.test(location.hash)) { want = location.hash.slice(1); }
+    else { try { want = localStorage.getItem(HKEY) || ''; } catch (e) {} }
+    if (!showSec(want, false)) { showSec(first, false); }
+    window.addEventListener('hashchange', function () { if (/^#h-[a-z]+$/.test(location.hash)) { showSec(location.hash.slice(1), false); } });
   }
 
   // Pipeline: kanban sau tabel, cu alegerea păstrată în browser
