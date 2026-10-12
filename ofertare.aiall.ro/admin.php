@@ -2238,7 +2238,10 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .catsum{border:0;padding:0 0 8px;margin:0}
 .cattools{grid-template-columns:minmax(220px,2fr) repeat(2,minmax(160px,1fr))}
 @media (max-width:1200px){.cattools{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}}
-.cathead,.cat{display:grid;grid-template-columns:170px minmax(220px,3fr) 110px 150px 150px auto auto auto;gap:10px;align-items:center}
+.cathead,.cat{display:grid;grid-template-columns:170px minmax(220px,3fr) 110px 150px 150px auto auto auto;gap:10px;align-items:start}
+/* Rândurile din catalog și componentele pachetelor: o linie de controale la 36px, textul secundar dedesubt */
+.cat>select,.cat>input,.cat .mt input,.ci>input,.ci>select,.ci .mt input{height:36px;box-sizing:border-box}
+.cat>.sm,.ci>.sm{height:36px;display:inline-flex;align-items:center;box-sizing:border-box}
 .cathead{font-size:12px;color:var(--navy);font-weight:600;padding:0 12px 4px}
 .catrow{border:1px solid var(--line);border-radius:5px}
 .cat{padding:10px 12px}
@@ -2248,10 +2251,11 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .comp{margin:0;border-top:1px dashed var(--line);background:var(--soft);padding:6px 12px 10px;border-radius:0 0 5px 5px}
 .comp summary{font-size:12px;color:var(--navy)}.comp summary b{font-family:var(--mono)}
 .complist{display:grid;gap:4px;margin:8px 0}
-.ci{display:grid;grid-template-columns:130px minmax(200px,1fr) 90px 90px auto auto;gap:8px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:6px 10px}
-.ci .mt b{font-size:13px}.ci .um{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.ci{display:grid;grid-template-columns:130px minmax(200px,1fr) 90px 90px auto auto;gap:8px;align-items:start;background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:6px 10px}
+.ci .mt b{font-size:13px;line-height:36px;display:block}.ci .mt{gap:0}.ci .um{font-size:12px;color:var(--muted);overflow-wrap:anywhere;line-height:36px}
+.ci>.kind{margin-top:10px;justify-self:start}
 .ci.add{grid-template-columns:minmax(260px,1fr) 90px auto;background:transparent;border:0;padding:0}
-.ci input,.ci select{padding:5px 8px;font-size:13px}.ci select{padding-right:28px}
+.ci input,.ci select{padding:0 8px;font-size:13px}.ci select{padding-right:28px}
 .kt-serviciu,.kt-serviciu_digital{color:var(--teal)}.kt-licenta{color:var(--amber)}.kt-produs{color:var(--navy3)}
 @media (max-width:1100px){.cathead{display:none}.cat{grid-template-columns:1fr 1fr}.cat .mt{grid-column:1/-1}.ci{grid-template-columns:1fr 1fr}.ci .mt{grid-column:1/-1}.ci.add{grid-template-columns:1fr}}
 /* Ajutor */
@@ -2270,7 +2274,7 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .hp a{color:var(--teal)}
 /* Raportare — tabel smartBIZ */
 /* Bara Raportare: o singură linie de controale, toate de 36px (regula de UI nr. 1 și 2) */
-.rep .ph{align-items:center;gap:10px}.rep .ph h2{display:flex;align-items:center;gap:8px;margin:0;height:36px}
+.rep .ph{align-items:center;gap:10px;margin-bottom:12px}.rep .ph h2{display:flex;align-items:center;gap:8px;margin:0;height:36px}
 .ico{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:4px;width:36px;height:36px;display:inline-grid;place-items:center;padding:0;cursor:pointer;flex:none;box-sizing:border-box}
 .ico:hover,.ico.on{color:var(--teal);border-color:var(--teal)}.ico:disabled{opacity:.4;cursor:default}.ico svg{width:16px;height:16px}
 .rsearch input,.rep .acts select{height:36px;box-sizing:border-box}.rsearch input{margin-top:0}
@@ -2299,12 +2303,13 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .fl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fc{font:12px var(--mono);color:var(--muted)}.fempty{font-size:12px;color:var(--muted)}
 .fper{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.fper input{font-size:12px;padding:5px 8px}
 .rmain{display:grid;gap:12px;min-width:0}
-.rgroup{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;min-height:36px}.rgroup>.muted{line-height:36px}
-.rgroup select{width:auto;height:36px;box-sizing:border-box;padding:0 28px 0 10px;font-size:13px}
-.rgroup .act{height:36px}.rgroup .lnk{margin:0;height:36px;display:inline-flex;align-items:center;font-size:13px}
-#rGroupChips{display:inline-flex;gap:8px;flex-wrap:wrap;align-items:center}
-.gchip{display:inline-flex;align-items:center;gap:7px;height:36px;box-sizing:border-box;border:1px solid var(--teal);color:var(--teal);border-radius:18px;padding:0 8px 0 6px;font-size:13px}
-.gi{background:var(--teal);color:var(--surface);border-radius:999px;width:20px;height:20px;display:inline-grid;place-items:center;font:600 11px var(--mono)}
+/* Rândul de grupare: compact (28px), toate elementele pe aceeași linie */
+.rgroup{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;min-height:28px}.rgroup>.muted{line-height:28px}
+.rgroup select{width:auto;height:28px;box-sizing:border-box;padding:0 26px 0 8px;font-size:12px;background-position:right 7px center}
+.rgroup .act{height:28px;font-size:12px}.rgroup .lnk{margin:0;height:28px;display:inline-flex;align-items:center;font-size:12px}
+#rGroupChips{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
+.gchip{display:inline-flex;align-items:center;gap:5px;height:28px;box-sizing:border-box;border:1px solid var(--teal);color:var(--teal);border-radius:14px;padding:0 6px 0 4px;font-size:12px}
+.gi{background:var(--teal);color:var(--surface);border-radius:999px;width:18px;height:18px;display:inline-grid;place-items:center;font:600 10px var(--mono)}
 .gx{background:none;border:0;color:inherit;font-size:14px;line-height:1;padding:0 2px;cursor:pointer}
 .kpis.rk{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}.rk .kpi{padding:8px 12px}.rk .kpi b{font-size:18px}
 .rsel{display:flex;gap:10px;align-items:center;font-size:13px;padding:6px 10px;border:1px dashed var(--teal);border-radius:4px}.rsel[hidden]{display:none}.rsel .lnk{margin:0}
