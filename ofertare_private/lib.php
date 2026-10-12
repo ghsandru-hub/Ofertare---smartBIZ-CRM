@@ -11,6 +11,7 @@
 //   otps / sessions     codul de acces și sesiunea, la nivel de ofertă (un cod deschide toate materialele)
 //   access_log          jurnalul evenimentelor
 //   catalog             catalogul de produse și servicii (tip, denumire, UM, perioada de valabilitate)
+//   catalog_items       compoziția pachetelor: ce articole din catalog intră într-un pachet, cu cantitate
 
 declare(strict_types=1);
 
@@ -158,6 +159,13 @@ function db(): PDO
             valid_to   TEXT NOT NULL DEFAULT '',
             created_at INTEGER NOT NULL,
             updated_at INTEGER NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS catalog_items (
+            package_id INTEGER NOT NULL REFERENCES catalog(id) ON DELETE CASCADE,
+            item_id    INTEGER NOT NULL REFERENCES catalog(id) ON DELETE CASCADE,
+            qty        REAL NOT NULL DEFAULT 1,
+            ord        INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (package_id, item_id)
         );
         CREATE INDEX IF NOT EXISTS ix_links_deal ON links(deal_id);
         CREATE INDEX IF NOT EXISTS ix_log_deal ON access_log(deal_id, at);
@@ -416,6 +424,56 @@ function catalog_date(string $raw): string
     }
     $d = DateTime::createFromFormat('!Y-m-d', $raw);
     return $d && $d->format('Y-m-d') === $raw ? $raw : '';
+}
+
+// Pachetele se compun din articole existente în catalog (nu din alte pachete).
+function catalog_is_package(string $type): bool
+{
+    return $type === 'pachet_servicii' || $type === 'pachet_produse';
+}
+
+// Ce tipuri de articole pot intra într-un pachet: serviciile (clasice sau digitale) în pachetul de servicii,
+// produsele în pachetul de produse; licențele pot intra în ambele.
+function catalog_component_types(string $packageType): array
+{
+    switch ($packageType) {
+        case 'pachet_servicii':
+            return ['serviciu', 'serviciu_digital', 'licenta'];
+        case 'pachet_produse':
+            return ['produs', 'licenta'];
+    }
+    return [];
+}
+
+// Componentele unui pachet, cu datele articolului și cantitatea.
+function catalog_components(int $packageId): array
+{
+    $q = db()->prepare('SELECT c.*, ci.qty FROM catalog_items ci JOIN catalog c ON c.id = ci.item_id
+                        WHERE ci.package_id = ? ORDER BY ci.ord, c.name COLLATE NOCASE');
+    $q->execute([$packageId]);
+    return $q->fetchAll();
+}
+
+// Pachetele în care apare un articol (id => denumire), pentru a bloca ștergerea sau schimbarea tipului.
+function catalog_packages_of(int $itemId): array
+{
+    $q = db()->prepare('SELECT c.id, c.name, c.type FROM catalog_items ci JOIN catalog c ON c.id = ci.package_id
+                        WHERE ci.item_id = ? ORDER BY c.name COLLATE NOCASE');
+    $q->execute([$itemId]);
+    return $q->fetchAll();
+}
+
+// Cantitatea unei componente: număr pozitiv, cu maximum două zecimale; acceptă și virgula.
+function catalog_qty(string $raw): float
+{
+    $v = (float)str_replace(',', '.', trim($raw));
+    return $v > 0 ? round($v, 2) : 0.0;
+}
+
+// Cantitatea pentru un input numeric: cu punct zecimal și fără zerouri de prisos (10, 10.5, 0.25).
+function fmt_qty(float $q): string
+{
+    return rtrim(rtrim(number_format($q, 2, '.', ''), '0'), '.');
 }
 
 // Starea unui articol față de perioada de valabilitate: valid / viitor (nu a intrat în vigoare) / expirat.

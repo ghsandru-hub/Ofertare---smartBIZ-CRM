@@ -385,6 +385,30 @@ if ($method === 'POST') {
             } elseif ($from !== '' && $to !== '' && $to < $from) {
                 flash('<div class="note err">„Valid până la” nu poate fi înainte de „Valid de la”.</div>');
             } elseif ($id) {
+                // Schimbarea tipului nu poate strica o compoziție: un pachet cu componente rămâne pachet
+                // (și componentele trebuie să fie eligibile pentru noul tip), iar un articol dintr-un pachet
+                // nu poate deveni un tip pe care pachetul nu îl acceptă.
+                $comps = catalog_components($id);
+                $inPk  = catalog_packages_of($id);
+                $bad   = '';
+                if ($comps && !catalog_is_package($type)) {
+                    $bad = 'Pachetul are ' . count($comps) . ' componente. Scoate-le mai întâi din compoziție, apoi schimbă tipul.';
+                } elseif ($comps) {
+                    $ok = catalog_component_types($type);
+                    $ne = array_filter($comps, fn($c) => !in_array($c['type'], $ok, true));
+                    if ($ne) {
+                        $bad = 'Componentele „' . h(implode('”, „', array_column($ne, 'name'))) . '” nu pot intra într-un ' . h(mb_strtolower($types[$type])) . '. Scoate-le mai întâi din compoziție.';
+                    }
+                } elseif ($inPk) {
+                    $ne = array_filter($inPk, fn($pk) => !in_array($type, catalog_component_types((string)$pk['type']), true));
+                    if ($ne) {
+                        $bad = 'Articolul este componentă în „' . h(implode('”, „', array_column($ne, 'name'))) . '”, iar un ' . h(mb_strtolower($types[$type])) . ' nu poate intra acolo. Scoate-l mai întâi din pachete.';
+                    }
+                }
+                if ($bad !== '') {
+                    flash('<div class="note err">' . $bad . '</div>');
+                    redirect($back);
+                }
                 db()->prepare('UPDATE catalog SET type = ?, name = ?, um = ?, valid_from = ?, valid_to = ?, updated_at = ? WHERE id = ?')
                     ->execute([$type, $name, $um, $from, $to, time(), $id]);
                 flash('<div class="note">Articolul „' . h($name) . '” a fost actualizat.</div>');
@@ -392,7 +416,8 @@ if ($method === 'POST') {
                 db()->prepare('INSERT INTO catalog (type, name, um, valid_from, valid_to, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
                     ->execute([$type, $name, $um, $from, $to, time(), time()]);
                 $back = 'admin.php?v=catalog#k' . (int)db()->lastInsertId();
-                flash('<div class="note">Articolul „' . h($name) . '” a fost adăugat în catalog.</div>');
+                flash('<div class="note">Articolul „' . h($name) . '” a fost adăugat în catalog.'
+                    . (catalog_is_package($type) ? ' Adaugă acum componentele din secțiunea „Compoziție” a pachetului.' : '') . '</div>');
             }
             redirect($back);
 
@@ -402,15 +427,63 @@ if ($method === 'POST') {
             if ($c = $src->fetch()) {
                 db()->prepare('INSERT INTO catalog (type, name, um, valid_from, valid_to, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
                     ->execute([$c['type'], $c['name'] . ' (copie)', $c['um'], $c['valid_from'], $c['valid_to'], time(), time()]);
+                $nid = (int)db()->lastInsertId();
+                // un pachet se copiază cu tot cu compoziție
+                db()->prepare('INSERT INTO catalog_items (package_id, item_id, qty, ord) SELECT ?, item_id, qty, ord FROM catalog_items WHERE package_id = ?')
+                    ->execute([$nid, (int)$c['id']]);
                 flash('<div class="note">Am creat o copie a articolului „' . h($c['name']) . '”.</div>');
-                redirect('admin.php?v=catalog#k' . (int)db()->lastInsertId());
+                redirect('admin.php?v=catalog#k' . $nid);
             }
             redirect('admin.php?v=catalog');
 
         case 'cat_delete':
-            db()->prepare('DELETE FROM catalog WHERE id = ?')->execute([(int)($_POST['id'] ?? 0)]);
+            $id   = (int)($_POST['id'] ?? 0);
+            $inPk = catalog_packages_of($id);
+            if ($inPk) {
+                flash('<div class="note err">Articolul este componentă în „' . h(implode('”, „', array_column($inPk, 'name'))) . '”. Scoate-l mai întâi din pachete.</div>');
+                redirect('admin.php?v=catalog#k' . $id);
+            }
+            db()->prepare('DELETE FROM catalog WHERE id = ?')->execute([$id]); // compoziția unui pachet se șterge odată cu el
             flash('<div class="note">Articolul a fost șters din catalog.</div>');
             redirect('admin.php?v=catalog');
+
+        // Compoziția pachetelor: componentele sunt articole existente în catalog, cu cantitate.
+        case 'cat_item_add':
+        case 'cat_item_qty':
+        case 'cat_item_del':
+            $pid = (int)($_POST['package_id'] ?? 0);
+            $iid = (int)($_POST['item_id'] ?? 0);
+            $qty = catalog_qty((string)($_POST['qty'] ?? '1'));
+            $pq  = db()->prepare('SELECT * FROM catalog WHERE id = ?');
+            $pq->execute([$pid]);
+            $pk  = $pq->fetch();
+            $pq->execute([$iid]);
+            $it  = $pq->fetch();
+            $back = 'admin.php?v=catalog#k' . $pid;
+            if (!$pk || !catalog_is_package((string)$pk['type'])) {
+                flash('<div class="note err">Pachetul nu există.</div>');
+                redirect('admin.php?v=catalog');
+            }
+            if ($action === 'cat_item_del') {
+                db()->prepare('DELETE FROM catalog_items WHERE package_id = ? AND item_id = ?')->execute([$pid, $iid]);
+                flash('<div class="note">Componenta a fost scoasă din „' . h($pk['name']) . '”.</div>');
+                redirect($back);
+            }
+            if (!$it || !in_array($it['type'], catalog_component_types((string)$pk['type']), true)) {
+                flash('<div class="note err">Alege o componentă din catalog potrivită pentru acest tip de pachet.</div>');
+            } elseif ($qty <= 0) {
+                flash('<div class="note err">Cantitatea trebuie să fie un număr pozitiv.</div>');
+            } elseif ($action === 'cat_item_qty') {
+                db()->prepare('UPDATE catalog_items SET qty = ? WHERE package_id = ? AND item_id = ?')->execute([$qty, $pid, $iid]);
+                flash('<div class="note">Cantitatea pentru „' . h($it['name']) . '” a fost salvată.</div>');
+            } else {
+                $ord = (int)db()->query('SELECT COALESCE(MAX(ord), 0) + 1 FROM catalog_items WHERE package_id = ' . $pid)->fetchColumn();
+                db()->prepare('INSERT INTO catalog_items (package_id, item_id, qty, ord) VALUES (?, ?, ?, ?)
+                               ON CONFLICT(package_id, item_id) DO UPDATE SET qty = excluded.qty')->execute([$pid, $iid, $qty, $ord]);
+                db()->prepare('UPDATE catalog SET updated_at = ? WHERE id = ?')->execute([time(), $pid]);
+                flash('<div class="note">„' . h($it['name']) . '” a fost adăugat în „' . h($pk['name']) . '”.</div>');
+            }
+            redirect($back);
 
         // --- Utilizatori ----------------------------------------------------
         case 'pw_change':
@@ -811,6 +884,55 @@ function catalog_type_options(string $selected): string
     return $out;
 }
 
+// Secțiunea „Compoziție” a unui pachet: componentele cu cantitate și formularul de adăugare.
+function catalog_composition(array $pk, array $comps, array $all, string $today): string
+{
+    $types  = catalog_types();
+    $pid    = (int)$pk['id'];
+    $okT    = catalog_component_types((string)$pk['type']);
+    $labels = ['valid' => 'valid', 'viitor' => 'din viitor', 'expirat' => 'expirat'];
+    $have   = array_flip(array_map(fn($c) => (int)$c['id'], $comps));
+    $hid    = csrf_field() . '<input type="hidden" name="package_id" value="' . $pid . '">';
+
+    $rows = '';
+    foreach ($comps as $c) {
+        $st = catalog_status($c, $today);
+        $rows .= '<form method="post" class="ci">' . $hid . '<input type="hidden" name="item_id" value="' . (int)$c['id'] . '">'
+            . '<span class="kind kt-' . h($c['type']) . '">' . h($types[$c['type']] ?? $c['type']) . '</span>'
+            . '<div class="mt"><b>' . h($c['name']) . '</b><small><span class="lk l-' . $st . '">' . $labels[$st] . '</span>'
+            . ($c['valid_to'] !== '' ? ' · până la ' . h(date('d.m.Y', strtotime((string)$c['valid_to']))) : '') . '</small></div>'
+            . '<input name="qty" type="number" step="0.01" min="0.01" value="' . h(fmt_qty((float)$c['qty'])) . '" aria-label="Cantitate">'
+            . '<span class="um">' . h($c['um']) . '</span>'
+            . '<button type="submit" class="sm" name="action" value="cat_item_qty">Salvează</button>'
+            . '<button type="submit" class="sm bad" name="action" value="cat_item_del">Scoate</button></form>';
+    }
+
+    $opts = '';
+    foreach ($okT as $t) {
+        $grp = '';
+        foreach ($all[$t] ?? [] as $c) {
+            if (!isset($have[(int)$c['id']])) {
+                $grp .= '<option value="' . (int)$c['id'] . '">' . h($c['name']) . ' (' . h($c['um']) . ')'
+                    . (catalog_status($c, $today) === 'expirat' ? ' · expirat' : '') . '</option>';
+            }
+        }
+        if ($grp !== '') {
+            $opts .= '<optgroup label="' . h($types[$t]) . '">' . $grp . '</optgroup>';
+        }
+    }
+    $allowed = implode(', ', array_map(fn($t) => mb_strtolower($types[$t]), $okT));
+    $add = $opts
+        ? '<form method="post" class="ci add">' . $hid . '<input type="hidden" name="action" value="cat_item_add">'
+          . '<select name="item_id" aria-label="Componentă"><option value="">Alege din catalog: ' . h($allowed) . '…</option>' . $opts . '</select>'
+          . '<input name="qty" type="number" step="0.01" min="0.01" value="1" aria-label="Cantitate">'
+          . '<button type="submit" class="sm" title="Adaugă componenta">+ Adaugă</button></form>'
+        : '<p class="muted">Nu mai există în catalog articole de tip ' . h($allowed) . ' care să poată fi adăugate.</p>';
+
+    return '<details class="comp" id="comp' . $pid . '"><summary>Compoziție: <b>' . count($comps) . '</b> ' . (count($comps) === 1 ? 'componentă' : 'componente')
+        . ' <span class="muted">(' . h($allowed) . ')</span></summary>'
+        . '<div class="complist">' . ($rows ?: '<p class="muted">Pachetul nu are încă nicio componentă.</p>') . '</div>' . $add . '</details>';
+}
+
 function view_catalog(): string
 {
     $types  = catalog_types();
@@ -821,26 +943,53 @@ function view_catalog(): string
     $byType = array_fill_keys(array_keys($types), 0);
     $fmtD   = fn(string $d) => $d !== '' ? date('d.m.Y', strtotime($d)) : 'nelimitat';
 
+    // Compoziția pachetelor și articolele grupate pe tip (pentru lista de componente disponibile).
+    $all   = [];
+    foreach ($rows as $c) {
+        $all[$c['type']][] = $c;
+    }
+    $comps = []; // package_id => componente
+    $used  = []; // item_id => [denumiri pachete]
+    foreach (db()->query('SELECT ci.package_id, ci.qty, c.*, p.name AS package_name FROM catalog_items ci
+                          JOIN catalog c ON c.id = ci.item_id JOIN catalog p ON p.id = ci.package_id
+                          ORDER BY ci.ord, c.name COLLATE NOCASE')->fetchAll() as $ci) {
+        $comps[(int)$ci['package_id']][] = $ci;
+        $used[(int)$ci['id']][]          = (string)$ci['package_name'];
+    }
+
     $list = '';
     foreach ($rows as $c) {
-        $id  = (int)$c['id'];
-        $st  = catalog_status($c, $today);
+        $id   = (int)$c['id'];
+        $st   = catalog_status($c, $today);
+        $isPk = catalog_is_package((string)$c['type']);
         $count[$st]++;
         $byType[$c['type']] = ($byType[$c['type']] ?? 0) + 1;
-        $list .= '<form method="post" class="cat st-' . $st . '" id="k' . $id . '" data-type="' . h($c['type']) . '" data-status="' . $st . '"'
-            . ' data-q="' . h(mb_strtolower($c['name'] . ' ' . $c['um'] . ' ' . ($types[$c['type']] ?? $c['type']))) . '">'
-            . csrf_field() . '<input type="hidden" name="id" value="' . $id . '">'
+        $extra = '';
+        if ($isPk) {
+            $n     = count($comps[$id] ?? []);
+            $extra = ' · ' . $n . ($n === 1 ? ' componentă' : ' componente');
+        } elseif (!empty($used[$id])) {
+            $extra = ' · în ' . count($used[$id]) . (count($used[$id]) === 1 ? ' pachet' : ' pachete');
+        }
+        $q = $c['name'] . ' ' . $c['um'] . ' ' . ($types[$c['type']] ?? $c['type']);
+        foreach ($comps[$id] ?? [] as $ci) {
+            $q .= ' ' . $ci['name']; // un pachet se găsește și după componentele lui
+        }
+        $list .= '<div class="catrow st-' . $st . ($isPk ? ' pkg' : '') . '" id="k' . $id . '" data-type="' . h($c['type']) . '" data-status="' . $st . '" data-q="' . h(mb_strtolower($q)) . '">'
+            . '<form method="post" class="cat">' . csrf_field() . '<input type="hidden" name="id" value="' . $id . '">'
             . '<select name="type" aria-label="Tip">' . catalog_type_options((string)$c['type']) . '</select>'
             . '<div class="mt"><input name="name" value="' . h($c['name']) . '" aria-label="Denumire" maxlength="200" required>'
             . '<small><span class="lk l-' . $st . '">' . $labels[$st] . '</span> · ' . h($fmtD((string)$c['valid_from'])) . ' → ' . h($fmtD((string)$c['valid_to']))
-            . ' · actualizat ' . h(fmt_time((int)$c['updated_at'])) . '</small></div>'
+            . h($extra) . ' · actualizat ' . h(fmt_time((int)$c['updated_at'])) . '</small></div>'
             . '<input name="um" value="' . h($c['um']) . '" aria-label="UM" maxlength="20" required>'
             . '<input name="valid_from" type="date" value="' . h($c['valid_from']) . '" aria-label="Valid de la">'
             . '<input name="valid_to" type="date" value="' . h($c['valid_to']) . '" aria-label="Valid până la">'
             . '<button type="submit" class="sm" name="action" value="cat_save">Salvează</button>'
             . '<button type="submit" class="sm" name="action" value="cat_copy" title="Creează o copie">Copiază</button>'
             . '<button type="submit" class="sm bad" name="action" value="cat_delete">Șterge</button>'
-            . '</form>';
+            . '</form>'
+            . ($isPk ? catalog_composition($c, $comps[$id] ?? [], $all, $today) : '')
+            . '</div>';
     }
 
     $typeOpts = '';
@@ -857,19 +1006,21 @@ function view_catalog(): string
         . '<div><label for="cfrom">Valid de la</label><input id="cfrom" name="valid_from" type="date" value="' . $today . '"></div>'
         . '<div><label for="cto">Valid până la</label><input id="cto" name="valid_to" type="date"></div>'
         . '<button type="submit" class="pri">Adaugă în catalog</button></form>'
-        . '<p class="muted">Tipuri: serviciu, licență, serviciu digital, produs, pachet servicii, pachet produse. Lasă „Valid până la” gol pentru valabilitate nelimitată.</p></section>'
+        . '<p class="muted">Tipuri: serviciu, licență, serviciu digital, produs, pachet servicii, pachet produse. Lasă „Valid până la” gol pentru valabilitate nelimitată.'
+        . ' Pachetele se compun din articole existente în catalog: pachetul de servicii din servicii, servicii digitale și licențe; pachetul de produse din produse și licențe.</p></section>'
         . '<section class="panel"><div class="ph"><h2>Catalog produse și servicii</h2>'
         . '<div class="rsum catsum"><span><b>' . count($rows) . '</b> articole</span><span><b class="ok">' . $count['valid'] . '</b> valide</span>'
         . '<span><b>' . $count['viitor'] . '</b> din viitor</span><span><b class="err">' . $count['expirat'] . '</b> expirate</span></div></div>'
         . '<div class="rtools cattools">'
-        . '<div class="rsearch"><label for="kQ">Caută</label><input id="kQ" type="search" placeholder="denumire, UM, tip…"></div>'
+        . '<div class="rsearch"><label for="kQ">Caută</label><input id="kQ" type="search" placeholder="denumire, UM, tip, componentă…"></div>'
         . '<div><label for="kType">Tip</label><select id="kType"><option value="">Toate tipurile</option>' . $typeOpts . '</select></div>'
         . '<div><label for="kSt">Valabilitate</label><select id="kSt"><option value="">Toate</option><option value="valid">Valide azi</option>'
         . '<option value="viitor">Din viitor</option><option value="expirat">Expirate</option></select></div></div>'
         . '<div class="cathead"><span>Tip</span><span>Denumire</span><span>UM</span><span>Valid de la</span><span>Valid până la</span><span></span><span></span><span></span></div>'
         . '<div class="matlist" id="kList">' . ($list ?: '<p class="muted">Catalogul este gol. Adaugă primul articol din formularul de mai sus.</p>') . '</div>'
         . '<p class="muted catempty" id="kEmpty" hidden>Niciun articol pentru filtrele alese.</p>'
-        . '<p class="muted">Un articol expirat rămâne în catalog pentru istoric; ștergerea este definitivă. „Copiază” creează un articol nou cu aceleași date, util pentru o nouă perioadă de valabilitate.</p>'
+        . '<p class="muted">Un articol expirat rămâne în catalog pentru istoric; ștergerea este definitivă. „Copiază” creează un articol nou cu aceleași date (la pachete, cu tot cu compoziție), util pentru o nouă perioadă de valabilitate.'
+        . ' Un articol folosit într-un pachet nu poate fi șters și nu își poate schimba tipul cât timp este componentă.</p>'
         . '</section>';
 }
 
@@ -1378,11 +1529,20 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 @media (max-width:1200px){.cattools{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}}
 .cathead,.cat{display:grid;grid-template-columns:170px minmax(220px,3fr) 110px 150px 150px auto auto auto;gap:10px;align-items:center}
 .cathead{font-size:12px;color:var(--navy);font-weight:600;padding:0 12px 4px}
-.cat{border:1px solid var(--line);border-radius:5px;padding:10px 12px}
-.cat.st-expirat{opacity:.65}.cat.st-viitor{border-left:3px solid var(--amber)}.cat.st-valid{border-left:3px solid var(--green)}
-.cat.hide,.cathead.hide{display:none}
+.catrow{border:1px solid var(--line);border-radius:5px}
+.cat{padding:10px 12px}
+.catrow.st-expirat{opacity:.65}.catrow.st-viitor{border-left:3px solid var(--amber)}.catrow.st-valid{border-left:3px solid var(--green)}
+.catrow.hide{display:none}
 .lk.l-valid{color:var(--green)}.lk.l-viitor{color:var(--amber)}
-@media (max-width:1100px){.cathead{display:none}.cat{grid-template-columns:1fr 1fr}.cat .mt{grid-column:1/-1}}
+.comp{margin:0;border-top:1px dashed var(--line);background:var(--soft);padding:6px 12px 10px;border-radius:0 0 5px 5px}
+.comp summary{font-size:12px;color:var(--navy)}.comp summary b{font-family:var(--mono)}
+.complist{display:grid;gap:4px;margin:8px 0}
+.ci{display:grid;grid-template-columns:130px minmax(200px,1fr) 90px 90px auto auto;gap:8px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:6px 10px}
+.ci .mt b{font-size:13px}.ci .um{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.ci.add{grid-template-columns:minmax(260px,1fr) 90px auto;background:transparent;border:0;padding:0}
+.ci input,.ci select{padding:5px 8px;font-size:13px}.ci select{padding-right:28px}
+.kt-serviciu,.kt-serviciu_digital{color:var(--teal)}.kt-licenta{color:var(--amber)}.kt-produs{color:var(--navy3)}
+@media (max-width:1100px){.cathead{display:none}.cat{grid-template-columns:1fr 1fr}.cat .mt{grid-column:1/-1}.ci{grid-template-columns:1fr 1fr}.ci .mt{grid-column:1/-1}.ci.add{grid-template-columns:1fr}}
 /* Raportare */
 .rep .ph{align-items:center}.sm2{margin:0;padding:6px 12px}
 .rtools{display:grid;grid-template-columns:minmax(220px,2fr) repeat(6,minmax(120px,1fr)) auto;gap:10px;align-items:end;margin-bottom:10px}
@@ -1509,7 +1669,7 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
   var kList = document.getElementById('kList');
   if (kList) {
     var kQ = document.getElementById('kQ'), kType = document.getElementById('kType'), kSt = document.getElementById('kSt'), kEmpty = document.getElementById('kEmpty');
-    var items = Array.prototype.slice.call(kList.querySelectorAll('.cat'));
+    var items = Array.prototype.slice.call(kList.querySelectorAll('.catrow'));
     var kFilter = function () {
       var q = kQ.value.trim().toLowerCase(), shown = 0;
       items.forEach(function (it) {
@@ -1523,7 +1683,11 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
     [kQ, kType, kSt].forEach(function (el) { el.addEventListener('input', kFilter); el.addEventListener('change', kFilter); });
     if (location.hash && /^#k\d+$/.test(location.hash)) {
       var tgt = document.querySelector(location.hash);
-      if (tgt) { tgt.scrollIntoView({ block: 'center' }); }
+      if (tgt) {
+        var comp = tgt.querySelector('details.comp');
+        if (comp) { comp.open = true; } // după o acțiune pe compoziție, pachetul rămâne desfăcut
+        tgt.scrollIntoView({ block: 'center' });
+      }
     }
   }
 })();
