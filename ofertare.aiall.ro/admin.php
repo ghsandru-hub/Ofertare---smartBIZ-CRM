@@ -618,6 +618,22 @@ if ($method === 'POST') {
             }
             redirect('admin.php?v=materiale');
 
+        case 'mat_delete':
+            $id = (int)($_POST['id'] ?? 0);
+            $mq = db()->prepare('SELECT * FROM materials WHERE id = ?');
+            $mq->execute([$id]);
+            if ($m = $mq->fetch()) {
+                $sent = (int)db()->query('SELECT COUNT(*) FROM links WHERE material_id = ' . $id)->fetchColumn();
+                db()->prepare('DELETE FROM links WHERE material_id = ?')->execute([$id]); // linkurile trimise nu se mai deschid
+                db()->prepare('DELETE FROM materials WHERE id = ?')->execute([$id]);      // template_materials se șterge în cascadă
+                if ($old = safe_file_path((string)$m['file'])) {
+                    @unlink($old);
+                }
+                flash('<div class="note">Materialul „' . h($m['title']) . '” a fost șters'
+                    . ($sent ? '; ' . $sent . ' linkuri deja trimise nu se mai deschid' : '') . '.</div>');
+            }
+            redirect('admin.php?v=materiale');
+
         // --- Catalog produse și servicii -------------------------------------
         case 'cat_save':
             $id    = (int)($_POST['id'] ?? 0);
@@ -779,7 +795,7 @@ if ($method === 'POST') {
             $self = $id === (int)$me['id'];
             $name = trim((string)($_POST['name'] ?? ''));
             $act  = ($self || !empty($_POST['active'])) ? 1 : 0; // propriul cont rămâne activ
-            $pass = (string)($_POST['pass'] ?? '');
+            $pass = $self ? '' : (string)($_POST['pass'] ?? ''); // propria parolă doar din „Parola mea”, cu parola actuală; a altuia se resetează fără parola veche
             $uq   = db()->prepare('SELECT * FROM users WHERE id = ?');
             $uq->execute([$id]);
             if ($u = $uq->fetch()) {
@@ -1233,17 +1249,22 @@ function view_materials(): string
         $id   = (int)$m['id'];
         $path = safe_file_path((string)$m['file']);
         $ext  = strtoupper(pathinfo((string)$m['file'], PATHINFO_EXTENSION));
-        $tbl .= '<form method="post" enctype="multipart/form-data" class="mat' . ($m['active'] ? '' : ' off') . '">' . csrf_field()
+        $tbl .= '<form method="post" enctype="multipart/form-data" class="mat ro' . ($m['active'] ? '' : ' off') . '">' . csrf_field()
             . '<input type="hidden" name="action" value="mat_update"><input type="hidden" name="id" value="' . $id . '">'
             . '<div class="mt"><input name="title" value="' . h($m['title']) . '" aria-label="Titlu"></div>'
             . '<select name="kind" aria-label="Tip"><option value="oferta"' . ($m['kind'] === 'oferta' ? ' selected' : '') . '>Ofertă</option>'
             . '<option value="suport"' . ($m['kind'] === 'suport' ? ' selected' : '') . '>Material suport</option></select>'
             . '<div class="stats"><b>' . (int)$m['in_tpl'] . '</b> șabloane<br><b>' . (int)$m['sent'] . '</b> trimiteri · <b>' . (int)$m['opened'] . '</b> deschideri</div>'
-            . '<label class="fl"><input type="file" name="file" aria-label="Înlocuiește fișierul" title="Înlocuiește fișierul; linkurile deja trimise deschid noua versiune"></label>'
+            . '<div class="fcell"><span class="fname" title="' . h($m['orig_name'] ?: $m['file']) . '">' . h($m['orig_name'] ?: $m['file']) . '</span>'
+            . '<label class="fl"><input type="file" name="file" aria-label="Înlocuiește fișierul" title="Înlocuiește fișierul; linkurile deja trimise deschid noua versiune"></label></div>'
             . '<label class="act"><input type="checkbox" name="active" value="1"' . ($m['active'] ? ' checked' : '') . '> Activ</label>'
             . '<button type="button" class="ico main mprev" data-id="' . $id . '" data-ext="' . h(strtolower($ext)) . '" data-title="' . h($m['title']) . '" data-file="' . h($m['orig_name'] ?: $m['file']) . '"'
             . ($path ? '' : ' disabled') . ' title="Previzualizează materialul" aria-label="Previzualizează materialul">' . ui_icon('eye') . '</button>'
-            . ui_btn('save', 'Salvează materialul', 'main')
+            . '<span class="tg2"><button type="button" class="ico main edit" title="Editează materialul" aria-label="Editează materialul">' . ui_icon('edit') . '</button>'
+            . ui_btn('save', 'Salvează materialul', 'main rsave', 'hidden') . '</span>'
+            . '<span class="tg2">' . ui_btn('trash', 'Șterge materialul', 'bad roalt', 'name="action" value="mat_delete" formnovalidate',
+                'Ștergi definitiv materialul „' . $m['title'] . '”? Dispare din șabloane' . ((int)$m['sent'] ? ', iar cele ' . (int)$m['sent'] . ' linkuri deja trimise nu se vor mai deschide' : '') . '.')
+            . '<button type="button" class="ico cancel" title="Renunță la modificări" aria-label="Renunță la modificări" hidden>' . ui_icon('x') . '</button></span>'
             . ui_info('<span class="ext">' . h($ext) . '</span> ' . h($m['orig_name'] ?: $m['file']) . '<br>'
                 . ($path ? h(human_size((int)filesize($path))) : '<span class="err">fișier lipsă</span>')
                 . '<br>actualizat ' . h(fmt_time((int)$m['updated_at'])) . '<br>Înlocuiește fișierul: linkurile deja trimise deschid noua versiune.') . '</form>';
@@ -1410,8 +1431,8 @@ function view_catalog(): string
                 $isPk && (float)$c['price'] <= 0 ? fmt_qty(catalog_price($c)) : '0',
                 $isPk && (float)$c['price'] <= 0 ? 'Preț calculat din compoziție; scrie un preț ca să îl înlocuiești' . (catalog_price_note($c) !== '' ? ' (' . catalog_price_note($c) . ')' : '') : '')
             . '<span class="tg2"><button type="button" class="ico main edit" title="Editează articolul" aria-label="Editează articolul">' . ui_icon('edit') . '</button>'
-            . ui_btn('save', 'Salvează articolul', 'main', 'name="action" value="cat_save" hidden') . '</span>'
-            . '<span class="tg2">' . ui_btn('copy', 'Copiază articolul', '', 'name="action" value="cat_copy"', 'Creezi o copie a articolului „' . $c['name'] . '”' . ($isPk ? ', cu tot cu compoziție' : '') . '?')
+            . ui_btn('save', 'Salvează articolul', 'main rsave', 'name="action" value="cat_save" hidden') . '</span>'
+            . '<span class="tg2">' . ui_btn('copy', 'Copiază articolul', 'roalt', 'name="action" value="cat_copy"', 'Creezi o copie a articolului „' . $c['name'] . '”' . ($isPk ? ', cu tot cu compoziție' : '') . '?')
             . '<button type="button" class="ico cancel" title="Renunță la modificări" aria-label="Renunță la modificări" hidden>' . ui_icon('x') . '</button></span>'
             . ui_btn('trash', 'Șterge articolul', 'bad', 'name="action" value="cat_delete"', 'Ștergi definitiv articolul „' . $c['name'] . '”?')
             . ui_info('<b><span class="lk l-' . $st . '">' . $labels[$st] . '</span></b>' . h($extra)
@@ -1468,14 +1489,17 @@ function view_users(array $me): string
     foreach ($rows as $u) {
         $id   = (int)$u['id'];
         $self = $id === (int)$me['id'];
-        $list .= '<form method="post" class="usr' . ($u['active'] ? '' : ' off') . '">' . csrf_field()
+        $list .= '<form method="post" class="usr ro' . ($u['active'] ? '' : ' off') . '">' . csrf_field()
             . '<input type="hidden" name="id" value="' . $id . '">'
             . '<div class="mt"><b class="un">' . h($u['username']) . ($self ? ' <span class="tag">eu</span>' : '') . '</b></div>'
             . '<input name="name" value="' . h($u['name']) . '" aria-label="Nume" placeholder="Nume">'
-            . '<input name="pass" type="password" autocomplete="new-password" minlength="10" aria-label="Parolă nouă" placeholder="Parolă nouă (opțional)">'
-            . '<label class="act"><input type="checkbox" name="active" value="1"' . ($u['active'] ? ' checked' : '') . ($self ? ' disabled' : '') . '> Activ</label>'
-            . ui_btn('save', 'Salvează utilizatorul', 'main', 'name="action" value="user_update"')
-            . ($self ? '<span></span>' : ui_btn('trash', 'Șterge utilizatorul', 'bad', 'name="action" value="user_delete"', 'Ștergi utilizatorul „' . $u['username'] . '”?'))
+            . ($self ? '<span class="pwself muted">Parola ta se schimbă din „Parola mea”</span>'
+                : '<input name="pass" type="password" autocomplete="new-password" minlength="10" aria-label="Parolă nouă" placeholder="Parolă nouă (opțional)" title="Resetează parola fără parola veche">')
+            . '<label class="act"><input type="checkbox" name="active" value="1"' . ($u['active'] ? ' checked' : '') . ($self ? ' disabled data-lock' : '') . '> Activ</label>'
+            . '<span class="tg2"><button type="button" class="ico main edit" title="Editează utilizatorul" aria-label="Editează utilizatorul">' . ui_icon('edit') . '</button>'
+            . ui_btn('save', 'Salvează utilizatorul', 'main rsave', 'name="action" value="user_update" hidden') . '</span>'
+            . '<span class="tg2">' . ($self ? '<span class="ico ghost roalt" aria-hidden="true"></span>' : ui_btn('trash', 'Șterge utilizatorul', 'bad roalt', 'name="action" value="user_delete" formnovalidate', 'Ștergi utilizatorul „' . $u['username'] . '”?'))
+            . '<button type="button" class="ico cancel" title="Renunță la modificări" aria-label="Renunță la modificări" hidden>' . ui_icon('x') . '</button></span>'
             . ui_info('creat ' . h(fmt_time((int)$u['created_at'])) . '<br>ultima autentificare '
                 . h(fmt_time($u['last_login'] !== null ? (int)$u['last_login'] : null))) . '</form>';
     }
@@ -2489,9 +2513,9 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .up{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;align-items:end}
 .up .pri{margin:0}
 .matlist{display:grid;gap:8px}
-.mat{display:grid;grid-template-columns:minmax(200px,3fr) 140px 170px minmax(160px,2fr) auto auto auto auto;gap:10px;align-items:start;border:1px solid var(--line);border-radius:5px;padding:10px 12px}
+.mat{display:grid;grid-template-columns:minmax(200px,3fr) 140px 170px minmax(160px,2fr) auto auto auto auto auto;gap:10px;align-items:start;border:1px solid var(--line);border-radius:5px;padding:10px 12px}
 /* Rânduri de listă (materiale, utilizatori): toate controalele pe aceeași linie, la aceeași înălțime; textul secundar dedesubt */
-.mat>select,.mat>input,.mat .mt input,.mat .fl input,.usr>select,.usr>input,.usr .mt input{height:36px;box-sizing:border-box}
+.mat>select,.mat>input,.mat .mt input,.mat .fl input,.mat .fcell input,.usr>select,.usr>input,.usr .mt input{height:36px;box-sizing:border-box}
 .mat>.sm,.usr>.sm,.mat .act,.usr .act{height:36px;display:inline-flex;align-items:center}
 .mat .stats{padding-top:1px;line-height:1.45;white-space:nowrap}
 .fl{display:grid;gap:3px;margin:0}.fl input{font-size:12px;padding:3px 6px}.fl small{font-size:11px;color:var(--muted)}
@@ -2540,7 +2564,10 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .rinfo>div{position:absolute;right:0;top:40px;z-index:7;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 12px;min-width:240px;max-width:420px;font-size:12px;line-height:1.6;color:var(--muted);box-shadow:0 6px 18px rgba(0,0,0,.14);white-space:normal;text-align:left}
 .rinfo>div b{color:var(--ink)}
 /* rând în mod citire: câmpurile arată ca text, fără chenar; Editează le activează */
-.cat.ro input,.cat.ro select{background:transparent;border-color:transparent;color:var(--ink);opacity:1;cursor:default;background-image:none}
+.cat.ro input,.cat.ro select,.mat.ro input,.mat.ro select,.usr.ro input,.usr.ro select{background:transparent;border-color:transparent;color:var(--ink);opacity:1;cursor:default;background-image:none}
+.usr.ro input[name=pass],.usr.ro .pwself{visibility:hidden}.ico.ghost{visibility:hidden}.usr .pwself{height:36px;display:flex;align-items:center;font-size:12px}
+.mat .fcell{display:grid}.mat .fname{height:36px;line-height:36px;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mat.ro .fl{display:none}.mat:not(.ro) .fname{display:none}
 .cat.ro input::-webkit-calendar-picker-indicator{display:none}.cat.ro .umw select,.cat.ro .prw select{padding-right:8px}
 .tg2{display:inline-flex}.tg2 [hidden]{display:none}
 .pdlg .pdnote{padding:28px 18px;text-align:center;color:var(--muted);font-size:13px}.pdlg .pdnote[hidden]{display:none}.pdlg iframe[hidden]{display:none}
@@ -2808,18 +2835,21 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
     cf.addEventListener('close', function () { cfPending = null; });
   }
 
-  // Catalog: rândul pornește în mod citire; „Editează” activează câmpurile și arată Salvează / Renunță
+  // Rânduri de listă (Catalog, Materiale, Utilizatori): pornesc în mod citire; „Editează” activează câmpurile și
+  // înlocuiește butoanele cu Salvează / Renunță (regula 9 din CLAUDE.md)
+  var ROWS = 'form.cat,form.mat,form.usr';
   var setRowEdit = function (form, on) {
     form.classList.toggle('ro', !on);
-    form.querySelectorAll('input:not([type=hidden]):not([name=um_alt]),select').forEach(function (f) { f.disabled = !on; });
-    var e = form.querySelector('.edit'), sv = form.querySelector('button[value=cat_save]'), cp = form.querySelector('button[value=cat_copy]'), cn = form.querySelector('.cancel');
+    form.querySelectorAll('input:not([type=hidden]):not([name=um_alt]),select').forEach(function (f) { if (f.dataset.lock === undefined) { f.disabled = !on; } });
+    var e = form.querySelector('.edit'), sv = form.querySelector('.rsave'), cp = form.querySelector('.roalt'), cn = form.querySelector('.cancel');
     if (e) { e.hidden = on; } if (sv) { sv.hidden = !on; } if (cp) { cp.hidden = on; } if (cn) { cn.hidden = !on; }
     var alt = form.querySelector('input[name=um_alt]'); if (alt) { alt.disabled = !on || alt.hidden; }
   };
-  document.querySelectorAll('form.cat').forEach(function (f) { setRowEdit(f, false); });
+  document.querySelectorAll(ROWS).forEach(function (f) { setRowEdit(f, false); });
   document.addEventListener('click', function (e) {
-    var ed = e.target.closest('form.cat .edit'), cn = e.target.closest('form.cat .cancel');
-    if (ed) { var f = ed.closest('form'); setRowEdit(f, true); var first = f.querySelector('input[name=name]'); if (first) { first.focus(); first.select(); } }
+    var ed = e.target.closest('.edit'), cn = e.target.closest('.cancel');
+    ed = ed && ed.closest(ROWS) ? ed : null; cn = cn && cn.closest(ROWS) ? cn : null;
+    if (ed) { var f = ed.closest('form'); setRowEdit(f, true); var first = f.querySelector('input[name=name],input[name=title]'); if (first) { first.focus(); first.select(); } }
     if (cn) { var f2 = cn.closest('form'); f2.reset(); f2.querySelectorAll('.ums').forEach(function (s) { s.dispatchEvent(new Event('change', { bubbles: true })); }); setRowEdit(f2, false); }
   });
 

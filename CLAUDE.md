@@ -31,6 +31,14 @@ prin `.cpanel.yml`. Detalii funcționale în `README.md`; ghidul de utilizare es
    eroarea exactă a serverului, niciodată un „trimis” fără confirmare.
 8. **Stil**: paleta smartBIZ Copilot (navy `#1F4788`, teal `#2D8B8E`, amber), IBM Plex Sans / Mono, aceleași componente ca în
    ContaCheck (`ghsandru-hub/ContaCheckCopilot`); temă deschisă și închisă prin variabilele din `:root`.
+9. **Fiecare rând dintr-o listă editabilă (Catalog, Materiale, Utilizatori, orice listă nouă) are același set de acțiuni:**
+   rândul pornește în mod citire (câmpurile arată ca text, fără chenar, dezactivate; `form.ro` + `setRowEdit()` din `admin.php`),
+   cu butoanele **Editează** (creion), **Șterge** (roșu) și **Detalii** (info), plus **Previzualizează** (ochi) acolo unde
+   există un fișier sau conținut de arătat. „Editează” activează câmpurile și se înlocuiește cu **Salvează**, iar lângă el
+   apare **Renunță** (×), care readuce valorile inițiale. Butoanele sunt pictograme de 36px (regula 2), în această ordine, la
+   capătul din dreapta al rândului. Orice acțiune distructivă sau ireversibilă (șterge, scoate, retrimite, revocă) cere
+   confirmare în dialogul aplicației (`#cfDlg`, `data-confirm` pe buton), nu `confirm()` din browser. Nicio listă nu rămâne
+   fără Editează și Șterge pe rând.
 
 ## Proces
 
