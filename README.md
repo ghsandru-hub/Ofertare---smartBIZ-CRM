@@ -169,6 +169,7 @@ Gestiunea catalogului de produse și servicii, tabela `catalog` din `ofertare.db
 - „Înlocuiește fișierul” păstrează linkurile deja trimise: clienții deschid noua versiune.
 - Un material dezactivat nu mai poate fi deschis și nu mai apare în șabloane.
 - Pentru fiecare material vezi în câte șabloane apare, de câte ori a fost trimis și de câte ori a fost deschis.
+- Previzualizare (butonul „ochi” de pe rând): PDF, HTML, imagini și video se deschid într-un modal din cockpit, izolat (fără scripturi); DOCX/XLSX/PPTX se descarcă. Fișierul se servește doar utilizatorilor autentificați, prin `admin.php?a=file&id=N` (`&dl=1` pentru descărcare).
 
 ### 6. Utilizatori
 

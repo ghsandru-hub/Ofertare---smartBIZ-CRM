@@ -197,6 +197,28 @@ if (!$me || (int)$me['active'] !== 1) {
     redirect('admin.php');
 }
 
+// Fișierul unui material, pentru previzualizarea din cockpit (doar după autentificare; HTML-ul se afișează în iframe sandbox).
+if (($_GET['a'] ?? '') === 'file') {
+    $mq = db()->prepare('SELECT * FROM materials WHERE id = ?');
+    $mq->execute([(int)($_GET['id'] ?? 0)]);
+    $m    = $mq->fetch();
+    $path = $m ? safe_file_path((string)$m['file']) : null;
+    if (!$m || !$path) {
+        http_response_code(404);
+        exit('Fișierul nu există.');
+    }
+    $ext  = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+    $type = allowed_types()[$ext] ?? 'application/octet-stream';
+    $name = trim(preg_replace('/[^A-Za-z0-9._-]+/', '_', iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', (string)$m['title']) ?: 'material'), '_') ?: 'material';
+    security_headers();
+    header('Content-Type: ' . $type);
+    header('Content-Length: ' . filesize($path));
+    header('Content-Disposition: ' . (!empty($_GET['dl']) || !in_array($ext, ['pdf', 'html', 'htm', 'png', 'jpg', 'jpeg', 'mp4'], true) ? 'attachment' : 'inline') . '; filename="' . $name . '.' . $ext . '"');
+    header("Content-Security-Policy: sandbox; default-src 'none'; img-src data: 'self'; style-src 'unsafe-inline'; media-src 'self'");
+    readfile($path);
+    exit;
+}
+
 // Datele firmei de la ANAF pentru formularul „Ofertă nouă” (JSON, doar după autentificare).
 if (($_GET['a'] ?? '') === 'anaf') {
     header('Content-Type: application/json; charset=utf-8');
@@ -1219,6 +1241,8 @@ function view_materials(): string
             . '<div class="stats"><b>' . (int)$m['in_tpl'] . '</b> șabloane<br><b>' . (int)$m['sent'] . '</b> trimiteri · <b>' . (int)$m['opened'] . '</b> deschideri</div>'
             . '<label class="fl"><input type="file" name="file" aria-label="Înlocuiește fișierul" title="Înlocuiește fișierul; linkurile deja trimise deschid noua versiune"></label>'
             . '<label class="act"><input type="checkbox" name="active" value="1"' . ($m['active'] ? ' checked' : '') . '> Activ</label>'
+            . '<button type="button" class="ico main mprev" data-id="' . $id . '" data-ext="' . h(strtolower($ext)) . '" data-title="' . h($m['title']) . '" data-file="' . h($m['orig_name'] ?: $m['file']) . '"'
+            . ($path ? '' : ' disabled') . ' title="Previzualizează materialul" aria-label="Previzualizează materialul">' . ui_icon('eye') . '</button>'
             . ui_btn('save', 'Salvează materialul', 'main')
             . ui_info('<span class="ext">' . h($ext) . '</span> ' . h($m['orig_name'] ?: $m['file']) . '<br>'
                 . ($path ? h(human_size((int)filesize($path))) : '<span class="err">fișier lipsă</span>')
@@ -1235,7 +1259,12 @@ function view_materials(): string
         . '<p class="muted">Fișierele se salvează în ofertare_private/fisiere și sunt servite doar prin linkurile personale.</p></section>'
         . '<section class="panel"><h2>Materiale</h2>'
         . '<p class="muted" style="margin:-6px 0 12px">Înlocuirea fișierului păstrează linkurile deja trimise: clienții deschid noua versiune. Un material dezactivat nu mai poate fi deschis și nu mai apare în șabloane.</p>'
-        . '<div class="matlist">' . ($tbl ?: '<p class="muted">Niciun material încărcat.</p>') . '</div></section>';
+        . '<div class="matlist">' . ($tbl ?: '<p class="muted">Niciun material încărcat.</p>') . '</div></section>'
+        . '<dialog id="matDlg" class="pdlg" aria-labelledby="matDlgTtl"><div class="pdh"><h2 id="matDlgTtl">Previzualizare</h2><p class="muted" id="matDlgMeta"></p></div>'
+        . '<iframe id="matFrame" title="Previzualizare material" hidden></iframe>'
+        . '<div class="pdnote" id="matNote" hidden></div>'
+        . '<div class="pdf"><button type="button" class="sm" id="matDlgClose">Închide</button><span class="sp"></span>'
+        . '<a class="sm alink" id="matOpen" href="#" target="_blank" rel="noopener">Deschide în fereastră nouă</a><a class="pri alink" id="matDl" href="#">Descarcă</a></div></dialog>';
 }
 
 // ===========================================================================
@@ -2460,7 +2489,7 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .up{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;align-items:end}
 .up .pri{margin:0}
 .matlist{display:grid;gap:8px}
-.mat{display:grid;grid-template-columns:minmax(200px,3fr) 140px 170px minmax(160px,2fr) auto auto auto;gap:10px;align-items:start;border:1px solid var(--line);border-radius:5px;padding:10px 12px}
+.mat{display:grid;grid-template-columns:minmax(200px,3fr) 140px 170px minmax(160px,2fr) auto auto auto auto;gap:10px;align-items:start;border:1px solid var(--line);border-radius:5px;padding:10px 12px}
 /* Rânduri de listă (materiale, utilizatori): toate controalele pe aceeași linie, la aceeași înălțime; textul secundar dedesubt */
 .mat>select,.mat>input,.mat .mt input,.mat .fl input,.usr>select,.usr>input,.usr .mt input{height:36px;box-sizing:border-box}
 .mat>.sm,.usr>.sm,.mat .act,.usr .act{height:36px;display:inline-flex;align-items:center}
@@ -2514,6 +2543,9 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
 .cat.ro input,.cat.ro select{background:transparent;border-color:transparent;color:var(--ink);opacity:1;cursor:default;background-image:none}
 .cat.ro input::-webkit-calendar-picker-indicator{display:none}.cat.ro .umw select,.cat.ro .prw select{padding-right:8px}
 .tg2{display:inline-flex}.tg2 [hidden]{display:none}
+.pdlg .pdnote{padding:28px 18px;text-align:center;color:var(--muted);font-size:13px}.pdlg .pdnote[hidden]{display:none}.pdlg iframe[hidden]{display:none}
+.pdf .alink{display:inline-flex;align-items:center;height:36px;padding:0 14px;text-decoration:none;box-sizing:border-box;margin:0}.pdf .alink[hidden]{display:none}
+.pdlg.wide{width:min(1100px,96vw)}
 .pdlg.cf{width:min(460px,92vw)}.pdlg.cf .pdh p{margin:6px 0 0;font-size:14px;color:var(--ink);line-height:1.5}.pri.bad{background:var(--red)}
 .catrow.hide{display:none}
 .lk.l-valid{color:var(--green)}.lk.l-viitor{color:var(--amber)}
@@ -2861,6 +2893,28 @@ details{margin-top:6px}summary{font-size:12px;color:var(--teal);cursor:pointer}
     else { try { want = localStorage.getItem(HKEY) || ''; } catch (e) {} }
     if (!showSec(want, false)) { showSec(first, false); }
     window.addEventListener('hashchange', function () { if (/^#h-[a-z]+$/.test(location.hash)) { showSec(location.hash.slice(1), false); } });
+  }
+
+  // Materiale: previzualizarea fișierului într-un modal (PDF, HTML, imagini, video; restul doar descărcare)
+  var matDlg = document.getElementById('matDlg');
+  if (matDlg && typeof matDlg.showModal === 'function') {
+    var mf = document.getElementById('matFrame'), mn = document.getElementById('matNote');
+    document.addEventListener('click', function (e) {
+      var b = e.target.closest('.mprev');
+      if (!b) { return; }
+      var ext = b.dataset.ext, url = 'admin.php?a=file&id=' + encodeURIComponent(b.dataset.id), viewable = ['pdf', 'html', 'htm', 'png', 'jpg', 'jpeg', 'mp4'].indexOf(ext) !== -1;
+      document.getElementById('matDlgTtl').textContent = b.dataset.title;
+      document.getElementById('matDlgMeta').textContent = b.dataset.file + ' · ' + ext.toUpperCase();
+      document.getElementById('matOpen').href = url; document.getElementById('matDl').href = url + '&dl=1';
+      document.getElementById('matOpen').hidden = !viewable;
+      // HTML-ul rulează izolat (sandbox fără scripturi și fără acces la sesiune); PDF-ul are nevoie de vizualizatorul browserului
+      if (viewable) { mf.setAttribute('sandbox', ext === 'pdf' ? 'allow-same-origin' : ''); mf.src = url; } else { mf.removeAttribute('src'); }
+      mf.hidden = !viewable; mn.hidden = viewable;
+      mn.textContent = viewable ? '' : 'Previzualizarea nu este disponibilă pentru fișiere ' + ext.toUpperCase() + '. Descarcă fișierul ca să îl deschizi.';
+      matDlg.classList.add('wide'); matDlg.showModal();
+    });
+    document.getElementById('matDlgClose').addEventListener('click', function () { matDlg.close(); });
+    matDlg.addEventListener('close', function () { mf.removeAttribute('src'); });
   }
 
   // Șabloane email: previzualizarea într-un modal, la buton
