@@ -1,0 +1,42 @@
+=== NUME ȘABLON (câmpul „Nume”) ===
+e2e OPS Salarizare – construcții – apel 20 min
+
+=== SUBIECT (câmpul „Subiect”) ===
+{{companie}}: +1.200 RON net lunar pentru salariații de pe teren, cost fiscal zero
+
+=== TEXT (câmpul „Text”, se lipește integral, de la {{salut}} până la smartBIZ Copilot) ===
+{{salut}}
+
+În construcții, echipele de pe șantier cer salarii nete tot mai mari, iar fiecare creștere brută costă firma aproape dublu în taxe. Pentru {{companie}} există o cale legală de a plăti mai mult net fără să crească costul fiscal: e2e OPS Salarizare, soluția noastră pentru firme cu salariați mobili.
+
+Ce obțineți:
+✓ 1.200 RON net în plus pe lună pentru fiecare salariat mobil
+✓ Cost fiscal zero, prin clauza de mobilitate și beneficii în limitele legale
+✓ Documentație justificativă generată automat din pontaj, pentru orice control
+✓ Fără plăți către angajați în afara statului de plată
+✓ Echipe mai stabile, fără mărire de salariu brut
+✓ Implementare fără schimbarea programului de salarizare actual
+
+**Cât economisiți:** aproximativ 10.368 RON pe an pentru fiecare salariat mobil, adică {{economie_an}} pentru cei {{salariati}} salariați mobili ai firmei.
+
+**Cât costă:** implementarea reprezintă 10% din economia primului an, iar licența este 10 EUR + TVA pe lună pentru fiecare salariat beneficiar. Detaliul ofertei este mai jos.
+
+{{livrabile}}
+
+Am pregătit oferta și materialele suport cu cifrele firmei dumneavoastră. Linkurile de mai jos sunt personale, iar accesul se face cu un cod pe care îl primiți pe email.
+
+{{materiale}}
+
+Mecanismul este prevăzut în Codul muncii și în Codul fiscal, iar fiecare sumă plătită are la bază pontajul și documentele generate automat, astfel încât la un control totul este justificat.
+
+Vă propun un apel de 20 de minute în care parcurgem cifrele pentru {{companie}} și răspund la întrebări. Îmi puteți scrie direct ca răspuns la acest email cu două intervale care vă convin. Linkurile rămân active până la {{expira}}.
+
+Cu stimă,
+Gheorghe Sandru
+Managing Partner, AiALL S.R.L.
+smartBIZ Copilot
+
+=== VARIANTE ALTERNATIVE DE SUBIECT (opțional, înlocuiesc subiectul de mai sus) ===
+Cum plătiți mai mult net echipelor de pe teren fără taxe în plus
+{{companie}}: economie de 10.368 RON/an per salariat mobil, legal și documentat
+Ofertă personalizată pentru {{companie}}: salarizare echipe mobile
