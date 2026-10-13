@@ -169,6 +169,9 @@ Gestiunea catalogului de produse și servicii, tabela `catalog` din `ofertare.db
 - „Înlocuiește fișierul” păstrează linkurile deja trimise: clienții deschid noua versiune.
 - Un material dezactivat nu mai poate fi deschis și nu mai apare în șabloane.
 - Pentru fiecare material vezi în câte șabloane apare, de câte ori a fost trimis și de câte ori a fost deschis.
+- Fiecare rând pornește în mod citire; „Editează” (creion) activează titlul, tipul, fișierul și starea și se înlocuiește cu
+  „Salvează” / „Renunță”. „Șterge” (cu confirmare) elimină materialul din șabloane și de pe disc; linkurile deja trimise
+  pentru el nu se mai deschid.
 - Previzualizare (butonul „ochi” de pe rând): PDF, HTML, imagini și video se deschid într-un modal din cockpit, izolat (fără scripturi); DOCX/XLSX/PPTX se descarcă. Fișierul se servește doar utilizatorilor autentificați, prin `admin.php?a=file&id=N` (`&dl=1` pentru descărcare).
 
 ### 6. Utilizatori
@@ -177,7 +180,10 @@ Gestiunea catalogului de produse și servicii, tabela `catalog` din `ofertare.db
 - „Parola mea”: schimbarea propriei parole (parola actuală + parola nouă de minimum 10 caractere, repetată).
 - „Utilizator nou”: nume de utilizator (litere mici, cifre, `. _ @ -`), nume și parolă; lăsată goală, parola se
   generează automat și se afișează o singură dată.
-- Lista: redenumire, activare/dezactivare, parolă nouă (opțional) și ștergere; propriul cont nu poate fi dezactivat sau șters.
+- Lista: fiecare rând pornește în mod citire; „Editează” (creion) activează câmpurile și se înlocuiește cu „Salvează” / „Renunță”.
+  Redenumire, activare/dezactivare, resetarea parolei altui utilizator (se face **fără parola veche**, pentru cazul în care
+  acesta a uitat-o) și ștergere, cu confirmare. Propriul cont nu poate fi dezactivat sau șters, iar propria parolă se schimbă
+  doar din „Parola mea”, cu parola actuală.
 - Contul din `config.php` (`admin_user` / `admin_pass_hash`) intră doar dacă nu există în tabelă un utilizator cu același
   nume; la prima autentificare este copiat în tabelă. Recuperare dacă nimeni nu mai poate intra: pui în `config.php`
   un `admin_user` nou (ex. `recuperare`) cu hash-ul lui, te autentifici cu el și resetezi parolele din listă.
