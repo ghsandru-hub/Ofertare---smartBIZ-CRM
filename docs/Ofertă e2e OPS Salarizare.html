@@ -1,0 +1,310 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Ofertă e2e OPS Salarizare cu Beneficii</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: o coloană de document, antet navy cu cifrele mizei, secțiuni A–I numerotate cu indentare aliniată la textul titlului */
+:root{
+  --bg:#f5f6f7; --paper:#ffffff; --ink:#1b2430; --muted:#5b6672; --line:#d9dee4;
+  --navy:#1F4788; --teal:#2D8B8E; --tint:#eef4f6; --head:#e9eef3;
+  --risk:#b4232a; --ok:#16794c; --amber:#a35a00;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d1520; --paper:#121c29; --ink:#e3e8ee; --muted:#9aa6b3; --line:#263445;
+  --navy:#7fa6e6; --teal:#5cc0c3; --tint:#152534; --head:#18263a;
+  --risk:#ff7b7f; --ok:#5ad19a; --amber:#f0a94a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d1520; --paper:#121c29; --ink:#e3e8ee; --muted:#9aa6b3; --line:#263445;
+  --navy:#7fa6e6; --teal:#5cc0c3; --tint:#152534; --head:#18263a;
+  --risk:#ff7b7f; --ok:#5ad19a; --amber:#f0a94a; color-scheme:dark}
+*{box-sizing:border-box}
+/* Lanțul de lățimi: ecran → body → .doc → main/section/.body → p. Fiecare nivel ia 100% din lățimea de conținut a părintelui; nicio lățime fixă pe text, doar un plafon de 900px pe document */
+html,body{width:100%;max-width:100%;min-width:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.6 var(--sans);padding:24px 16px 48px}
+.doc{width:100%;max-width:900px;min-width:0;margin:0 auto;background:var(--paper);border:1px solid var(--line);border-radius:6px}
+header.top,.stakes,main,section,.body,.quote,.warn,.tw,footer{width:100%;max-width:100%;min-width:0}
+p,h1,h2,h3,ul,ol,li{width:auto;max-width:100%;min-width:0;overflow-wrap:anywhere}
+.stake,.items li>span,.items li>i{min-width:0;overflow-wrap:anywhere}
+header.top{background:#1F4788;color:#fff;padding:28px 32px 24px;border-radius:6px 6px 0 0}
+.org{font:500 12px/1.4 var(--mono);letter-spacing:.06em;text-transform:uppercase;opacity:.85}
+h1{font-size:clamp(22px,4vw,30px);line-height:1.2;margin:10px 0 6px;text-wrap:balance;font-weight:700}
+.sub{margin:0;opacity:.9}
+.meta{margin-top:14px;font:400 13px var(--mono);opacity:.8}
+.stakes{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(170px,100%),1fr));gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
+.stake{background:var(--paper);padding:16px 20px}
+.stake b{display:block;font:600 24px/1.2 var(--sans);font-variant-numeric:tabular-nums}
+.stake span{font-size:13px;color:var(--muted)}
+.stake.ok b{color:var(--ok)} .stake.risk b{color:var(--risk)} .stake.n b{color:var(--teal)}
+main{padding:8px 32px 32px}
+section{padding-top:20px}
+h2{display:flex;gap:12px;align-items:baseline;font-size:19px;color:var(--navy);margin:18px 0 8px;padding:8px 12px;background:var(--head);border-radius:4px;text-wrap:balance}
+h2 .n{font:600 15px var(--mono);color:var(--teal);min-width:1.4em}
+h3{display:flex;gap:10px;font-size:16px;margin:18px 0 6px;color:var(--ink)}
+h3 .n{color:var(--teal);font-family:var(--mono);min-width:1.4em}
+/* indentare: corpul se aliniază cu prima literă a titlului */
+.body{padding-left:calc(12px + 1.4em + 12px)}
+.body .body{padding-left:calc(1.4em + 10px)}
+p{margin:0 0 10px}
+.items{list-style:none;margin:0 0 10px;padding:0}
+.items li{display:grid;grid-template-columns:1.8em minmax(0,1fr);margin-bottom:6px}
+.items li>i{font-style:normal;color:var(--muted);font-family:var(--mono);font-size:14px}
+ol.steps{margin:0 0 10px;padding-left:1.4em}
+ol.steps li{margin-bottom:6px}
+a{color:var(--teal);text-decoration:underline;text-underline-offset:2px}
+a:hover{color:var(--navy)}
+a:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.quote{border-left:3px solid var(--teal);background:var(--tint);padding:10px 14px;margin:12px 0;border-radius:0 4px 4px 0}
+.warn{border-left:3px solid var(--risk);background:var(--tint);padding:10px 14px;margin:12px 0;border-radius:0 4px 4px 0}
+.tw{overflow-x:auto;margin:10px 0 14px;border:1px dotted var(--muted);border-radius:4px}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
+th,td{padding:8px 10px;text-align:left;vertical-align:top;border-bottom:1px dotted var(--line)}
+th{background:var(--head);color:var(--navy);font-weight:600;font-size:13px}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:13px;white-space:nowrap}
+/* antetele numerice se împart pe mai multe rânduri ca tabelul să încapă în lățimea paginii; doar cifrele rămân pe un singur rând */
+th.num{white-space:normal;overflow-wrap:normal}
+tr:last-child td{border-bottom:0}
+.pill{display:inline-block;font:500 12px var(--mono);padding:1px 8px;border-radius:10px;border:1px solid currentColor}
+.pill.y{color:var(--amber)} .pill.n{color:var(--ok)}
+.note{font-size:13px;color:var(--muted)}
+footer{border-top:1px solid var(--line);padding:16px 32px;font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:8px 24px;justify-content:space-between}
+@media (max-width:560px){
+  header.top{padding:22px 18px} main{padding:4px 16px 24px} footer{padding:14px 16px}
+  .body{padding-left:0} .body .body{padding-left:0}
+}
+</style>
+
+<div class="doc">
+<header class="top">
+  <div class="org">AiALL S.R.L. · CUI 48025522 · București</div>
+  <h1>Servicii digitale e2e OPS Salarizare cu Beneficii</h1>
+  <p class="sub">Ofertă pentru prestația suplimentară de remunerare a clauzei de mobilitate: implementare, documentare și evidență, control de conformare Codul muncii / Codul fiscal.</p>
+  <div class="meta">Emisă: 07.10.2026 · Valabilă 30 de zile</div>
+</header>
+
+<div class="stakes">
+  <div class="stake ok"><b>0%</b><span>sarcină fiscală, prestație documentată și în plafon</span></div>
+  <div class="stake risk"><b>cca 72%</b><span>sarcină fiscală la reîncadrarea în venit salarial</span></div>
+  <div class="stake n"><b>10.368 RON</b><span>economie brută / an / salariat mobil la 1.200 RON/lună</span></div>
+</div>
+
+<main>
+
+<section id="a">
+<h2><span class="n">A.</span>Obiectul ofertei și miza fiscală</h2>
+<div class="body">
+<p>AiALL S.R.L. oferă pachetul <strong>Servicii Digitale smartBIZ Copilot e2e OPS Salarizare cu Beneficii</strong>, centrat pe prestația suplimentară pentru remunerarea clauzei de mobilitate (manoperă fără loc de muncă fix). Pentru o prestație de 1.200 RON/lună per salariat mobil, miza este diferența dintre o sarcină fiscală de <strong>0%</strong> (prestație neimpozabilă, în limitele legale) și <strong>cca 72%</strong> (aceeași sumă reclasificată în venit salarial).</p>
+<p>Beneficiul fiscal nu se obține prin simpla acordare a sumei. Fără justificarea necesității și oportunității la implementare și fără documentarea lunară a mobilității efective, organele de control reclasifică prestația în venit salarial (<a href="https://legislatie.just.ro/Public/DetaliiDocument/171282" target="_blank" rel="noopener">Codul fiscal, art. 11 și art. 76 alin. (2) lit. k^1)</a>), cu impozit, contribuții, CAM, dobânzi și penalități pentru toată perioada verificată.</p>
+<div class="quote"><strong>Structurarea înseamnă profit, documentarea înseamnă siguranță.</strong> Economia există doar cât timp poate fi probată, lună de lună, pentru fiecare salariat mobil.</div>
+</div>
+</section>
+
+<section id="b">
+<h2><span class="n">B.</span>Livrabile</h2>
+<div class="body">
+<p>Pachetul are un livrabil nerecurent (implementarea) și două livrabile recurente lunare (documentare și control). Toate se livrează și se acceptă per CIM, cu lookup pe evidența master a salariaților clientului.</p>
+
+<h3><span class="n">1.</span>Implementare (nerecurent)</h3>
+<div class="body"><ul class="items">
+<li><i>a)</i><span>Analiza posturilor și încadrarea locului de muncă: fix vs mobil (<a href="https://legislatie.just.ro/Public/DetaliiDocument/128647" target="_blank" rel="noopener">Codul muncii, art. 17 alin. (3) și art. 25</a>), pe baza naturii reale a activității (șantiere, clienți, puncte de lucru variabile), cu încadrarea pe categorie: mobilitate generală sau șoferi din transportul rutier.</span></li>
+<li><i>b)</i><span>Nota de fundamentare a necesității și oportunității clauzei de mobilitate, per categorie de post — documentul-cheie la un control.</span></li>
+<li><i>c)</i><span>Politica Pachet Salarial cu Beneficii și prevederile corespunzătoare în Regulamentul intern / CCM (<a href="https://legislatie.just.ro/Public/DetaliiDocument/128647" target="_blank" rel="noopener">Codul muncii, art. 242</a>).</span></li>
+<li><i>d)</i><span>Acte adiționale la CIM (sau CIM noi) cu clauza de mobilitate și prestația suplimentară, corelate cu fișa postului (<a href="https://legislatie.just.ro/Public/DetaliiDocument/128647" target="_blank" rel="noopener">Codul muncii, art. 25 și art. 41</a>).</span></li>
+<li><i>e)</i><span>Configurarea în smartBIZ Copilot: CEV angajați, plafoane fiscale, reguli de calcul, fluxul de pontaj al manoperei mobile (time tracker / timesheet).</span></li>
+<li><i>f)</i><span>Instruirea responsabililor (HR, șefi de echipă) pentru colectarea zilnică a pontajului mobil.</span></li>
+</ul></div>
+
+<h3><span class="n">2.</span>Documentare și evidență (recurent, lunar)</h3>
+<div class="body"><ul class="items">
+<li><i>a)</i><span>Colectarea pontajului manoperei mobile: zile și ore lucrate, locații / șantiere / clienți, per salariat.</span></li>
+<li><i>b)</i><span>Centralizatorul lunar al mobilității per salariat, reconciliat cu pontajul general și concediile.</span></li>
+<li><i>c)</i><span>Calculul prestației suplimentare neimpozabile și, după caz, al părții care depășește plafonul (tratată ca venit salarial).</span></li>
+<li><i>d)</i><span>Dosarul probator lunar per CIM: pontaj, centralizator, documente suport, arhivat și trasabil.</span></li>
+<li><i>e)</i><span>Datele pentru salarizare și pentru D112 (rubrica prestațiilor suplimentare din clauza de mobilitate).</span></li>
+</ul></div>
+
+<h3><span class="n">3.</span>Control conformare Codul muncii / Codul fiscal (recurent, lunar)</h3>
+<div class="body"><ul class="items">
+<li><i>a)</i><span>Verificarea existenței și valabilității clauzei pentru fiecare salariat plătit (act adițional, fișa postului, politică — <a href="https://legislatie.just.ro/Public/DetaliiDocument/128647" target="_blank" rel="noopener">Codul muncii, art. 25</a>).</span></li>
+<li><i>b)</i><span>Verificarea încadrării în plafoanele fiscale aplicabile categoriei (<a href="https://legislatie.just.ro/Public/DetaliiDocument/171282" target="_blank" rel="noopener">Codul fiscal, art. 76 alin. (2) lit. k), alin. (4^1) lit. a) și art. 142 lit. aa)</a>; detalii la secțiunea F).</span></li>
+<li><i>c)</i><span>Verificarea coerenței: fără prestație de mobilitate pe perioada concediului medical și corelarea cu indemnizația de concediu de odihnă.</span></li>
+<li><i>d)</i><span>Raport lunar de conformare: neconformități, sume reîncadrate, recomandări, corecții înainte de depunerea D112.</span></li>
+</ul></div>
+</div>
+</section>
+
+<section id="c">
+<h2><span class="n">C.</span>Pașii de implementare</h2>
+<div class="body">
+<p>Implementarea durează estimativ 3–4 săptămâni de la primirea datelor; prima lună de plată a prestației este luna următoare semnării actelor adiționale.</p>
+<ol class="steps">
+<li><strong>Diagnostic.</strong> Inventarul posturilor, al locurilor de muncă efective și al salariilor de bază; identificarea salariaților cu mobilitate reală și a categoriei lor.</li>
+<li><strong>Fundamentare.</strong> Nota de necesitate și oportunitate per categorie de post; simularea plafoanelor fiscale per salariat.</li>
+<li><strong>Structurarea pachetului.</strong> Politica Pachet Salarial cu Beneficii: suma prestației, condițiile de acordare, regulile pentru concedii și absențe, menținerea venitului net constant.</li>
+<li><strong>Cadrul juridic.</strong> Acte adiționale la CIM, fișe de post, completări RI / CCM (<a href="https://legislatie.just.ro/Public/DetaliiDocument/128647" target="_blank" rel="noopener">Codul muncii, art. 17, art. 25, art. 41 și art. 242</a>); transmiterea elementelor salariale în REGES-ONLINE.</li>
+<li><strong>Configurarea evidenței.</strong> Activarea în smartBIZ Copilot a CEV-ului angajați, a time tracker-ului pentru manopera mobilă și a regulilor de control al plafoanelor.</li>
+<li><strong>Pornire și prima închidere.</strong> Instruirea responsabililor de pontaj; prima lună rulată cu control dublu înainte de salarizare și D112.</li>
+</ol>
+</div>
+</section>
+
+<section id="d">
+<h2><span class="n">D.</span>Beneficii pentru angajat și angajator</h2>
+<div class="body">
+<p>Aceeași sumă netă ajunge la salariat fără sarcina fiscală a salariului, iar angajatorul plătește doar ce ajunge efectiv la salariat.</p>
+<div class="tw"><table>
+<thead><tr><th>Aspect</th><th>Angajat</th><th>Angajator</th></tr></thead>
+<tbody>
+<tr><td>Venit</td><td>+1.200 RON net/lună, 14.400 RON/an, fără impozit și contribuții</td><td>Același net pentru salariat la un cost cu cca 72% mai mic față de plata ca salariu</td></tr>
+<tr><td>Cost</td><td>—</td><td>Economie de cca 864 RON/lună per salariat mobil</td></tr>
+<tr><td>Stabilitate</td><td>Venit net lunar constant, inclusiv în concediul de odihnă (prin baza de calcul a indemnizației de CO)</td><td>Buget de manoperă previzibil, pe salariat și pe proiect/șantier</td></tr>
+<tr><td>Siguranță</td><td>Venit pe care nu riscă să-l vadă contestat</td><td>Dosar probator lunar; risc de reclasificare controlat înainte de D112</td></tr>
+<tr><td>Atractivitate</td><td>Recunoașterea explicită a efortului de deplasare</td><td>Argument de recrutare și retenție pentru posturile mobile</td></tr>
+<tr><td>Informație</td><td>—</td><td>Pontaj real al manoperei mobile: cost pe proiect, productivitate, deplasări</td></tr>
+</tbody></table></div>
+</div>
+</section>
+
+<section id="e">
+<h2><span class="n">E.</span>Valoarea economiei anuale</h2>
+<div class="body">
+<p>Economia brută este de <strong>10.368 RON/an per salariat mobil</strong> (1.200 RON × 12 luni × 72%); după costul serviciului rămân cca <strong>8.719 RON în primul an</strong> și <strong>9.756 RON din anul 2</strong>.</p>
+<p>Cei 72% reprezintă costul suplimentar pe care angajatorul l-ar suporta pentru a asigura același net de 1.200 RON sub formă de salariu (impozit pe venit, CAS, CASS, CAM, cu recalculare brut din net).</p>
+<div class="tw"><table>
+<thead><tr><th class="num">Salariați mobili</th><th class="num">Economie brută / an</th><th class="num">Implementare, 10% an 1</th><th class="num">Licență utilizare / an</th><th class="num">Economie netă an 1</th><th class="num">Economie netă din an 2</th></tr></thead>
+<tbody>
+<tr><td class="num">1</td><td class="num">10.368</td><td class="num">1.037</td><td class="num">612</td><td class="num">8.719</td><td class="num">9.756</td></tr>
+<tr><td class="num">10</td><td class="num">103.680</td><td class="num">10.368</td><td class="num">6.120</td><td class="num">87.192</td><td class="num">97.560</td></tr>
+<tr><td class="num">25</td><td class="num">259.200</td><td class="num">25.920</td><td class="num">15.300</td><td class="num">217.980</td><td class="num">243.900</td></tr>
+<tr><td class="num">50</td><td class="num">518.400</td><td class="num">51.840</td><td class="num">30.600</td><td class="num">435.960</td><td class="num">487.800</td></tr>
+</tbody></table></div>
+<p class="note">Valori în RON, fără TVA. Ipoteze: prestație 1.200 RON/lună în toate cele 12 luni, încadrată integral în plafoane; licență de utilizare 10 EUR × 12 luni la un curs estimativ de 5,10 RON/EUR.</p>
+</div>
+</section>
+
+<section id="f">
+<h2><span class="n">F.</span>Documentarea mobilității și controlul încadrării în limitele fiscale</h2>
+<div class="body">
+<p>Prestația suplimentară este o sumă fixă de <strong>1.200 RON/lună, indiferent de numărul de zile lucrătoare</strong>. Neimpozitarea ei stă pe proba că postul nu are loc de muncă fix, iar proba este pontajul manoperei mobile.</p>
+
+<h3><span class="n">1.</span>Condiții de conformare</h3>
+<div class="body"><ul class="items">
+<li><i>a)</i><span><strong>Clauza de mobilitate</strong> prevăzută în CIM / actul adițional, corelată cu fișa postului și cu Politica Pachet Salarial cu Beneficii (<a href="https://legislatie.just.ro/Public/DetaliiDocument/128647" target="_blank" rel="noopener">Codul muncii, art. 25 alin. (2)</a>).</span></li>
+<li><i>b)</i><span><strong>Lipsa locului de muncă fix:</strong> activitatea se desfășoară integral în condiții de mobilitate (șantiere, clienți, locații variabile — <a href="https://legislatie.just.ro/Public/DetaliiDocument/128647" target="_blank" rel="noopener">Codul muncii, art. 25 alin. (1)</a>). Un post fără loc fix nu are activitate mixtă.</span></li>
+<li><i>c)</i><span><strong>Limitele fiscale</strong>, verificate lunar per salariat, după categoria de mobilitate (punctul 2): pentru mobilitatea generală, plafonul lunar de cel mult 33% din salariul de bază (pentru 1.200 RON, salariu de bază de minim <strong>3.637 RON</strong>) și plafonul de referință de 2,5 × indemnizația de delegare pentru instituțiile publice (<a href="https://legislatie.just.ro/Public/DetaliiDocument/171282" target="_blank" rel="noopener">Codul fiscal, art. 76 alin. (4^1) lit. a)</a>; <a href="https://legislatie.just.ro/Public/DetaliiDocument/205001" target="_blank" rel="noopener">HG nr. 714/2018</a>).</span></li>
+<li><i>d)</i><span><strong>Concedii:</strong> prestația nu se acordă în concediul medical; în concediul de odihnă se reflectă indirect, prin baza de calcul a indemnizației de CO (<a href="https://legislatie.just.ro/Public/DetaliiDocument/128647" target="_blank" rel="noopener">Codul muncii, art. 150</a>).</span></li>
+</ul></div>
+
+<h3><span class="n">2.</span>Mobilitatea generală vs mobilitatea șoferilor</h3>
+<div class="body">
+<p>Codul fiscal tratează diferit două categorii de salariați mobili: salariații fără loc de muncă fix, în general, și lucrătorii mobili din transportul rutier. Încadrarea greșită a categoriei schimbă plafonul aplicabil și baza de calcul.</p>
+<div class="tw"><table>
+<thead><tr><th>Criteriu</th><th>Mobilitate generală</th><th>Mobilitatea șoferilor (transport rutier)</th></tr></thead>
+<tbody>
+<tr><td>Cine</td><td>Salariați fără loc de muncă fix: construcții, montaj, service, agenți de teren</td><td>Personalul care efectuează activități mobile de transport rutier, definit de HG nr. 38/2008</td></tr>
+<tr><td>Bază legală</td><td><a href="https://legislatie.just.ro/Public/DetaliiDocument/171282" target="_blank" rel="noopener">Codul fiscal, art. 76 alin. (2) lit. k^1) și alin. (4^1) lit. a)</a></td><td><a href="https://legislatie.just.ro/Public/DetaliiDocument/171282" target="_blank" rel="noopener">Codul fiscal, art. 76 alin. (2) lit. k)</a></td></tr>
+<tr><td>Plafon neimpozabil</td><td>2,5 × indemnizația de delegare pentru instituțiile publice (<a href="https://legislatie.just.ro/Public/DetaliiDocument/205001" target="_blank" rel="noopener">HG nr. 714/2018</a>)</td><td>2,5 × indemnizația de delegare în țară (<a href="https://legislatie.just.ro/Public/DetaliiDocument/205001" target="_blank" rel="noopener">HG nr. 714/2018</a>), respectiv 2,5 × diurna legală în străinătate</td></tr>
+<tr><td>Limită lunară</td><td>Intră în plafonul cumulat de 33% din salariul de bază, împreună cu celelalte beneficii din art. 76 alin. (4^1)</td><td>Nu intră în plafonul de 33%; limită proprie de 3 salarii de bază, proporțional cu zilele de activitate</td></tr>
+<tr><td>Spațiu pentru alte beneficii</td><td>Doar diferența până la 33%</td><td>Plafonul de 33% rămâne integral disponibil</td></tr>
+<tr><td>Probe specifice</td><td>Pontaj în time tracker pe locații / șantiere / clienți; nota de fundamentare a lipsei locului fix</td><td>Pontaj în time tracker corelat cu foile de parcurs, datele tahografului și cursele efectuate (în țară / în străinătate)</td></tr>
+</tbody></table></div>
+<p>În pachet, categoria se stabilește per CIM la implementare și se verifică lunar în controlul de conformare. Un șofer tratat ca mobilitate generală pierde plafonul separat; un salariat care nu face transport rutier tratat ca șofer generează reîncadrare.</p>
+</div>
+
+<h3><span class="n">3.</span>Ce trebuie să probeze documentarea</h3>
+<div class="body"><p>Documentația justificativă este exact ceea ce cer echipele de control ANAF pentru justificarea încadrărilor fiscale reduse și a scutirilor de taxe și impozite. Fără ea, tratamentul fiscal favorabil nu poate fi susținut.</p>
+<ul class="items">
+<li><i>a)</i><span><strong>Necesitatea și oportunitatea</strong>, la implementare: de ce postul nu are loc fix (natura activității), nu doar că s-a semnat o clauză (sarcina probei: <a href="https://legislatie.just.ro/Public/FormaPrintabila/00000G0YZX4HQ2NBF771PRKG2U2WS61K" target="_blank" rel="noopener">Codul de procedură fiscală, art. 73</a>).</span></li>
+<li><i>b)</i><span><strong>Realitatea mobilității</strong>, lunar: unde a lucrat salariatul și pe ce proiect, în fiecare zi lucrată.</span></li>
+<li><i>c)</i><span><strong>Coerența</strong> cu restul evidențelor: pontaj general, concedii, devize și situații de lucrări pe șantier, foi de parcurs pentru șoferi.</span></li>
+</ul></div>
+
+<h3><span class="n">4.</span>Pontajul manoperei mobile în time tracker</h3>
+<div class="body">
+<p>Time tracker-ul smartBIZ Copilot colectează zilnic, per salariat: data, orele, locația / șantierul / clientul și operațiunea pe care s-a consumat manopera. Din aceste înregistrări rezultă dosarul probator lunar al mobilității și controlul încadrării în limitele fiscale.</p>
+<div class="warn">Pontajul servește dublu: probează beneficiul fiscal la control și alocă costul real al manoperei pe proiecte și rezultate. <strong>O lună nedocumentată transformă întreaga prestație în venit salarial.</strong></div>
+</div>
+</div>
+</section>
+
+<section id="g">
+<h2><span class="n">G.</span>Cost și condiții comerciale</h2>
+<div class="body">
+<p>Costul este legat direct de economia obținută: implementarea costă 10% din economia primului an, iar licența de utilizare a pachetului de servicii digitale e2e OPS Salarizare cu Beneficii costă 10 EUR + TVA pe lună per salariat remunerat prin prestația suplimentară pentru clauza de mobilitate.</p>
+<div class="tw"><table>
+<thead><tr><th>Componentă</th><th>Bază de calcul</th><th>Tarif</th><th>Facturare</th></tr></thead>
+<tbody>
+<tr><td>1. Implementare</td><td>Economia estimată în primul an de utilizare a prestației suplimentare</td><td>10% + TVA (cca 1.037 RON per salariat mobil la 1.200 RON/lună)</td><td>50% la semnarea actelor adiționale, 50% după prima lună rulată</td></tr>
+<tr><td>Licență de utilizare e2e OPS Salarizare cu Beneficii (include 2. Documentare și evidență și 3. Control conformare)</td><td>Numărul de salariați remunerați în luna respectivă prin prestația suplimentară pentru clauza de mobilitate</td><td>10 EUR + TVA / lună per salariat</td><td>Lunar, după închiderea salarizării</td></tr>
+</tbody></table></div>
+<ul class="items">
+<li><i>a)</i><span>Economia din primul an se calculează pe salariații și sumele cuprinse în actele adiționale semnate la implementare.</span></li>
+<li><i>b)</i><span>Licența se facturează în lei, la cursul BNR din ziua facturării, numai pentru salariații care au primit prestația în luna respectivă.</span></li>
+<li><i>c)</i><span>Salariații mobili adăugați ulterior se implementează în aceleași condiții (10% din economia pe primele 12 luni de la acordare).</span></li>
+</ul>
+</div>
+</section>
+
+<section id="h">
+<h2><span class="n">H.</span>Responsabilități și condiții de livrare</h2>
+<div class="body">
+<p>Răspunderea urmează câștigul: AiALL răspunde pentru corectitudinea fundamentării, a calculului și a controlului, iar clientul pentru realitatea mobilității și completitudinea pontajului.</p>
+<ul class="items">
+<li><i>a)</i><span><strong>AiALL:</strong> documentele de implementare, configurarea platformei, calculul lunar al plafoanelor, dosarul probator și raportul de conformare, pe baza datelor primite.</span></li>
+<li><i>b)</i><span><strong>Clientul:</strong> date complete despre posturi și salarii, semnarea actelor, pontajul zilnic al manoperei mobile în time tracker și semnalarea schimbărilor de activitate.</span></li>
+<li><i>c)</i><span>Sumele care nu pot fi documentate ca mobilitate sunt reîncadrate ca venit salarial (<a href="https://legislatie.just.ro/Public/DetaliiDocument/171282" target="_blank" rel="noopener">Codul fiscal, art. 76 alin. (2) lit. k^1)</a>) înainte de D112; decizia finală de plată rămâne a clientului.</span></li>
+<li><i>d)</i><span>Serviciile sunt servicii digitale smartBIZ Copilot, ghidate de modelul smartBIZ. Oferta este valabilă 30 de zile de la data emiterii.</span></li>
+</ul>
+</div>
+</section>
+
+<section id="i">
+<h2><span class="n">I.</span>Alte beneficii în pachetul salarial și costul lor fiscal</h2>
+<div class="body">
+<p>Prestația de mobilitate generală consumă din plafonul lunar de 33% din salariul de bază, iar cea a șoferilor din transportul rutier nu; celelalte beneficii din același plafon încap doar în diferența rămasă. Biletele de valoare și cadourile ocazionale au plafoane proprii, în afara celui de 33%.</p>
+<div class="tw"><table>
+<thead><tr><th class="num">Nr.</th><th>Beneficiu</th><th>Plafon</th><th>Cost fiscal</th><th>În plafonul de 33%</th><th>Bază legală</th></tr></thead>
+<tbody>
+<tr><td class="num">1</td><td>Prestație suplimentară, clauza de mobilitate (generală)</td><td>2,5 × indemnizația de delegare; 1.200 RON/lună în prezenta ofertă</td><td>0% în plafon</td><td><span class="pill y">Da</span></td><td><a href="https://legislatie.just.ro/Public/DetaliiDocument/171282" target="_blank" rel="noopener">CF art. 76 alin. (4^1) lit. a)</a></td></tr>
+<tr><td class="num">2</td><td>Prestație de mobilitate pentru șoferi (HG nr. 38/2008)</td><td>2,5 × indemnizația de delegare / diurna legală; maximum 3 salarii de bază</td><td>0% în plafon</td><td><span class="pill n">Nu</span></td><td><a href="https://legislatie.just.ro/Public/DetaliiDocument/171282" target="_blank" rel="noopener">CF art. 76 alin. (2) lit. k)</a></td></tr>
+<tr><td class="num">3</td><td>Hrană acordată de angajator</td><td>Valoarea tichetului de masă / zi</td><td>0% în plafon</td><td><span class="pill y">Da</span></td><td><a href="https://legislatie.just.ro/Public/DetaliiDocument/171282" target="_blank" rel="noopener">CF art. 76 alin. (4^1)</a></td></tr>
+<tr><td class="num">4</td><td>Cazare / chirie pentru spațiu pus la dispoziție</td><td>20% din salariul de bază minim brut / lună</td><td>0% în plafon</td><td><span class="pill y">Da</span></td><td><a href="https://legislatie.just.ro/Public/DetaliiDocument/171282" target="_blank" rel="noopener">CF art. 76 alin. (4^1)</a></td></tr>
+<tr><td class="num">5</td><td>Contribuții la pensii facultative</td><td>400 EUR / an / salariat</td><td>0% în plafon</td><td><span class="pill y">Da</span></td><td><a href="https://legislatie.just.ro/Public/DetaliiDocument/171282" target="_blank" rel="noopener">CF art. 76 alin. (4^1)</a></td></tr>
+<tr><td class="num">6</td><td>Asigurare voluntară de sănătate / abonamente medicale</td><td>400 EUR / an / salariat</td><td>0% în plafon</td><td><span class="pill y">Da</span></td><td><a href="https://legislatie.just.ro/Public/DetaliiDocument/171282" target="_blank" rel="noopener">CF art. 76 alin. (4^1)</a></td></tr>
+<tr><td class="num">7</td><td>Tichete de masă</td><td>Valoarea nominală maximă legală / zi lucrată</td><td>Impozit 10% + CASS 10%; fără CAS și CAM</td><td><span class="pill n">Nu</span></td><td><a href="https://legeaz.net/monitorul-oficial-599-2018/lege-165-2018-acordare-bilete-valoare-tichete-masa-cadou-cresa-vouchere-vacanta" target="_blank" rel="noopener">Legea nr. 165/2018</a>; <a href="https://legislatie.just.ro/Public/DetaliiDocument/171282" target="_blank" rel="noopener">CF art. 76</a></td></tr>
+<tr><td class="num">8</td><td>Vouchere de vacanță</td><td>6 salarii de bază minime brute / an</td><td>Impozit 10% + CASS 10%; fără CAS și CAM</td><td><span class="pill n">Nu</span></td><td><a href="https://legeaz.net/monitorul-oficial-599-2018/lege-165-2018-acordare-bilete-valoare-tichete-masa-cadou-cresa-vouchere-vacanta" target="_blank" rel="noopener">Legea nr. 165/2018</a>; <a href="https://legislatie.just.ro/Public/DetaliiDocument/171282" target="_blank" rel="noopener">CF art. 76</a></td></tr>
+<tr><td class="num">9</td><td>Cadouri / tichete cadou ocazionale (8 martie, Paște, 1 iunie, Crăciun etc.)</td><td>300 RON / ocazie / persoană, inclusiv pentru copiii minori</td><td>0%</td><td><span class="pill n">Nu</span></td><td><a href="https://legislatie.just.ro/Public/DetaliiDocument/171282" target="_blank" rel="noopener">CF art. 76 alin. (4) lit. a)</a></td></tr>
+<tr><td class="num">10</td><td>Salariu (referință)</td><td>—</td><td>Cca 72% din net (impozit 10%, CAS 25%, CASS 10%, CAM 2,25%)</td><td>—</td><td><a href="https://legislatie.just.ro/Public/DetaliiDocument/171282" target="_blank" rel="noopener">CF art. 64, 138, 156, 220^3</a></td></tr>
+</tbody></table></div>
+<ul class="items">
+<li><i>a)</i><span><strong>Exemplu:</strong> la un salariu de bază de 5.000 RON, plafonul de 33% este de 1.650 RON; după prestația de mobilitate generală de 1.200 RON rămân 450 RON pentru hrană, asigurare de sănătate sau pensie facultativă fără sarcină fiscală.</span></li>
+<li><i>b)</i><span>Ordinea în care beneficiile se includ în plafonul de 33% o stabilește angajatorul (<a href="https://legislatie.just.ro/Public/DetaliiDocument/171282" target="_blank" rel="noopener">Codul fiscal, art. 76 alin. (4^1)</a>); sumele care depășesc plafonul devin venit salarial.</span></li>
+<li><i>c)</i><span>Orice beneficiu suplimentar se prevede în CIM, RI sau CCM (<a href="https://legislatie.just.ro/Public/DetaliiDocument/128647" target="_blank" rel="noopener">Codul muncii, art. 242</a>) și se configurează, documentează și controlează lunar în același pachet de servicii digitale e2e OPS Salarizare cu Beneficii, la cerere.</span></li>
+</ul>
+</div>
+</section>
+
+<section id="ref">
+<h2><span class="n">§</span>Referințe legale</h2>
+<div class="body"><ul class="items">
+<li><i>a)</i><span><strong><a href="https://legislatie.just.ro/Public/DetaliiDocument/128647" target="_blank" rel="noopener">Codul muncii</a></strong> (Legea nr. 53/2003): art. 17 (informarea privind locul de muncă), art. 25 (clauza de mobilitate și prestațiile suplimentare), art. 41 (modificarea CIM prin act adițional), art. 150 (indemnizația de concediu de odihnă), art. 242 (regulamentul intern).</span></li>
+<li><i>b)</i><span><strong><a href="https://legislatie.just.ro/Public/DetaliiDocument/171282" target="_blank" rel="noopener">Codul fiscal</a></strong> (Legea nr. 227/2015): art. 76 alin. (2) lit. k^1) (prestațiile din clauza de mobilitate, asimilate salariilor), art. 76 alin. (4^1) lit. a) (neimpozabile în limita a 2,5 × indemnizația de delegare și a plafonului de 33%), art. 76 alin. (2) lit. k) (regimul distinct al lucrătorilor mobili din transportul rutier), art. 142 lit. aa) (excluderea din baza CAS, preluată pentru CASS și CAM), art. 11 (reîncadrarea tranzacțiilor fără scop economic), art. 76 alin. (4) lit. a) (cadourile ocazionale), art. 64, 138, 156 și 220^3 (cotele impozitului, CAS, CASS și CAM).</span></li>
+<li><i>c)</i><span><strong><a href="https://legeaz.net/monitorul-oficial-22-2016/hg-1-2016-norme-metodologice-cod-fiscal" target="_blank" rel="noopener">Normele metodologice</a></strong> de aplicare a Codului fiscal (HG nr. 1/2016), titlurile IV și V, pentru art. 76, art. 142 și art. 157.</span></li>
+<li><i>d)</i><span><strong><a href="https://legislatie.just.ro/Public/DetaliiDocument/205001" target="_blank" rel="noopener">HG nr. 714/2018</a></strong> privind drepturile personalului autorităților și instituțiilor publice pe perioada delegării și detașării — nivelul indemnizației de delegare.</span></li>
+<li><i>e)</i><span><strong>HG nr. 38/2008</strong> privind organizarea timpului de muncă al persoanelor care efectuează activități mobile de transport rutier — definiția lucrătorilor mobili.</span></li>
+<li><i>f)</i><span><strong><a href="https://legislatie.just.ro/Public/FormaPrintabila/00000G0YZX4HQ2NBF771PRKG2U2WS61K" target="_blank" rel="noopener">Codul de procedură fiscală</a></strong> (Legea nr. 207/2015): art. 73 (sarcina probei în dovedirea situației de fapt fiscale).</span></li>
+<li><i>g)</i><span><strong>Declarația 112</strong> — instrucțiunile de completare în vigoare, pentru raportarea prestațiilor suplimentare din clauza de mobilitate.</span></li>
+<li><i>h)</i><span><strong><a href="https://legeaz.net/monitorul-oficial-599-2018/lege-165-2018-acordare-bilete-valoare-tichete-masa-cadou-cresa-vouchere-vacanta" target="_blank" rel="noopener">Legea nr. 165/2018</a></strong> privind acordarea biletelor de valoare (tichete de masă, vouchere de vacanță, tichete cadou).</span></li>
+</ul></div>
+</section>
+
+</main>
+<footer>
+  <span>AiALL S.R.L. · CUI 48025522 · smartBIZ Copilot</span>
+  <span>Ofertă emisă 07.10.2026 · valabilă 30 de zile</span>
+</footer>
+</div>
+
+</body></html>
