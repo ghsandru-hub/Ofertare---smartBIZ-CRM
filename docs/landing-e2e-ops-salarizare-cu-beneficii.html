@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Salarizare cu Beneficii</title>
+<meta name="description" content="Pachetul de servicii digitale e2e OPS Salarizare cu Beneficii al smartBIZ Copilot: prestația suplimentară pentru clauza de mobilitate, 1.200 RON net/lună per salariat mobil cu 0% sarcină fiscală, documentată și controlată lunar.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Landing page în stilul site-ului aiall.ro / smartBIZ Copilot: antet navy→teal fixat cu blur, bară de secțiuni cu subliniere teal,
+   fiecare secțiune într-un container distinct, paleta smartBIZ (navy, teal, amber), IBM Plex Sans / Mono, temă deschisă și închisă. */
+:root{
+  --bg:#f5f6f7;--surface:#ffffff;--ink:#1b2430;--muted:#5b6672;--line:#d9dee4;--soft:#eef2f5;--head:#e9eef3;
+  --navy:#1F4788;--navy2:#2A5899;--navy3:#4A90B5;--teal:#2D8B8E;--teal-l:#3aacb0;--amber:#d97706;--green:#16794c;--red:#b4232a;
+  --hd:#fbfcfe;--hd-grad:linear-gradient(115deg,rgba(31,71,136,.97),rgba(45,139,142,.88));--hd-border:rgba(31,71,136,.20);
+  --hero:linear-gradient(135deg,#1F4788 0%,#24618f 55%,#2D8B8E 100%);
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;--mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0d1520;--surface:#121c29;--ink:#e3e8ee;--muted:#9aa6b3;--line:#263445;--soft:#18263a;--head:#18263a;
+  --navy:#7fa6e6;--navy2:#6f9ad8;--navy3:#5fb0d4;--teal:#5cc0c3;--teal-l:#6fd0d3;--amber:#f0a94a;--green:#5ad19a;--red:#ff7b7f;
+  --hd:#0f1826;--hd-grad:linear-gradient(115deg,rgba(31,71,136,.92),rgba(45,139,142,.78));--hd-border:rgba(45,139,142,.30);
+  --hero:linear-gradient(135deg,#142d57 0%,#173f5e 55%,#1d5f62 100%);color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d1520;--surface:#121c29;--ink:#e3e8ee;--muted:#9aa6b3;--line:#263445;--soft:#18263a;--head:#18263a;
+  --navy:#7fa6e6;--navy2:#6f9ad8;--navy3:#5fb0d4;--teal:#5cc0c3;--teal-l:#6fd0d3;--amber:#f0a94a;--green:#5ad19a;--red:#ff7b7f;
+  --hd:#0f1826;--hd-grad:linear-gradient(115deg,rgba(31,71,136,.92),rgba(45,139,142,.78));--hd-border:rgba(45,139,142,.30);
+  --hero:linear-gradient(135deg,#142d57 0%,#173f5e 55%,#1d5f62 100%);color-scheme:dark}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:108px}
+html,body{width:100%;max-width:100%;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 var(--sans);overflow-x:hidden}
+p,h1,h2,h3,li{overflow-wrap:anywhere;min-width:0}
+a{color:var(--teal);text-decoration:none}
+a:hover{color:var(--navy)}
+a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.in{max-width:1180px;margin:0 auto;padding:0 20px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* ---- ANTET: 60px, fixat, gradient navy→teal cu blur, logo cu marcă + titlu, pill de temă, buton CTA ---- */
+.top{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--hd-grad);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 4px 24px rgba(13,21,32,.35)}
+.top .in{height:60px;display:flex;align-items:center;gap:14px}
+.logo{display:flex;align-items:center;gap:11px;font-weight:700;font-size:16px;letter-spacing:-.3px;color:#fff;text-decoration:none}
+.logo:hover{color:#fff}
+.logo .mark{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;color:#fff;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);box-shadow:0 2px 10px rgba(13,21,32,.3),inset 0 1px 0 rgba(255,255,255,.18);font:700 13px var(--mono);letter-spacing:-.02em}
+.logo .ttl{line-height:1.15}
+.sbc-smart{color:#F2F6FA;font-weight:600}.sbc-biz{color:#3aacb0;font-weight:700}.sbc-copilot{color:#f0a94a;font-weight:600}
+.logo small{color:rgba(255,255,255,.74);font-weight:500;font-size:10px;display:block;letter-spacing:.4px;margin-top:1px}
+.spacer{flex:1}
+.hbtn{padding:8px 13px;border-radius:9px;cursor:pointer;font:500 12px var(--sans);display:inline-flex;align-items:center;gap:6px;transition:.16s;white-space:nowrap;text-decoration:none;
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;backdrop-filter:blur(6px)}
+.hbtn:hover{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.4);color:#fff;transform:translateY(-1px)}
+.hbtn.cta{background:#f0a94a;border-color:#f0a94a;color:#1b2430;font-weight:600}
+.hbtn.cta:hover{background:#f6b95f;border-color:#f6b95f;color:#1b2430}
+.hd-pill{display:inline-flex;align-items:center;gap:1px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:9px;overflow:hidden;backdrop-filter:blur(6px);vertical-align:middle}
+.hd-pill button{background:transparent;border:0;color:rgba(255,255,255,.8);font:600 13px/1 var(--sans);padding:6px 10px;cursor:pointer;transition:.15s}
+.hd-pill button:hover{color:#fff;background:rgba(255,255,255,.14)}
+.hd-pill button.on{background:#fff;color:#1F4788;box-shadow:inset 0 0 0 1px rgba(255,255,255,.70)}
+
+/* ---- BARA DE SECȚIUNI: fixată sub antet, subliniere teal pe secțiunea vizibilă ---- */
+nav.tabs{position:fixed;top:60px;left:0;right:0;z-index:49;background:var(--hd);border-bottom:1px solid var(--line);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+nav.tabs .in{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding:0 14px}
+nav.tabs .in::-webkit-scrollbar{display:none}
+nav.tabs a{color:var(--muted);padding:13px 14px;font:500 13px var(--sans);text-decoration:none;border-bottom:2px solid transparent;transition:.16s;white-space:nowrap}
+nav.tabs a:hover{color:var(--ink)}
+nav.tabs a[aria-current="true"]{color:var(--teal);border-bottom-color:var(--teal)}
+main{padding-top:108px}
+
+/* ---- HERO ---- */
+.hero{background:var(--hero);color:#fff;position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;inset:auto -10% -40% auto;width:60%;height:140%;background:radial-gradient(closest-side,rgba(255,255,255,.12),transparent 70%);pointer-events:none}
+.hero .in{position:relative;padding:56px 20px 44px;display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:36px;align-items:center}
+.eyebrow{font:500 12px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;opacity:.85;margin:0 0 14px}
+h1{font-size:clamp(28px,4.6vw,46px);line-height:1.12;margin:0 0 16px;letter-spacing:-.02em;text-wrap:balance;font-weight:700}
+h1 em{font-style:normal;color:#f0a94a}
+.lead{font-size:clamp(16px,1.6vw,19px);line-height:1.55;margin:0 0 26px;opacity:.94;max-width:620px}
+.ctas{display:flex;flex-wrap:wrap;gap:12px}
+.btn{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 20px;border-radius:10px;font:600 14px var(--sans);text-decoration:none;border:1px solid transparent;cursor:pointer;transition:.16s;white-space:nowrap}
+.btn.primary{background:#f0a94a;color:#1b2430;border-color:#f0a94a}
+.btn.primary:hover{background:#f6b95f;transform:translateY(-1px);color:#1b2430}
+.btn.ghost{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3);backdrop-filter:blur(6px)}
+.btn.ghost:hover{background:rgba(255,255,255,.22);color:#fff}
+.btn.navy{background:var(--navy);color:#fff;border-color:var(--navy)}
+.btn.navy:hover{filter:brightness(1.1);color:#fff}
+.btn svg{width:18px;height:18px;flex:none}
+.stakes{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stake{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);border-radius:12px;padding:16px 18px;backdrop-filter:blur(8px)}
+.stake b{display:block;font:600 30px/1.15 var(--sans);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.stake span{display:block;font-size:13px;opacity:.88;margin-top:4px;line-height:1.4}
+.stake.ok b{color:#8ff0c1}.stake.risk b{color:#ffb3b6}.stake.n b{color:#f0a94a}.stake.t b{color:#9fe3e5}
+
+/* ---- SECȚIUNI: câte un container distinct, legat de bara de sus ---- */
+section.sec{padding:44px 0 8px}
+section.sec:last-of-type{padding-bottom:48px}
+.panel{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:26px 28px 28px}
+.sechead{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin:0 0 6px}
+.sechead .n{font:600 13px var(--mono);color:var(--teal);letter-spacing:.08em;text-transform:uppercase}
+h2{font-size:clamp(22px,2.8vw,30px);line-height:1.2;margin:0;color:var(--navy);letter-spacing:-.02em;text-wrap:balance}
+.intro{font-size:16px;color:var(--muted);max-width:820px;margin:8px 0 22px}
+h3{font-size:17px;margin:0 0 10px;color:var(--ink)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px 22px;display:flex;flex-direction:column;gap:10px;min-width:0;position:relative}
+.card .ic{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;background:color-mix(in srgb,var(--teal) 14%,var(--surface));color:var(--teal);margin-bottom:2px}
+.card .ic svg{width:22px;height:22px}
+.card .tag{font:500 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.card.rec{border-top:3px solid var(--teal)}.card.once{border-top:3px solid var(--navy)}
+.card ul{margin:0;padding-left:18px;color:var(--ink)}
+.card li{margin:0 0 6px;font-size:14px}
+.card p{margin:0;font-size:14px;color:var(--muted)}
+.quote{border-left:3px solid var(--teal);background:color-mix(in srgb,var(--teal) 9%,var(--surface));padding:14px 18px;margin:18px 0 0;border-radius:0 8px 8px 0;font-size:16px}
+.warn{border-left:3px solid var(--red);background:color-mix(in srgb,var(--red) 7%,var(--surface));padding:14px 18px;border-radius:0 8px 8px 0;font-size:14px}
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.vs{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px 22px;min-width:0}
+.vs .big{display:block;font:600 40px/1.1 var(--sans);letter-spacing:-.03em;font-variant-numeric:tabular-nums;margin:4px 0 6px}
+.vs.good .big{color:var(--green)}.vs.bad .big{color:var(--red)}
+.vs .lbl{font:500 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.vs p{margin:6px 0 0;font-size:14px;color:var(--muted)}
+
+/* pași */
+.steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:14px;counter-reset:s}
+.steps li{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px 20px 18px 62px;position:relative;min-width:0;counter-increment:s}
+.steps li::before{content:counter(s);position:absolute;left:18px;top:18px;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#2D8B8E,#1F4788);color:#fff;font:600 13px var(--mono)}
+.steps b{display:block;margin-bottom:4px}
+.steps span{font-size:14px;color:var(--muted)}
+
+/* tabele */
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
+th,td{padding:10px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{background:var(--head);color:var(--navy);font-weight:600;font-size:13px}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:13px}
+td.num{white-space:nowrap}
+tr:last-child td{border-bottom:0}
+tr.hi td{background:color-mix(in srgb,var(--teal) 8%,var(--surface));font-weight:600}
+.pill{display:inline-block;font:500 12px var(--mono);padding:1px 8px;border-radius:10px;border:1px solid currentColor;white-space:nowrap}
+.pill.y{color:var(--amber)}.pill.n{color:var(--green)}
+.note{font-size:13px;color:var(--muted);margin:10px 0 0}
+
+/* calculator */
+.calc{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:18px}
+.calc .ctl{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px 22px;display:grid;gap:18px;align-content:start}
+.fld label{display:block;font-size:13px;font-weight:600;margin-bottom:6px}
+.fld .row{display:flex;align-items:center;gap:12px}
+.fld input[type=range]{flex:1;accent-color:var(--teal);height:36px;margin:0}
+.fld input[type=number]{width:96px;height:36px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:500 14px var(--mono);padding:0 10px;text-align:right}
+.fld small{display:block;color:var(--muted);font-size:12px;margin-top:4px}
+.res{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-content:start}
+.r{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;min-width:0}
+.r span{display:block;font-size:12px;color:var(--muted)}
+.r b{display:block;font:600 24px/1.2 var(--sans);font-variant-numeric:tabular-nums;margin-top:4px;letter-spacing:-.02em;overflow-wrap:anywhere}
+.r small{display:block;font:12px var(--mono);color:var(--muted);margin-top:4px}
+.r.big{grid-column:1/-1;border-color:var(--teal);background:color-mix(in srgb,var(--teal) 8%,var(--surface))}
+.r.big b{font-size:34px;color:var(--green)}
+.r.cost b{color:var(--amber)}
+.bars{grid-column:1/-1;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.bar{display:grid;grid-template-columns:150px minmax(0,1fr) 110px;align-items:center;gap:12px;margin:8px 0;font-size:13px}
+.bar i{display:block;height:14px;border-radius:7px;background:var(--line);overflow:hidden}
+.bar i b{display:block;height:100%;border-radius:7px;transition:width .25s}
+.bar.sal i b{background:var(--red)}.bar.pre i b{background:var(--green)}
+.bar .v{text-align:right;font:500 13px var(--mono);font-variant-numeric:tabular-nums}
+
+/* preț */
+.price{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.pc{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:24px 26px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.pc.rec{border-color:var(--teal);box-shadow:0 0 0 3px color-mix(in srgb,var(--teal) 16%,transparent)}
+.pc .tag{font:500 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.pc .amt{font:600 34px/1.1 var(--sans);letter-spacing:-.03em;color:var(--navy);margin:4px 0 0}
+.pc .amt small{font:500 14px var(--sans);color:var(--muted);letter-spacing:0}
+.pc ul{margin:8px 0 0;padding-left:18px;font-size:14px}
+.pc li{margin-bottom:6px}
+.pc .fine{font-size:13px;color:var(--muted);margin:auto 0 0;padding-top:10px}
+
+/* faq */
+.faq details{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:0 20px;margin-bottom:10px}
+.faq summary{cursor:pointer;padding:14px 0;font-weight:600;list-style:none;display:flex;align-items:center;gap:10px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::before{content:"";width:9px;height:9px;border-right:2px solid var(--teal);border-bottom:2px solid var(--teal);transform:rotate(-45deg);transition:.16s;flex:none;margin-left:2px}
+.faq details[open] summary::before{transform:rotate(45deg)}
+.faq details p{margin:0 0 16px;font-size:14px;color:var(--muted)}
+
+/* contact */
+.contact{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:18px;align-items:start}
+.contact .box{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:22px 24px}
+.contact .box p{margin:0 0 12px;font-size:14px}
+.contact ul{margin:0 0 16px;padding-left:18px;font-size:14px}
+.who{display:flex;align-items:center;gap:12px;margin-top:4px}
+.who .av{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#2D8B8E,#1F4788);color:#fff;font:700 15px var(--mono);display:grid;place-items:center;flex:none}
+.who b{display:block}.who span{font-size:13px;color:var(--muted)}
+
+/* subsol: doar textul din dreapta */
+.foot{border-top:1px solid var(--line);margin-top:8px}
+.foot .in{padding:16px 20px;display:flex;justify-content:flex-end;font-size:12px;color:var(--muted);text-align:right;flex-wrap:wrap;gap:4px 16px}
+
+@media (max-width:980px){
+  .hero .in{grid-template-columns:1fr;padding:40px 20px 36px}
+  .calc,.contact,.twocol,.price{grid-template-columns:1fr}
+  .panel{padding:20px 18px 22px}
+}
+@media (max-width:640px){
+  .hbtn .btn-txt{display:none}.logo small{display:none}
+  .stakes{grid-template-columns:1fr 1fr}.stake b{font-size:24px}
+  .res{grid-template-columns:1fr}
+  .bar{grid-template-columns:110px minmax(0,1fr) 90px}
+  .in{padding:0 16px}.hero .in{padding:32px 16px 30px}
+}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.bar i b{transition:none}}
+</style>
+</head>
+<body>
+
+<header class="top">
+<div class="in">
+  <a class="logo" href="#top" aria-label="smartBIZ Copilot, începutul paginii">
+    <span class="mark" aria-hidden="true">sB</span>
+    <div class="ttl"><b><span class="sbc-smart">smart</span><span class="sbc-biz">BIZ</span> <span class="sbc-copilot">Copilot</span></b><small>Servicii digitale e2e OPS Salarizare cu Beneficii</small></div>
+  </a>
+  <span class="spacer"></span>
+  <div class="hd-pill theme-pill" id="themeSwitch" title="Temă deschisă / închisă" role="group" aria-label="Temă">
+    <button type="button" data-theme="light" aria-label="Temă deschisă">☀</button>
+    <button type="button" data-theme="dark" aria-label="Temă închisă">🌙</button>
+  </div>
+  <a class="hbtn cta" href="#contact" title="Cere oferta personalizată"><span class="btn-txt">Cere oferta</span><span aria-hidden="true">→</span></a>
+</div>
+</header>
+
+<nav class="tabs" aria-label="Secțiunile paginii">
+<div class="in">
+  <a href="#miza">Miza</a>
+  <a href="#pachet">Pachetul</a>
+  <a href="#pasi">Pașii</a>
+  <a href="#beneficii">Beneficii</a>
+  <a href="#calculator">Calculator</a>
+  <a href="#conformare">Conformare</a>
+  <a href="#pret">Preț</a>
+  <a href="#intrebari">Întrebări</a>
+  <a href="#contact">Contact</a>
+</div>
+</nav>
+
+<main id="top">
+
+<section class="hero" aria-labelledby="h1">
+<div class="in">
+  <div>
+    <p class="eyebrow">AiALL S.R.L. · smartBIZ Copilot · e2e OPS Salarizare cu Beneficii</p>
+    <h1 id="h1">1.200 RON net în plus pentru fiecare salariat mobil, cu <em>0% sarcină fiscală</em></h1>
+    <p class="lead">Prestația suplimentară pentru clauza de mobilitate, implementată corect, documentată lună de lună și controlată înainte de D112. Pachet digital e2e: implementare, documentare și evidență, control de conformare Codul muncii / Codul fiscal.</p>
+    <div class="ctas">
+      <a class="btn primary" href="#contact">Cere oferta personalizată <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      <a class="btn ghost" href="#calculator">Calculează economia</a>
+    </div>
+  </div>
+  <div class="stakes" role="list" aria-label="Cifrele mizei">
+    <div class="stake ok" role="listitem"><b>0%</b><span>sarcină fiscală: prestație documentată și în plafon</span></div>
+    <div class="stake risk" role="listitem"><b>cca 72%</b><span>sarcină fiscală la reîncadrarea în venit salarial</span></div>
+    <div class="stake n" role="listitem"><b>10.368 RON</b><span>economie brută pe an per salariat mobil, la 1.200 RON/lună</span></div>
+    <div class="stake t" role="listitem"><b>3–4 săpt.</b><span>de la primirea datelor până la prima lună de plată</span></div>
+  </div>
+</div>
+</section>
+
+<section class="sec" id="miza" aria-labelledby="h-miza">
+<div class="in"><div class="panel">
+  <div class="sechead"><span class="n">01 · Miza</span><h2 id="h-miza">Structurarea înseamnă profit, documentarea înseamnă siguranță</h2></div>
+  <p class="intro">Pentru o prestație de 1.200 RON/lună per salariat mobil, miza este diferența dintre 0% (prestație neimpozabilă, în limitele legale) și cca 72% (aceeași sumă reclasificată în venit salarial). Beneficiul fiscal nu se obține prin simpla acordare a sumei.</p>
+  <div class="twocol">
+    <div class="vs good">
+      <span class="lbl">Cu pachetul e2e</span>
+      <span class="big">0%</span>
+      <p>Clauză de mobilitate fundamentată, pontaj zilnic al manoperei mobile, dosar probator lunar per CIM și control al plafoanelor înainte de salarizare. Economia poate fi probată la orice control.</p>
+    </div>
+    <div class="vs bad">
+      <span class="lbl">Fără documentare</span>
+      <span class="big">cca 72%</span>
+      <p>Organele de control reclasifică prestația în venit salarial (Codul fiscal, art. 11 și art. 76 alin. (2) lit. k^1)), cu impozit, contribuții, CAM, dobânzi și penalități pentru toată perioada verificată.</p>
+    </div>
+  </div>
+  <div class="quote"><strong>Economia există doar cât timp poate fi probată</strong>, lună de lună, pentru fiecare salariat mobil. O lună nedocumentată transformă întreaga prestație în venit salarial.</div>
+</div></div>
+</section>
+
+<section class="sec" id="pachet" aria-labelledby="h-pachet">
+<div class="in"><div class="panel">
+  <div class="sechead"><span class="n">02 · Pachetul</span><h2 id="h-pachet">Un livrabil la implementare, două livrabile lunare</h2></div>
+  <p class="intro">Toate se livrează și se acceptă per contract individual de muncă (CIM), cu lookup pe evidența master a salariaților clientului. Serviciile sunt servicii digitale smartBIZ Copilot, ghidate de modelul smartBIZ.</p>
+  <div class="cards">
+    <article class="card once">
+      <div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h12l4 4v12H4z"/><path d="M8 4v5h8V4M8 20v-6h8v6"/></svg></div>
+      <span class="tag">1 · Implementare · nerecurent</span>
+      <h3>Fundamentare, acte și configurare</h3>
+      <ul>
+        <li>Analiza posturilor și încadrarea locului de muncă: fix vs mobil, pe categorie (mobilitate generală sau șoferi din transportul rutier).</li>
+        <li>Nota de fundamentare a necesității și oportunității clauzei, per categorie de post: documentul-cheie la un control.</li>
+        <li>Politica Pachet Salarial cu Beneficii și prevederile din Regulamentul intern / CCM.</li>
+        <li>Acte adiționale la CIM cu clauza de mobilitate și prestația suplimentară, corelate cu fișa postului.</li>
+        <li>Configurarea în smartBIZ Copilot: CEV angajați, plafoane fiscale, reguli de calcul, pontajul manoperei mobile.</li>
+        <li>Instruirea responsabililor HR și a șefilor de echipă.</li>
+      </ul>
+    </article>
+    <article class="card rec">
+      <div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M7 13h4M7 17h7"/></svg></div>
+      <span class="tag">2 · Documentare și evidență · lunar</span>
+      <h3>Dosarul probator al mobilității</h3>
+      <ul>
+        <li>Colectarea pontajului manoperei mobile: zile și ore, locații / șantiere / clienți, per salariat.</li>
+        <li>Centralizatorul lunar al mobilității, reconciliat cu pontajul general și concediile.</li>
+        <li>Calculul prestației neimpozabile și, după caz, al părții care depășește plafonul.</li>
+        <li>Dosar probator lunar per CIM: pontaj, centralizator, documente suport, arhivat și trasabil.</li>
+        <li>Datele pentru salarizare și pentru D112 (rubrica prestațiilor din clauza de mobilitate).</li>
+      </ul>
+    </article>
+    <article class="card rec">
+      <div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg></div>
+      <span class="tag">3 · Control conformare · lunar</span>
+      <h3>Codul muncii / Codul fiscal, înainte de D112</h3>
+      <ul>
+        <li>Verificarea existenței și valabilității clauzei pentru fiecare salariat plătit: act adițional, fișa postului, politică.</li>
+        <li>Verificarea încadrării în plafoanele fiscale ale categoriei de mobilitate.</li>
+        <li>Coerență: fără prestație în concediul medical, corelare cu indemnizația de concediu de odihnă.</li>
+        <li>Raport lunar de conformare: neconformități, sume reîncadrate, recomandări, corecții înainte de depunere.</li>
+      </ul>
+    </article>
+  </div>
+</div></div>
+</section>
+
+<section class="sec" id="pasi" aria-labelledby="h-pasi">
+<div class="in"><div class="panel">
+  <div class="sechead"><span class="n">03 · Pașii</span><h2 id="h-pasi">Implementare în 3–4 săptămâni de la primirea datelor</h2></div>
+  <p class="intro">Prima lună de plată a prestației este luna următoare semnării actelor adiționale.</p>
+  <ol class="steps">
+    <li><b>Diagnostic</b><span>Inventarul posturilor, al locurilor de muncă efective și al salariilor de bază; identificarea salariaților cu mobilitate reală și a categoriei lor.</span></li>
+    <li><b>Fundamentare</b><span>Nota de necesitate și oportunitate per categorie de post; simularea plafoanelor fiscale per salariat.</span></li>
+    <li><b>Structurarea pachetului</b><span>Politica Pachet Salarial cu Beneficii: suma prestației, condițiile de acordare, regulile pentru concedii și absențe, menținerea venitului net constant.</span></li>
+    <li><b>Cadrul juridic</b><span>Acte adiționale la CIM, fișe de post, completări RI / CCM; transmiterea elementelor salariale în REGES-ONLINE.</span></li>
+    <li><b>Configurarea evidenței</b><span>Activarea în smartBIZ Copilot a CEV-ului angajați, a time tracker-ului pentru manopera mobilă și a regulilor de control al plafoanelor.</span></li>
+    <li><b>Pornire și prima închidere</b><span>Instruirea responsabililor de pontaj; prima lună rulată cu control dublu înainte de salarizare și D112.</span></li>
+  </ol>
+</div></div>
+</section>
+
+<section class="sec" id="beneficii" aria-labelledby="h-ben">
+<div class="in"><div class="panel">
+  <div class="sechead"><span class="n">04 · Beneficii</span><h2 id="h-ben">Aceeași sumă netă la salariat, fără sarcina fiscală a salariului</h2></div>
+  <p class="intro">Angajatorul plătește doar ce ajunge efectiv la salariat. Economia de cca 864 RON/lună per salariat mobil rămâne în companie.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Aspect</th><th>Angajat</th><th>Angajator</th></tr></thead>
+    <tbody>
+      <tr><td><b>Venit</b></td><td>+1.200 RON net/lună, 14.400 RON/an, fără impozit și contribuții</td><td>Același net pentru salariat la un cost cu cca 72% mai mic față de plata ca salariu</td></tr>
+      <tr><td><b>Cost</b></td><td>—</td><td>Economie de cca 864 RON/lună per salariat mobil</td></tr>
+      <tr><td><b>Stabilitate</b></td><td>Venit net lunar constant, inclusiv în concediul de odihnă (prin baza de calcul a indemnizației de CO)</td><td>Buget de manoperă previzibil, pe salariat și pe proiect / șantier</td></tr>
+      <tr><td><b>Siguranță</b></td><td>Venit pe care nu riscă să-l vadă contestat</td><td>Dosar probator lunar; risc de reclasificare controlat înainte de D112</td></tr>
+      <tr><td><b>Atractivitate</b></td><td>Recunoașterea explicită a efortului de deplasare</td><td>Argument de recrutare și retenție pentru posturile mobile</td></tr>
+      <tr><td><b>Informație</b></td><td>—</td><td>Pontaj real al manoperei mobile: cost pe proiect, productivitate, deplasări</td></tr>
+    </tbody>
+  </table></div>
+</div></div>
+</section>
+
+<section class="sec" id="calculator" aria-labelledby="h-calc">
+<div class="in"><div class="panel">
+  <div class="sechead"><span class="n">05 · Calculator</span><h2 id="h-calc">Cât economisește compania ta</h2></div>
+  <p class="intro">Cei 72% reprezintă costul suplimentar pe care angajatorul l-ar suporta pentru a asigura același net sub formă de salariu (impozit pe venit, CAS, CASS, CAM, cu recalculare brut din net). Alege numărul de salariați mobili și prestația lunară.</p>
+  <div class="calc">
+    <form class="ctl" id="calcForm" onsubmit="return false">
+      <div class="fld">
+        <label for="nEmp">Salariați mobili</label>
+        <div class="row"><input type="range" id="nEmpR" min="1" max="200" step="1" value="10" aria-label="Salariați mobili, cursor"><input type="number" id="nEmp" min="1" max="2000" step="1" value="10" inputmode="numeric"></div>
+        <small>Posturi fără loc de muncă fix: construcții, montaj, service, agenți de teren, șoferi.</small>
+      </div>
+      <div class="fld">
+        <label for="prest">Prestație lunară per salariat (RON net)</label>
+        <div class="row"><input type="range" id="prestR" min="300" max="1200" step="50" value="1200" aria-label="Prestație lunară, cursor"><input type="number" id="prest" min="100" max="1200" step="50" value="1200" inputmode="numeric"></div>
+        <small>Maximum 1.200 RON/lună în prezenta ofertă; încadrarea în plafoane se verifică per salariat.</small>
+      </div>
+      <div class="fld">
+        <label for="curs">Curs EUR/RON pentru licență</label>
+        <div class="row"><input type="range" id="cursR" min="4.80" max="5.40" step="0.01" value="5.10" aria-label="Curs EUR/RON, cursor"><input type="number" id="curs" min="4" max="7" step="0.01" value="5.10" inputmode="decimal"></div>
+        <small>Licența se facturează în lei, la cursul BNR din ziua facturării.</small>
+      </div>
+    </form>
+    <div class="res" aria-live="polite">
+      <div class="r big"><span>Economie netă în primul an</span><b id="oNet1">—</b><small>după implementare și licență</small></div>
+      <div class="r"><span>Economie brută / an</span><b id="oBrut">—</b><small id="oBrutF">prestație × 12 × 72%</small></div>
+      <div class="r"><span>Economie netă din anul 2</span><b id="oNet2">—</b><small>după licență</small></div>
+      <div class="r cost"><span>Implementare (10% din economia an 1)</span><b id="oImpl">—</b><small>o singură dată, + TVA</small></div>
+      <div class="r cost"><span>Licență de utilizare / an</span><b id="oLic">—</b><small id="oLicF">10 EUR × 12 luni × salariați</small></div>
+      <div class="bars" aria-label="Comparație cost anual angajator">
+        <div class="bar sal"><span>Ca salariu, pe an</span><i><b id="bSal" style="width:100%"></b></i><span class="v" id="vSal">—</span></div>
+        <div class="bar pre"><span>Ca prestație, pe an</span><i><b id="bPre" style="width:58%"></b></i><span class="v" id="vPre">—</span></div>
+        <p class="note" style="margin:8px 0 0">Costul total al angajatorului pentru același net ajuns la salariați, cu și fără pachet (prestație + licență + implementare în primul an).</p>
+      </div>
+    </div>
+  </div>
+  <h3 style="margin-top:22px">Valori de referință, la 1.200 RON/lună</h3>
+  <div class="tw"><table>
+    <thead><tr><th class="num">Salariați mobili</th><th class="num">Economie brută / an</th><th class="num">Implementare, 10% an 1</th><th class="num">Licență utilizare / an</th><th class="num">Economie netă an 1</th><th class="num">Economie netă din an 2</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td class="num">10.368</td><td class="num">1.037</td><td class="num">612</td><td class="num">8.719</td><td class="num">9.756</td></tr>
+      <tr class="hi"><td class="num">10</td><td class="num">103.680</td><td class="num">10.368</td><td class="num">6.120</td><td class="num">87.192</td><td class="num">97.560</td></tr>
+      <tr><td class="num">25</td><td class="num">259.200</td><td class="num">25.920</td><td class="num">15.300</td><td class="num">217.980</td><td class="num">243.900</td></tr>
+      <tr><td class="num">50</td><td class="num">518.400</td><td class="num">51.840</td><td class="num">30.600</td><td class="num">435.960</td><td class="num">487.800</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">Valori în RON, fără TVA. Ipoteze: prestație 1.200 RON/lună în toate cele 12 luni, încadrată integral în plafoane; licență de utilizare 10 EUR × 12 luni la un curs estimativ de 5,10 RON/EUR.</p>
+</div></div>
+</section>
+
+<section class="sec" id="conformare" aria-labelledby="h-conf">
+<div class="in"><div class="panel">
+  <div class="sechead"><span class="n">06 · Conformare</span><h2 id="h-conf">Ce trebuie să probeze documentarea</h2></div>
+  <p class="intro">Documentația justificativă este exact ceea ce cer echipele de control ANAF pentru justificarea încadrărilor fiscale reduse. Sarcina probei este a contribuabilului (Codul de procedură fiscală, art. 73).</p>
+  <div class="cards">
+    <article class="card">
+      <span class="tag">La implementare</span>
+      <h3>Necesitatea și oportunitatea</h3>
+      <p>De ce postul nu are loc fix (natura activității: șantiere, clienți, puncte de lucru variabile), nu doar că s-a semnat o clauză. Un post fără loc fix nu are activitate mixtă.</p>
+    </article>
+    <article class="card">
+      <span class="tag">Lunar</span>
+      <h3>Realitatea mobilității</h3>
+      <p>Unde a lucrat salariatul și pe ce proiect, în fiecare zi lucrată: data, orele, locația / șantierul / clientul și operațiunea, colectate zilnic în time tracker-ul smartBIZ Copilot.</p>
+    </article>
+    <article class="card">
+      <span class="tag">Lunar</span>
+      <h3>Coerența cu restul evidențelor</h3>
+      <p>Pontaj general, concedii, devize și situații de lucrări pe șantier, foi de parcurs pentru șoferi. Fără prestație în concediul medical.</p>
+    </article>
+  </div>
+  <h3 style="margin-top:22px">Mobilitatea generală vs mobilitatea șoferilor</h3>
+  <p class="note" style="margin:0 0 12px">Codul fiscal tratează diferit cele două categorii. Încadrarea greșită schimbă plafonul aplicabil și baza de calcul: un șofer tratat ca mobilitate generală pierde plafonul separat, iar un salariat care nu face transport rutier tratat ca șofer generează reîncadrare.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Criteriu</th><th>Mobilitate generală</th><th>Mobilitatea șoferilor (transport rutier)</th></tr></thead>
+    <tbody>
+      <tr><td><b>Cine</b></td><td>Salariați fără loc de muncă fix: construcții, montaj, service, agenți de teren</td><td>Personalul care efectuează activități mobile de transport rutier (HG nr. 38/2008)</td></tr>
+      <tr><td><b>Bază legală</b></td><td>Codul fiscal, art. 76 alin. (2) lit. k^1) și alin. (4^1) lit. a)</td><td>Codul fiscal, art. 76 alin. (2) lit. k)</td></tr>
+      <tr><td><b>Plafon neimpozabil</b></td><td>2,5 × indemnizația de delegare pentru instituțiile publice (HG nr. 714/2018)</td><td>2,5 × indemnizația de delegare în țară, respectiv 2,5 × diurna legală în străinătate</td></tr>
+      <tr><td><b>Limită lunară</b></td><td>Intră în plafonul cumulat de 33% din salariul de bază, cu celelalte beneficii din art. 76 alin. (4^1)</td><td>Nu intră în plafonul de 33%; limită proprie de 3 salarii de bază, proporțional cu zilele de activitate</td></tr>
+      <tr><td><b>Spațiu pentru alte beneficii</b></td><td>Doar diferența până la 33%</td><td>Plafonul de 33% rămâne integral disponibil</td></tr>
+      <tr><td><b>Probe specifice</b></td><td>Pontaj în time tracker pe locații / șantiere / clienți; nota de fundamentare a lipsei locului fix</td><td>Pontaj corelat cu foile de parcurs, datele tahografului și cursele efectuate</td></tr>
+    </tbody>
+  </table></div>
+  <h3 style="margin-top:22px">Alte beneficii în pachetul salarial și costul lor fiscal</h3>
+  <p class="note" style="margin:0 0 12px">Prestația de mobilitate generală consumă din plafonul lunar de 33% din salariul de bază; celelalte beneficii încap în diferența rămasă. Exemplu: la un salariu de bază de 5.000 RON, plafonul de 33% este de 1.650 RON; după prestația de 1.200 RON rămân 450 RON pentru hrană, asigurare de sănătate sau pensie facultativă fără sarcină fiscală.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Beneficiu</th><th>Plafon</th><th>Cost fiscal</th><th>În plafonul de 33%</th></tr></thead>
+    <tbody>
+      <tr><td>Prestație suplimentară, clauza de mobilitate (generală)</td><td>2,5 × indemnizația de delegare; 1.200 RON/lună în prezenta ofertă</td><td>0% în plafon</td><td><span class="pill y">Da</span></td></tr>
+      <tr><td>Prestație de mobilitate pentru șoferi</td><td>2,5 × indemnizația de delegare / diurna legală; maximum 3 salarii de bază</td><td>0% în plafon</td><td><span class="pill n">Nu</span></td></tr>
+      <tr><td>Hrană acordată de angajator</td><td>Valoarea tichetului de masă / zi</td><td>0% în plafon</td><td><span class="pill y">Da</span></td></tr>
+      <tr><td>Cazare / chirie pentru spațiu pus la dispoziție</td><td>20% din salariul de bază minim brut / lună</td><td>0% în plafon</td><td><span class="pill y">Da</span></td></tr>
+      <tr><td>Contribuții la pensii facultative</td><td>400 EUR / an / salariat</td><td>0% în plafon</td><td><span class="pill y">Da</span></td></tr>
+      <tr><td>Asigurare voluntară de sănătate / abonamente medicale</td><td>400 EUR / an / salariat</td><td>0% în plafon</td><td><span class="pill y">Da</span></td></tr>
+      <tr><td>Tichete de masă</td><td>Valoarea nominală maximă legală / zi lucrată</td><td>Impozit 10% + CASS 10%; fără CAS și CAM</td><td><span class="pill n">Nu</span></td></tr>
+      <tr><td>Vouchere de vacanță</td><td>6 salarii de bază minime brute / an</td><td>Impozit 10% + CASS 10%; fără CAS și CAM</td><td><span class="pill n">Nu</span></td></tr>
+      <tr><td>Cadouri / tichete cadou ocazionale</td><td>300 RON / ocazie / persoană, inclusiv pentru copiii minori</td><td>0%</td><td><span class="pill n">Nu</span></td></tr>
+      <tr><td>Salariu (referință)</td><td>—</td><td>Cca 72% din net (impozit 10%, CAS 25%, CASS 10%, CAM 2,25%)</td><td>—</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">Orice beneficiu suplimentar se prevede în CIM, RI sau CCM (Codul muncii, art. 242) și se configurează, documentează și controlează lunar în același pachet, la cerere.</p>
+</div></div>
+</section>
+
+<section class="sec" id="pret" aria-labelledby="h-pret">
+<div class="in"><div class="panel">
+  <div class="sechead"><span class="n">07 · Preț</span><h2 id="h-pret">Costul este legat direct de economia obținută</h2></div>
+  <p class="intro">Răspunderea urmează câștigul: AiALL răspunde pentru corectitudinea fundamentării, a calculului și a controlului, iar clientul pentru realitatea mobilității și completitudinea pontajului.</p>
+  <div class="price">
+    <article class="pc">
+      <span class="tag">1 · Implementare · o singură dată</span>
+      <p class="amt">10% <small>+ TVA din economia primului an</small></p>
+      <ul>
+        <li>Cca 1.037 RON per salariat mobil, la 1.200 RON/lună.</li>
+        <li>Economia se calculează pe salariații și sumele din actele adiționale semnate la implementare.</li>
+        <li>Facturare: 50% la semnarea actelor adiționale, 50% după prima lună rulată.</li>
+        <li>Salariații adăugați ulterior se implementează în aceleași condiții, pe primele 12 luni de la acordare.</li>
+      </ul>
+      <p class="fine">Include analiza posturilor, nota de fundamentare, politica, actele adiționale, configurarea și instruirea.</p>
+    </article>
+    <article class="pc rec">
+      <span class="tag">Licență de utilizare · lunar</span>
+      <p class="amt">10 EUR <small>+ TVA / lună per salariat remunerat</small></p>
+      <ul>
+        <li>Include 2. Documentare și evidență și 3. Control conformare.</li>
+        <li>Se facturează lunar, după închiderea salarizării, numai pentru salariații care au primit prestația în luna respectivă.</li>
+        <li>În lei, la cursul BNR din ziua facturării.</li>
+        <li>Cca 612 RON/an per salariat, față de 10.368 RON economie brută.</li>
+      </ul>
+      <p class="fine">Sumele care nu pot fi documentate ca mobilitate sunt reîncadrate ca venit salarial înainte de D112; decizia finală de plată rămâne a clientului.</p>
+    </article>
+  </div>
+</div></div>
+</section>
+
+<section class="sec" id="intrebari" aria-labelledby="h-faq">
+<div class="in"><div class="panel">
+  <div class="sechead"><span class="n">08 · Întrebări</span><h2 id="h-faq">Întrebări frecvente</h2></div>
+  <div class="faq" style="margin-top:16px">
+    <details><summary>Ce salariați pot primi prestația de mobilitate?</summary><p>Cei al căror post nu are loc de muncă fix: activitatea se desfășoară integral în condiții de mobilitate, pe șantiere, la clienți sau în locații variabile (Codul muncii, art. 25). Un post fără loc fix nu are activitate mixtă. Categoria (mobilitate generală sau șoferi din transportul rutier) se stabilește per CIM la implementare.</p></details>
+    <details><summary>Ce condiții de salariu trebuie îndeplinite?</summary><p>Pentru mobilitatea generală, prestația intră în plafonul lunar de cel mult 33% din salariul de bază; pentru 1.200 RON, salariul de bază trebuie să fie de minimum 3.637 RON. Plafonul de referință este 2,5 × indemnizația de delegare pentru instituțiile publice (HG nr. 714/2018). Plafoanele se verifică lunar, per salariat.</p></details>
+    <details><summary>Ce se întâmplă în concedii?</summary><p>Prestația nu se acordă în concediul medical. În concediul de odihnă se reflectă indirect, prin baza de calcul a indemnizației de CO (Codul muncii, art. 150), astfel încât venitul net lunar rămâne constant.</p></details>
+    <details><summary>Ce se întâmplă dacă o lună nu este documentată?</summary><p>Sumele care nu pot fi documentate ca mobilitate sunt reîncadrate ca venit salarial (Codul fiscal, art. 76 alin. (2) lit. k^1)) înainte de depunerea D112, prin raportul lunar de conformare. Decizia finală de plată rămâne a clientului.</p></details>
+    <details><summary>Ce furnizează clientul?</summary><p>Date complete despre posturi și salarii, semnarea actelor, pontajul zilnic al manoperei mobile în time tracker și semnalarea schimbărilor de activitate. AiALL livrează documentele de implementare, configurarea platformei, calculul lunar al plafoanelor, dosarul probator și raportul de conformare.</p></details>
+    <details><summary>Pe ce se bazează legal pachetul?</summary><p>Codul muncii (Legea nr. 53/2003): art. 17, 25, 41, 150, 242. Codul fiscal (Legea nr. 227/2015): art. 76 alin. (2) lit. k) și k^1), alin. (4^1) lit. a), art. 142 lit. aa), art. 11. Normele metodologice (HG nr. 1/2016), HG nr. 714/2018, HG nr. 38/2008, Codul de procedură fiscală art. 73, instrucțiunile D112 și Legea nr. 165/2018.</p></details>
+  </div>
+</div></div>
+</section>
+
+<section class="sec" id="contact" aria-labelledby="h-contact">
+<div class="in"><div class="panel">
+  <div class="sechead"><span class="n">09 · Contact</span><h2 id="h-contact">Cere oferta personalizată pentru compania ta</h2></div>
+  <p class="intro">Oferta se emite pe datele reale ale companiei: numărul de salariați mobili, salariile de bază și categoria de mobilitate. Este valabilă 30 de zile de la emitere.</p>
+  <div class="contact">
+    <div class="box">
+      <p><strong>Ce îți trimitem după un prim apel:</strong></p>
+      <ul>
+        <li>Simularea economiei pe posturile voastre, cu plafoanele verificate per salariat.</li>
+        <li>Oferta e2e OPS Salarizare cu Beneficii, cu livrabilele, pașii și costul.</li>
+        <li>Planul de implementare pe 3–4 săptămâni și prima lună de plată.</li>
+      </ul>
+      <div class="ctas">
+        <a class="btn navy" id="mailCta" href="mailto:oferte@aiall.ro?subject=Ofert%C4%83%20e2e%20OPS%20Salarizare%20cu%20Beneficii&body=Bun%C4%83%20ziua%2C%0A%0ADoresc%20o%20ofert%C4%83%20pentru%20pachetul%20e2e%20OPS%20Salarizare%20cu%20Beneficii.%0A%0ACompania%3A%20%0ASalaria%C8%9Bi%20mobili%3A%20%0ADomeniu%20de%20activitate%3A%20%0ATelefon%3A%20%0A">Scrie-ne pentru ofertă <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></a>
+        <a class="btn ghost" style="color:var(--ink);border-color:var(--line);background:var(--surface)" href="#calculator">Înapoi la calculator</a>
+      </div>
+    </div>
+    <div class="box">
+      <div class="who"><div class="av" aria-hidden="true">GS</div><div><b>Gheorghe Sandru</b><span>Managing Partner, AiALL S.R.L. · smartBIZ Copilot</span></div></div>
+      <p style="margin-top:14px"><a href="mailto:oferte@aiall.ro">oferte@aiall.ro</a><br>AiALL S.R.L. · CUI 48025522 · București</p>
+      <p class="note" style="margin:0">Serviciile sunt servicii digitale smartBIZ Copilot, ghidate de modelul smartBIZ. Oferta personalizată este valabilă 30 de zile de la data emiterii.</p>
+    </div>
+  </div>
+</div></div>
+</section>
+
+</main>
+
+<footer class="foot"><div class="in">
+  <span>AiALL S.R.L. · CUI 48025522 · București · smartBIZ Copilot · e2e OPS Salarizare cu Beneficii</span>
+</div></footer>
+
+<script>
+(function(){
+  // Tema: ☀ / 🌙, reținută în localStorage, ca în cockpit
+  var root=document.documentElement, sw=document.getElementById('themeSwitch');
+  function apply(t){ if(t){root.setAttribute('data-theme',t);} else {root.removeAttribute('data-theme');}
+    var cur=t||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
+    sw.querySelectorAll('button').forEach(function(b){b.classList.toggle('on',b.dataset.theme===cur);b.setAttribute('aria-pressed',b.dataset.theme===cur?'true':'false');}); }
+  var saved=null; try{saved=localStorage.getItem('theme');}catch(e){}
+  apply(saved==='dark'||saved==='light'?saved:null);
+  sw.addEventListener('click',function(e){var b=e.target.closest('button[data-theme]'); if(!b)return; try{localStorage.setItem('theme',b.dataset.theme);}catch(e2){} apply(b.dataset.theme);});
+
+  // Bara de secțiuni: subliniere pe secțiunea vizibilă (scroll-spy)
+  var links=[].slice.call(document.querySelectorAll('nav.tabs a')), secs=links.map(function(a){return document.querySelector(a.getAttribute('href'));});
+  function spy(){ var y=window.scrollY+130, cur=-1; secs.forEach(function(s,i){ if(s&&s.offsetTop<=y) cur=i; });
+    if(window.innerHeight+window.scrollY>=document.documentElement.scrollHeight-2) cur=secs.length-1; // la capătul paginii: ultima secțiune
+    links.forEach(function(a,i){ if(i===cur){a.setAttribute('aria-current','true');} else {a.removeAttribute('aria-current');} }); }
+  window.addEventListener('scroll',spy,{passive:true}); window.addEventListener('resize',spy); spy();
+
+  // Calculator: economie brută = prestație × 12 × 72%; implementare 10% din economia an 1; licență 10 EUR × 12 × curs
+  var RATE=0.72, LIC=10;
+  function $(id){return document.getElementById(id);}
+  var ron=new Intl.NumberFormat('ro-RO',{maximumFractionDigits:0});
+  function fmt(v){return ron.format(Math.round(v))+' RON';}
+  function pair(a,b,clamp){ $(a).addEventListener('input',function(){$(b).value=$(a).value;calc();}); $(b).addEventListener('input',function(){ var v=parseFloat($(b).value); if(!isNaN(v)){ $(a).value=Math.min(Math.max(v,$(a).min),$(a).max); } calc(); }); }
+  pair('nEmpR','nEmp'); pair('prestR','prest'); pair('cursR','curs');
+  function calc(){
+    var n=Math.max(1,parseInt($('nEmp').value,10)||1), p=Math.max(0,parseFloat($('prest').value)||0), c=Math.max(0.01,parseFloat($('curs').value)||5.10);
+    var brut=p*12*RATE*n, impl=brut*0.10, lic=LIC*12*c*n, net1=brut-impl-lic, net2=brut-lic;
+    var salCost=p*12*(1+RATE)*n, preCost=p*12*n+lic+impl;
+    $('oBrut').textContent=fmt(brut); $('oBrutF').textContent=ron.format(p)+' × 12 × 72% × '+n;
+    $('oImpl').textContent=fmt(impl); $('oLic').textContent=fmt(lic); $('oLicF').textContent='10 EUR × 12 × '+n+' × '+c.toFixed(2).replace('.',',');
+    $('oNet1').textContent=fmt(net1); $('oNet2').textContent=fmt(net2);
+    $('vSal').textContent=fmt(salCost); $('vPre').textContent=fmt(preCost);
+    $('bSal').style.width='100%'; $('bPre').style.width=(salCost>0?Math.min(100,preCost/salCost*100):0).toFixed(1)+'%';
+  }
+  calc();
+})();
+</script>
+</body>
+</html>
