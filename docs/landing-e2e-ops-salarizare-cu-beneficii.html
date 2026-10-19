@@ -156,6 +156,7 @@ tr.hi td{background:color-mix(in srgb,var(--teal) 8%,var(--surface));font-weight
 .r.big{grid-column:1/-1;border-color:var(--teal);background:color-mix(in srgb,var(--teal) 8%,var(--surface))}
 .r.big b{font-size:34px;color:var(--green)}
 .r.cost b{color:var(--amber)}
+.r3{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .bars{grid-column:1/-1;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
 .bar{display:grid;grid-template-columns:150px minmax(0,1fr) 110px;align-items:center;gap:12px;margin:8px 0;font-size:13px}
 .bar i{display:block;height:14px;border-radius:7px;background:var(--line);overflow:hidden}
@@ -164,12 +165,12 @@ tr.hi td{background:color-mix(in srgb,var(--teal) 8%,var(--surface));font-weight
 .bar .v{text-align:right;font:500 13px var(--mono);font-variant-numeric:tabular-nums}
 
 /* preț */
-.price{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.price{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
 .pc{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:24px 26px;display:flex;flex-direction:column;gap:8px;min-width:0}
 .pc.rec{border-color:var(--teal);box-shadow:0 0 0 3px color-mix(in srgb,var(--teal) 16%,transparent)}
 .pc .tag{font:500 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .pc .amt{font:600 34px/1.1 var(--sans);letter-spacing:-.03em;color:var(--navy);margin:4px 0 0}
-.pc .amt small{font:500 14px var(--sans);color:var(--muted);letter-spacing:0}
+.pc .amt small{display:block;font:500 14px/1.4 var(--sans);color:var(--muted);letter-spacing:0;margin-top:4px}
 .pc ul{margin:8px 0 0;padding-left:18px;font-size:14px}
 .pc li{margin-bottom:6px}
 .pc .fine{font-size:13px;color:var(--muted);margin:auto 0 0;padding-top:10px}
@@ -203,7 +204,7 @@ tr.hi td{background:color-mix(in srgb,var(--teal) 8%,var(--surface));font-weight
 @media (max-width:640px){
   .hbtn .btn-txt{display:none}.logo small{display:none}
   .stakes{grid-template-columns:1fr 1fr}.stake b{font-size:24px}
-  .res{grid-template-columns:1fr}
+  .res,.r3{grid-template-columns:1fr}
   .bar{grid-template-columns:110px minmax(0,1fr) 90px}
   .in{padding:0 16px}.hero .in{padding:32px 16px 30px}
 }
@@ -248,7 +249,7 @@ tr.hi td{background:color-mix(in srgb,var(--teal) 8%,var(--surface));font-weight
   <div>
     <p class="eyebrow">AiALL S.R.L. · smartBIZ Copilot · e2e OPS Salarizare cu Beneficii</p>
     <h1 id="h1">1.200 RON net în plus pentru fiecare salariat mobil, cu <em>0% sarcină fiscală</em></h1>
-    <p class="lead">Prestația suplimentară pentru clauza de mobilitate, implementată corect, documentată lună de lună și controlată înainte de D112. Pachet digital e2e: implementare, documentare și evidență, control de conformare Codul muncii / Codul fiscal.</p>
+    <p class="lead">Prestația suplimentară pentru clauza de mobilitate, implementată corect, documentată lună de lună și controlată înainte de D112. Pachet digital e2e: implementare, documentare și evidență, control de conformare Codul muncii / Codul fiscal. Plătești pe economia realizată.</p>
     <div class="ctas">
       <a class="btn primary" href="#contact">Cere oferta personalizată <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
       <a class="btn ghost" href="#calculator">Calculează economia</a>
@@ -364,7 +365,7 @@ tr.hi td{background:color-mix(in srgb,var(--teal) 8%,var(--surface));font-weight
 <section class="sec" id="calculator" aria-labelledby="h-calc">
 <div class="in"><div class="panel">
   <div class="sechead"><span class="n">05 · Calculator</span><h2 id="h-calc">Cât economisește compania ta</h2></div>
-  <p class="intro">Cei 72% reprezintă costul suplimentar pe care angajatorul l-ar suporta pentru a asigura același net sub formă de salariu (impozit pe venit, CAS, CASS, CAM, cu recalculare brut din net). Alege numărul de salariați mobili și prestația lunară.</p>
+  <p class="intro">Cei 72% reprezintă costul suplimentar pe care angajatorul l-ar suporta pentru a asigura același net sub formă de salariu (impozit pe venit, CAS, CASS, CAM, cu recalculare brut din net). Alege numărul de salariați mobili și prestația lunară. Costul pachetului: implementare 10% din economia anului 1, licență 10 EUR/lună per salariat și bonus de performanță 15% din economia realizată.</p>
   <div class="calc">
     <form class="ctl" id="calcForm" onsubmit="return false">
       <div class="fld">
@@ -384,29 +385,32 @@ tr.hi td{background:color-mix(in srgb,var(--teal) 8%,var(--surface));font-weight
       </div>
     </form>
     <div class="res" aria-live="polite">
-      <div class="r big"><span>Economie netă în primul an</span><b id="oNet1">—</b><small>după implementare și licență</small></div>
+      <div class="r big"><span>Economie netă în primul an</span><b id="oNet1">—</b><small>după implementare, licență și bonus de performanță</small></div>
       <div class="r"><span>Economie brută / an</span><b id="oBrut">—</b><small id="oBrutF">prestație × 12 × 72%</small></div>
-      <div class="r"><span>Economie netă din anul 2</span><b id="oNet2">—</b><small>după licență</small></div>
-      <div class="r cost"><span>Implementare (10% din economia an 1)</span><b id="oImpl">—</b><small>o singură dată, + TVA</small></div>
-      <div class="r cost"><span>Licență de utilizare / an</span><b id="oLic">—</b><small id="oLicF">10 EUR × 12 luni × salariați</small></div>
+      <div class="r"><span>Economie netă din anul 2</span><b id="oNet2">—</b><small>după licență și bonus de performanță</small></div>
+      <div class="r3">
+        <div class="r cost"><span>Implementare (10% din economia an 1)</span><b id="oImpl">—</b><small>o singură dată, + TVA</small></div>
+        <div class="r cost"><span>Licență de utilizare / an</span><b id="oLic">—</b><small id="oLicF">10 EUR × 12 luni × salariați</small></div>
+        <div class="r cost"><span>Bonus de performanță / an</span><b id="oBon">—</b><small>15% din economia realizată, + TVA</small></div>
+      </div>
       <div class="bars" aria-label="Comparație cost anual angajator">
         <div class="bar sal"><span>Ca salariu, pe an</span><i><b id="bSal" style="width:100%"></b></i><span class="v" id="vSal">—</span></div>
         <div class="bar pre"><span>Ca prestație, pe an</span><i><b id="bPre" style="width:58%"></b></i><span class="v" id="vPre">—</span></div>
-        <p class="note" style="margin:8px 0 0">Costul total al angajatorului pentru același net ajuns la salariați, cu și fără pachet (prestație + licență + implementare în primul an).</p>
+        <p class="note" style="margin:8px 0 0">Costul total al angajatorului pentru același net ajuns la salariați, cu și fără pachet (prestație + licență + bonus de performanță + implementare în primul an).</p>
       </div>
     </div>
   </div>
   <h3 style="margin-top:22px">Valori de referință, la 1.200 RON/lună</h3>
   <div class="tw"><table>
-    <thead><tr><th class="num">Salariați mobili</th><th class="num">Economie brută / an</th><th class="num">Implementare, 10% an 1</th><th class="num">Licență utilizare / an</th><th class="num">Economie netă an 1</th><th class="num">Economie netă din an 2</th></tr></thead>
+    <thead><tr><th class="num">Salariați mobili</th><th class="num">Economie brută / an</th><th class="num">Implementare, 10% an 1</th><th class="num">Licență utilizare / an</th><th class="num">Bonus performanță, 15% / an</th><th class="num">Economie netă an 1</th><th class="num">Economie netă din an 2</th></tr></thead>
     <tbody>
-      <tr><td class="num">1</td><td class="num">10.368</td><td class="num">1.037</td><td class="num">612</td><td class="num">8.719</td><td class="num">9.756</td></tr>
-      <tr class="hi"><td class="num">10</td><td class="num">103.680</td><td class="num">10.368</td><td class="num">6.120</td><td class="num">87.192</td><td class="num">97.560</td></tr>
-      <tr><td class="num">25</td><td class="num">259.200</td><td class="num">25.920</td><td class="num">15.300</td><td class="num">217.980</td><td class="num">243.900</td></tr>
-      <tr><td class="num">50</td><td class="num">518.400</td><td class="num">51.840</td><td class="num">30.600</td><td class="num">435.960</td><td class="num">487.800</td></tr>
+      <tr><td class="num">1</td><td class="num">10.368</td><td class="num">1.037</td><td class="num">612</td><td class="num">1.555</td><td class="num">7.164</td><td class="num">8.201</td></tr>
+      <tr class="hi"><td class="num">10</td><td class="num">103.680</td><td class="num">10.368</td><td class="num">6.120</td><td class="num">15.552</td><td class="num">71.640</td><td class="num">82.008</td></tr>
+      <tr><td class="num">25</td><td class="num">259.200</td><td class="num">25.920</td><td class="num">15.300</td><td class="num">38.880</td><td class="num">179.100</td><td class="num">205.020</td></tr>
+      <tr><td class="num">50</td><td class="num">518.400</td><td class="num">51.840</td><td class="num">30.600</td><td class="num">77.760</td><td class="num">358.200</td><td class="num">410.040</td></tr>
     </tbody>
   </table></div>
-  <p class="note">Valori în RON, fără TVA. Ipoteze: prestație 1.200 RON/lună în toate cele 12 luni, încadrată integral în plafoane; licență de utilizare 10 EUR × 12 luni la un curs estimativ de 5,10 RON/EUR.</p>
+  <p class="note">Valori în RON, fără TVA. Ipoteze: prestație 1.200 RON/lună în toate cele 12 luni, încadrată integral în plafoane; licență de utilizare 10 EUR × 12 luni la un curs estimativ de 5,10 RON/EUR; bonus de performanță 15% din economia brută realizată și confirmată prin rapoartele lunare de conformare.</p>
 </div></div>
 </section>
 
@@ -468,7 +472,7 @@ tr.hi td{background:color-mix(in srgb,var(--teal) 8%,var(--surface));font-weight
 <section class="sec" id="pret" aria-labelledby="h-pret">
 <div class="in"><div class="panel">
   <div class="sechead"><span class="n">07 · Preț</span><h2 id="h-pret">Costul este legat direct de economia obținută</h2></div>
-  <p class="intro">Răspunderea urmează câștigul: AiALL răspunde pentru corectitudinea fundamentării, a calculului și a controlului, iar clientul pentru realitatea mobilității și completitudinea pontajului.</p>
+  <p class="intro">Răspunderea urmează câștigul: AiALL răspunde pentru corectitudinea fundamentării, a calculului și a controlului, iar clientul pentru realitatea mobilității și completitudinea pontajului. Trei componente: implementarea, licența de utilizare și bonusul de performanță pe economia realizată.</p>
   <div class="price">
     <article class="pc">
       <span class="tag">1 · Implementare · o singură dată</span>
@@ -491,6 +495,17 @@ tr.hi td{background:color-mix(in srgb,var(--teal) 8%,var(--surface));font-weight
         <li>Cca 612 RON/an per salariat, față de 10.368 RON economie brută.</li>
       </ul>
       <p class="fine">Sumele care nu pot fi documentate ca mobilitate sunt reîncadrate ca venit salarial înainte de D112; decizia finală de plată rămâne a clientului.</p>
+    </article>
+    <article class="pc">
+      <span class="tag">Bonus de performanță · anual</span>
+      <p class="amt">15% <small>+ TVA din economia realizată</small></p>
+      <ul>
+        <li>Se calculează pe economia efectiv obținută: prestațiile plătite în plafon, documentate și confirmate prin rapoartele lunare de conformare.</li>
+        <li>Lunile sau sumele reîncadrate ca venit salarial nu intră în bază.</li>
+        <li>Facturare anuală, după închiderea a 12 luni de utilizare.</li>
+        <li>Cca 1.555 RON/an per salariat mobil, la 1.200 RON/lună.</li>
+      </ul>
+      <p class="fine">AiALL câștigă doar atunci când economia există și poate fi probată, lună de lună.</p>
     </article>
   </div>
 </div></div>
@@ -561,7 +576,7 @@ tr.hi td{background:color-mix(in srgb,var(--teal) 8%,var(--surface));font-weight
   window.addEventListener('scroll',spy,{passive:true}); window.addEventListener('resize',spy); spy();
 
   // Calculator: economie brută = prestație × 12 × 72%; implementare 10% din economia an 1; licență 10 EUR × 12 × curs
-  var RATE=0.72, LIC=10;
+  var RATE=0.72, LIC=10, BONUS=0.15;
   function $(id){return document.getElementById(id);}
   var ron=new Intl.NumberFormat('ro-RO',{maximumFractionDigits:0});
   function fmt(v){return ron.format(Math.round(v))+' RON';}
@@ -569,10 +584,10 @@ tr.hi td{background:color-mix(in srgb,var(--teal) 8%,var(--surface));font-weight
   pair('nEmpR','nEmp'); pair('prestR','prest'); pair('cursR','curs');
   function calc(){
     var n=Math.max(1,parseInt($('nEmp').value,10)||1), p=Math.max(0,parseFloat($('prest').value)||0), c=Math.max(0.01,parseFloat($('curs').value)||5.10);
-    var brut=p*12*RATE*n, impl=brut*0.10, lic=LIC*12*c*n, net1=brut-impl-lic, net2=brut-lic;
-    var salCost=p*12*(1+RATE)*n, preCost=p*12*n+lic+impl;
+    var brut=p*12*RATE*n, impl=brut*0.10, lic=LIC*12*c*n, bon=brut*BONUS, net1=brut-impl-lic-bon, net2=brut-lic-bon;
+    var salCost=p*12*(1+RATE)*n, preCost=p*12*n+lic+impl+bon;
     $('oBrut').textContent=fmt(brut); $('oBrutF').textContent=ron.format(p)+' × 12 × 72% × '+n;
-    $('oImpl').textContent=fmt(impl); $('oLic').textContent=fmt(lic); $('oLicF').textContent='10 EUR × 12 × '+n+' × '+c.toFixed(2).replace('.',',');
+    $('oImpl').textContent=fmt(impl); $('oLic').textContent=fmt(lic); $('oBon').textContent=fmt(bon); $('oLicF').textContent='10 EUR × 12 × '+n+' × '+c.toFixed(2).replace('.',',');
     $('oNet1').textContent=fmt(net1); $('oNet2').textContent=fmt(net2);
     $('vSal').textContent=fmt(salCost); $('vPre').textContent=fmt(preCost);
     $('bSal').style.width='100%'; $('bPre').style.width=(salCost>0?Math.min(100,preCost/salCost*100):0).toFixed(1)+'%';
