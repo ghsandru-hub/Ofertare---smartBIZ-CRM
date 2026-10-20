@@ -331,7 +331,7 @@ tr.hi td{background:color-mix(in srgb,var(--teal) 8%,var(--surface));font-weight
 <section class="sec" id="pasi" aria-labelledby="h-pasi">
 <div class="in"><div class="panel">
   <div class="sechead"><span class="n">03 · Pașii</span><h2 id="h-pasi">Implementare în 1–5 zile lucrătoare de la încasarea avansului</h2></div>
-  <p class="intro">Durata depinde de numărul de angajați. Prima lună de plată a prestației este luna următoare semnării actelor adiționale.</p>
+  <p class="intro">Durata depinde de numărul de angajați. Prima lună de plată a prestației este luna următoare semnării actelor adiționale; licența se facturează din aceeași lună, pentru luna în curs, niciodată retroactiv.</p>
   <ol class="steps">
     <li><b>Diagnostic</b><span>Inventarul posturilor, al locurilor de muncă efective și al salariilor de bază; identificarea salariaților cu mobilitate reală și a categoriei lor.</span></li>
     <li><b>Fundamentare</b><span>Nota de necesitate și oportunitate per categorie de post; simularea plafoanelor fiscale per salariat.</span></li>
@@ -380,7 +380,7 @@ tr.hi td{background:color-mix(in srgb,var(--teal) 8%,var(--surface));font-weight
       <div class="fld">
         <label for="curs">Curs EUR/RON pentru licență</label>
         <div class="row"><input type="range" id="cursR" min="4.80" max="5.40" step="0.01" value="5.10" aria-label="Curs EUR/RON, cursor"><input type="number" id="curs" min="4" max="7" step="0.01" value="5.10" inputmode="decimal"></div>
-        <small>Licența se facturează în lei, la cursul BNR din ziua facturării.</small>
+        <small>Licența se facturează lunar, în primele 5 zile ale lunii, pentru luna în curs, în lei la cursul BNR din ziua facturării; termen de plată 5 zile.</small>
       </div>
     </form>
     <div class="res" aria-live="polite">
@@ -486,8 +486,8 @@ tr.hi td{background:color-mix(in srgb,var(--teal) 8%,var(--surface));font-weight
       <p class="amt">10 EUR <small>+ TVA / lună per salariat remunerat</small></p>
       <ul>
         <li>Include 2. Documentare și evidență și 3. Control conformare.</li>
-        <li>Se facturează lunar, după închiderea salarizării, numai pentru salariații care au primit prestația în luna respectivă.</li>
-        <li>În lei, la cursul BNR din ziua facturării.</li>
+        <li>Se facturează lunar, în primele 5 zile ale lunii, pentru luna în curs, numai pentru salariații cu prestația în vigoare în luna respectivă. Nu se facturează retroactiv.</li>
+        <li>Termen de plată 5 zile de la facturare. În lei, la cursul BNR din ziua facturării.</li>
         <li>Cca 612 RON/an per salariat, față de 10.368 RON economie brută.</li>
       </ul>
       <p class="fine">Sumele care nu pot fi documentate ca mobilitate sunt reîncadrate ca venit salarial înainte de D112; decizia finală de plată rămâne a clientului.</p>
